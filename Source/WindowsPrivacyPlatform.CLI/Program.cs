@@ -14,8 +14,19 @@ namespace WindowsPrivacyPlatform.CLI
     {
         private static void Main(string[] args)
         {
-            Console.WriteLine("Windows Privacy Platform - Prototype v0.5");
-            Console.WriteLine("Read-only discovery + model + categorized report");
+            // Non-interactive flags only. No prompts.
+            var fullReport = HasFlag(args, "--full");
+            if (HasFlag(args, "--help") || HasFlag(args, "-h"))
+            {
+                WriteHelp();
+                return;
+            }
+
+            Console.WriteLine("Windows Privacy Platform - Prototype v0.6");
+            Console.WriteLine("Read-only discovery + model bind + validate + risk summary");
+            Console.WriteLine(fullReport
+                ? "Report mode: full categorized detail"
+                : "Report mode: summary + high-risk detail (use --full for complete catalog dump)");
             Console.WriteLine();
 
             var logger = new AuditLogger();
@@ -43,17 +54,16 @@ namespace WindowsPrivacyPlatform.CLI
             if (scanResult.Success && scanResult.Snapshot is not null)
             {
                 snapshot = scanResult.Snapshot;
-                var s = snapshot;
-                var configuredPolicies = s.PolicySettings.Count(p =>
+                var configuredPolicies = snapshot.PolicySettings.Count(p =>
                     !string.Equals(p.Value, "Not configured", StringComparison.OrdinalIgnoreCase) &&
                     !string.Equals(p.Value, "Error reading", StringComparison.OrdinalIgnoreCase));
 
                 Console.WriteLine(
-                    $"Identity : {s.WindowsVersion} | {s.Edition} | Build {s.BuildNumber}");
+                    $"Identity : {snapshot.WindowsVersion} | {snapshot.Edition} | Build {snapshot.BuildNumber}");
                 Console.WriteLine(
-                    $"Capabilities : {s.InstalledCapabilities.Count} | Packages : {s.InstalledPackages.Count} | " +
-                    $"Services : {s.Services.Count} | Tasks : {s.ScheduledTasks.Count} | " +
-                    $"Privacy settings : {s.PrivacySettings.Count} | Policy probes : {s.PolicySettings.Count} " +
+                    $"Capabilities : {snapshot.InstalledCapabilities.Count} | Packages : {snapshot.InstalledPackages.Count} | " +
+                    $"Services : {snapshot.Services.Count} | Tasks : {snapshot.ScheduledTasks.Count} | " +
+                    $"Privacy settings : {snapshot.PrivacySettings.Count} | Policy probes : {snapshot.PolicySettings.Count} " +
                     $"(configured: {configuredPolicies})");
             }
             else
@@ -61,11 +71,14 @@ namespace WindowsPrivacyPlatform.CLI
                 Console.WriteLine($"Scanner failed: {scanResult.Message}");
             }
 
-            // 2. Load full ManagedObject catalog into KnowledgeBase
-            var catalog = ManagedObjectCatalog.All;
+            // 2. Catalog + bind observed state onto ManagedObjects
+            var catalog = ManagedObjectCatalog.All.ToList();
+            if (snapshot is not null)
+                InventoryStateBinder.Bind(snapshot, catalog);
+
             foreach (var managedObject in catalog)
             {
-                var entry = new KnowledgeBaseEntry
+                knowledgeBase.Add(new KnowledgeBaseEntry
                 {
                     ObjectId = managedObject.ObjectId,
                     Object = managedObject,
@@ -74,33 +87,38 @@ namespace WindowsPrivacyPlatform.CLI
                         Source = "ManagedObjectCatalog",
                         SourceReliabilityScore = managedObject.ConfidenceScore
                     }
-                };
-                knowledgeBase.Add(entry);
+                });
             }
 
             Console.WriteLine(
                 $"KnowledgeBase: stored {catalog.Count} catalog entries, count={knowledgeBase.Count}");
 
-            // 3. Validate first catalog object
-            if (catalog.Count > 0)
+            // 3. Batch structural validation of entire catalog
+            var validationResults = validator.ValidateAll(knowledgeBase.GetAll());
+            var passed = validationResults.Count(r => r.IsValid);
+            var failed = validationResults.Count(r => !r.IsValid);
+            Console.WriteLine($"Validator batch: passed={passed}, failed={failed}, total={validationResults.Count}");
+            if (failed > 0)
             {
-                var firstEntry = knowledgeBase.GetByObjectId(catalog[0].ObjectId);
-                if (firstEntry is not null)
+                foreach (var bad in validationResults.Where(r => !r.IsValid).Take(10))
                 {
-                    var validationResult = validator.Validate(firstEntry);
-                    Console.WriteLine(
-                        $"Validator result: IsValid={validationResult.IsValid} (ObjectId={catalog[0].ObjectId})");
-                    if (!validationResult.IsValid && validationResult.Errors is not null)
-                    {
-                        foreach (var err in validationResult.Errors)
-                            Console.WriteLine($"  - {err}");
-                    }
+                    Console.WriteLine($"  FAIL {bad.ObjectId}: {string.Join("; ", bad.Errors)}");
                 }
+                if (failed > 10)
+                    Console.WriteLine($"  ... and {failed - 10} more");
             }
 
-            // 4. Categorized report (model layer explaining inventory)
+            // 4. Observation / risk summary + report
             if (snapshot is not null)
-                WriteCategorizedReport(snapshot, catalog);
+            {
+                var summary = InventoryStateBinder.BuildSummary(snapshot, catalog, passed, failed);
+                WriteRiskSummary(summary);
+
+                if (fullReport)
+                    WriteFullCategorizedReport(catalog);
+                else
+                    WriteHighRiskDetail(summary);
+            }
 
             logger.Info("CLI", "Pipeline complete");
 
@@ -110,13 +128,68 @@ namespace WindowsPrivacyPlatform.CLI
             Console.WriteLine("Prototype remains strictly read-only.");
         }
 
-        private static void WriteCategorizedReport(
-            InventorySnapshot snapshot,
-            IReadOnlyList<ManagedObject> catalog)
+        private static void WriteHelp()
+        {
+            Console.WriteLine("Windows Privacy Platform - Prototype v0.6");
+            Console.WriteLine();
+            Console.WriteLine("Usage:");
+            Console.WriteLine("  dotnet run -c Release -- [options]");
+            Console.WriteLine();
+            Console.WriteLine("Options:");
+            Console.WriteLine("  (default)   Risk summary + high-risk configured items");
+            Console.WriteLine("  --full      Full categorized catalog report (long)");
+            Console.WriteLine("  --help, -h  Show this help");
+            Console.WriteLine();
+            Console.WriteLine("Always read-only. No elevation. No system changes.");
+        }
+
+        private static bool HasFlag(string[] args, string flag)
+        {
+            if (args is null || args.Length == 0)
+                return false;
+            return args.Any(a => string.Equals(a, flag, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static void WriteRiskSummary(ObservationSummary summary)
         {
             Console.WriteLine();
-            Console.WriteLine("=== Categorized Privacy & Policy Report ===");
-            Console.WriteLine("(Explains discovered settings using the ManagedObject catalog.)");
+            Console.WriteLine("=== Observation & Risk Summary ===");
+            Console.WriteLine($"Catalog total          : {summary.CatalogTotal}");
+            Console.WriteLine($"Observed / not observed: {summary.ObservedCount} / {summary.NotObservedCount}");
+            Console.WriteLine($"Policy configured / not: {summary.ConfiguredPolicyCount} / {summary.NotConfiguredPolicyCount}");
+            Console.WriteLine($"Risk (H/M/L catalog)   : {summary.HighRiskCount} / {summary.MediumRiskCount} / {summary.LowRiskCount}");
+            Console.WriteLine($"Privacy Allow/Deny/Prompt (matched values): " +
+                              $"{summary.PrivacyAllowCount} / {summary.PrivacyDenyCount} / {summary.PrivacyPromptCount}");
+            Console.WriteLine($"Catalog validation     : passed={summary.CatalogValidationPassed}, failed={summary.CatalogValidationFailed}");
+            Console.WriteLine($"High-risk configured   : {summary.HighRiskItems.Count}");
+            Console.WriteLine($"Medium-risk configured : {summary.MediumRiskItems.Count}");
+            Console.WriteLine();
+        }
+
+        private static void WriteHighRiskDetail(ObservationSummary summary)
+        {
+            Console.WriteLine("=== High-Risk Configured Items ===");
+            if (summary.HighRiskItems.Count == 0)
+            {
+                Console.WriteLine("  (none observed as configured in this scan)");
+                Console.WriteLine();
+                return;
+            }
+
+            foreach (var item in summary.HighRiskItems
+                         .OrderBy(i => i.SubCategory, StringComparer.OrdinalIgnoreCase)
+                         .ThenBy(i => i.ObjectName, StringComparer.OrdinalIgnoreCase))
+            {
+                Console.WriteLine($"  [{item.SubCategory}] {item.ObjectName}");
+                Console.WriteLine($"    Id      : {item.ObjectId}");
+                Console.WriteLine($"    Current : {item.CurrentState}");
+                Console.WriteLine();
+            }
+        }
+
+        private static void WriteFullCategorizedReport(IReadOnlyList<ManagedObject> catalog)
+        {
+            Console.WriteLine("=== Full Categorized Privacy & Policy Report ===");
             Console.WriteLine();
 
             var byCategory = catalog
@@ -129,46 +202,16 @@ namespace WindowsPrivacyPlatform.CLI
 
                 foreach (var mo in group.OrderBy(m => m.ObjectName, StringComparer.OrdinalIgnoreCase))
                 {
-                    var current = ResolveCurrentValue(snapshot, mo);
                     Console.WriteLine($"  {mo.ObjectName}");
                     Console.WriteLine($"    Id          : {mo.ObjectId}");
                     Console.WriteLine($"    Risk        : {mo.RiskLevel} | Control: {mo.ControlLevel}");
-                    Console.WriteLine($"    Current     : {current}");
+                    Console.WriteLine($"    Current     : {mo.CurrentState ?? "(unbound)"}");
                     Console.WriteLine($"    Description : {mo.Description}");
                     if (!string.IsNullOrWhiteSpace(mo.Rationale))
                         Console.WriteLine($"    Rationale   : {mo.Rationale}");
                     Console.WriteLine();
                 }
             }
-        }
-
-        private static string ResolveCurrentValue(InventorySnapshot snapshot, ManagedObject mo)
-        {
-            // Policy probes use ObjectId as PolicySettingInfo.Name
-            var policy = snapshot.PolicySettings.FirstOrDefault(p =>
-                string.Equals(p.Name, mo.ObjectId, StringComparison.OrdinalIgnoreCase));
-            if (policy is not null)
-                return $"{policy.Value} ({policy.Hive})";
-
-            // ConsentStore short names: ObjectId ends with .name (e.g. privacy.consentstore.location)
-            var shortName = mo.ObjectId.Contains('.')
-                ? mo.ObjectId[(mo.ObjectId.LastIndexOf('.') + 1)..]
-                : mo.ObjectId;
-
-            var privacy = snapshot.PrivacySettings.FirstOrDefault(p =>
-                string.Equals(p.Name, shortName, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(p.Name, mo.ObjectId, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(p.Name, mo.ObjectName, StringComparison.OrdinalIgnoreCase));
-
-            if (privacy is not null)
-                return privacy.Value;
-
-            // Related privacy keys with dotted display names
-            privacy = snapshot.PrivacySettings.FirstOrDefault(p =>
-                mo.ObjectId.Contains(p.Name, StringComparison.OrdinalIgnoreCase) ||
-                p.Name.Contains(shortName, StringComparison.OrdinalIgnoreCase));
-
-            return privacy?.Value ?? "Not observed in this scan";
         }
     }
 }
