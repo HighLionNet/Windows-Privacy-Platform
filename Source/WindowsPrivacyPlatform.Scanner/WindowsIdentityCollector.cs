@@ -28,31 +28,53 @@ namespace WindowsPrivacyPlatform.Scanner
 
                 if (key is not null)
                 {
-                    // Product name (e.g. "Windows 11 Pro")
-                    snapshot.WindowsVersion = key.GetValue("ProductName") as string
-                        ?? key.GetValue("DisplayVersion") as string
-                        ?? "Unknown";
-
-                    // Edition / display version
-                    var displayVersion = key.GetValue("DisplayVersion") as string;
-                    var editionId = key.GetValue("EditionID") as string;
-                    snapshot.Edition = !string.IsNullOrWhiteSpace(displayVersion)
-                        ? displayVersion
-                        : (editionId ?? "Unknown");
-
-                    // Build number
-                    if (int.TryParse(key.GetValue("CurrentBuild") as string, out var build))
+                    // Build number is the reliable discriminator between Windows 10 and 11.
+                    // Microsoft intentionally left ProductName as "Windows 10 ..." on Windows 11
+                    // for application compatibility.
+                    int build = 0;
+                    if (!int.TryParse(key.GetValue("CurrentBuild") as string, out build))
                     {
-                        snapshot.BuildNumber = build;
+                        int.TryParse(key.GetValue("CurrentBuildNumber") as string, out build);
                     }
-                    else if (int.TryParse(key.GetValue("CurrentBuildNumber") as string, out var buildAlt))
+                    snapshot.BuildNumber = build;
+
+                    // DisplayVersion is the marketing version (e.g. "25H2", "24H2", "23H2")
+                    var displayVersion = key.GetValue("DisplayVersion") as string
+                                      ?? key.GetValue("ReleaseId") as string
+                                      ?? string.Empty;
+
+                    // EditionID is more precise than the old ProductName string
+                    // (e.g. "Professional", "Core", "Enterprise")
+                    var editionId = key.GetValue("EditionID") as string ?? string.Empty;
+
+                    // Construct a correct product name.
+                    // Build >= 22000 = Windows 11 (Microsoft's official cutoff).
+                    string majorName = build >= 22000 ? "Windows 11" : "Windows 10";
+
+                    // Map common EditionID values to friendly names
+                    string editionFriendly = editionId switch
                     {
-                        snapshot.BuildNumber = buildAlt;
-                    }
+                        "Professional" => "Pro",
+                        "ProfessionalWorkstation" => "Pro for Workstations",
+                        "ProfessionalEducation" => "Pro Education",
+                        "Core" => "Home",
+                        "CoreN" => "Home N",
+                        "CoreSingleLanguage" => "Home Single Language",
+                        "Enterprise" => "Enterprise",
+                        "EnterpriseN" => "Enterprise N",
+                        "Education" => "Education",
+                        "IoTUAP" => "IoT",
+                        "ServerRdsh" => "Enterprise multi-session",
+                        _ => string.IsNullOrWhiteSpace(editionId) ? "Unknown" : editionId
+                    };
+
+                    snapshot.WindowsVersion = $"{majorName} {editionFriendly}".Trim();
+                    snapshot.Edition = string.IsNullOrWhiteSpace(displayVersion)
+                        ? editionFriendly
+                        : displayVersion;
                 }
                 else
                 {
-                    // Fallback when registry key is unavailable
                     ApplyEnvironmentFallback(snapshot);
                 }
             }
@@ -68,6 +90,8 @@ namespace WindowsPrivacyPlatform.Scanner
 
         private static void ApplyEnvironmentFallback(InventorySnapshot snapshot)
         {
+            // Environment.OSVersion still reports major version 10 even on Windows 11,
+            // so we can only give a generic string here.
             snapshot.WindowsVersion = Environment.OSVersion.VersionString;
             snapshot.Edition = "Unknown (fallback)";
             snapshot.BuildNumber = Environment.OSVersion.Version.Build;
