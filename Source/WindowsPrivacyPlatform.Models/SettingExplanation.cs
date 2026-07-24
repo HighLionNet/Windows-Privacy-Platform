@@ -36,7 +36,8 @@ public class SettingExplanation
 /// <summary>
 /// Builds SettingExplanation from catalog definition fields.
 /// Pure composition — no system access, no observation logic.
-/// Tone: professional, neutral, technical, educational.
+/// Tone: professional, neutral, technical, educational (Microsoft-engineer style).
+/// Meaning of raw values comes only from ValueSemantics on the catalog entry.
 /// </summary>
 public static class SettingExplanationFactory
 {
@@ -87,9 +88,9 @@ public static class SettingExplanationFactory
             RiskSummary = riskSummary,
             WhatIsIt = BuildWhatIsIt(mo),
             WhyItMatters = BuildWhyItMatters(mo),
-            UserImpact = BuildUserImpact(mo),
+            UserImpact = string.IsNullOrWhiteSpace(mo.ConsumerImpact) ? BuildUserImpact(mo) : mo.ConsumerImpact.Trim(),
             EnterpriseImpact = BuildEnterpriseImpact(mo, controlHint),
-            TypicalUseCases = BuildUseCases(mo),
+            TypicalUseCases = string.IsNullOrWhiteSpace(mo.TypicalEnterpriseUse) ? BuildUseCases(mo) : mo.TypicalEnterpriseUse.Trim(),
             DecisionGuidance = BuildContextNotes(mo, controlHint),
             PrivacyImpactText = BuildPrivacyImpact(mo),
             SecurityImpactText = BuildSecurityImpact(mo),
@@ -125,67 +126,52 @@ public static class SettingExplanationFactory
     {
         var baseText = string.IsNullOrWhiteSpace(mo.Description) ? mo.ObjectName : mo.Description.Trim();
 
-        // Domain framing turns short catalog lines into documentation-style overview.
-        return mo.ProductDomain switch
+        var domainFraming = mo.ProductDomain switch
         {
             ProductDomain.Advertising when mo.ObjectId.Contains("advertising", StringComparison.OrdinalIgnoreCase) =>
-                "Windows can create a unique Advertising ID for each user account. Applications may request this identifier to personalize advertising, measure engagement, and distinguish one user from another without relying only on traditional web cookies. " +
-                baseText,
-
+                "Windows can create a unique Advertising ID for each user account. Applications may request this identifier to personalize advertising, measure engagement, and distinguish one user from another without relying only on traditional web cookies. ",
             ProductDomain.ConsentStore =>
-                "This is a per-user capability permission stored in the Windows ConsentStore. It governs whether applications running under the current account may use a specific device or data capability. " +
-                baseText,
-
+                "This is a per-user capability permission stored in the Windows ConsentStore. It governs whether applications running under the current account may use a specific device or data capability. ",
             ProductDomain.AppPrivacy =>
-                "This is a machine-level AppPrivacy policy. It can force-allow, force-deny, or leave app access under user control for a given capability, independent of the per-user ConsentStore value. " +
-                baseText,
-
+                "This is a machine-level AppPrivacy policy. It can force-allow, force-deny, or leave app access under user control for a given capability, independent of the per-user ConsentStore value. ",
             ProductDomain.Telemetry =>
-                "This setting participates in Windows diagnostic data configuration. Diagnostic data may include device, reliability, and usage information that Windows components send to Microsoft under the configured level. " +
-                baseText,
-
+                "This setting participates in Windows diagnostic data configuration. Diagnostic data may include device, reliability, and usage information that Windows components send to Microsoft under the configured level. ",
             ProductDomain.WindowsUpdate =>
-                "This setting influences how Windows Update discovers, downloads, or presents updates on the device, including automatic update behavior and access to update UI. " +
-                baseText,
-
+                "This setting influences how Windows Update discovers, downloads, or presents updates on the device, including automatic update behavior and access to update UI. ",
             ProductDomain.Defender =>
-                "This setting belongs to Microsoft Defender Antivirus configuration. It can affect real-time protection, cloud-delivered protection, sample submission, or related antivirus policy. " +
-                baseText,
-
+                "This setting belongs to Microsoft Defender Antivirus configuration. It can affect real-time protection, cloud-delivered protection, sample submission, or related antivirus policy. ",
             ProductDomain.ActivityHistory =>
-                "Activity History records recent app and document activity so features such as Timeline can help users resume work. Some related policies also control whether that history is uploaded for roaming. " +
-                baseText,
-
+                "Activity History records recent app and document activity so features such as Timeline can help users resume work. Some related policies also control whether that history is uploaded for roaming. ",
             ProductDomain.Edge =>
-                "This setting configures Microsoft Edge browser policy. It can change tracking prevention, suggestions, metrics reporting, or credential features inside Edge. " +
-                baseText,
-
+                "This setting configures Microsoft Edge browser policy. It can change tracking prevention, suggestions, metrics reporting, or credential features inside Edge. ",
             ProductDomain.Location =>
-                "This setting participates in Windows location services. Location data can reveal physical movement and habitual places and is consumed by apps, system features, and recovery scenarios. " +
-                baseText,
-
+                "This setting participates in Windows location services. Location data can reveal physical movement and habitual places and is consumed by apps, system features, and recovery scenarios. ",
             ProductDomain.Speech =>
-                "This setting controls whether speech input may be processed by online speech services. Online recognition can improve accuracy by using cloud models; local recognition keeps audio on the device when available. " +
-                baseText,
-
+                "This setting controls whether speech input may be processed by online speech services. Online recognition can improve accuracy by using cloud models; local recognition keeps audio on the device when available. ",
             ProductDomain.Search =>
-                "This setting influences Windows Search behavior, including cloud-backed results, assistant features, or whether search may use location. " +
-                baseText,
-
+                "This setting influences Windows Search behavior, including cloud-backed results, assistant features, or whether search may use location. ",
             ProductDomain.CloudContent =>
-                "This setting relates to consumer cloud content surfaces such as suggestions, Spotlight imagery, or soft-landing experiences after updates. " +
-                baseText,
-
+                "This setting relates to consumer cloud content surfaces such as suggestions, Spotlight imagery, or soft-landing experiences after updates. ",
             ProductDomain.Biometrics =>
-                "This setting relates to the Windows biometric framework used by features such as Windows Hello face or fingerprint unlock. " +
-                baseText,
-
+                "This setting relates to the Windows biometric framework used by features such as Windows Hello face or fingerprint unlock. ",
             ProductDomain.Device =>
-                "This setting relates to device recovery or findability features that may depend on location and account services. " +
-                baseText,
-
-            _ => baseText
+                "This setting relates to device recovery or findability features that may depend on location and account services. ",
+            ProductDomain.Firewall =>
+                "This setting is part of the Windows Defender Firewall profile and service model. It describes host network filtering posture for a profile or the firewall service itself. ",
+            _ => string.Empty
         };
+
+        var semantics = string.Empty;
+        if (mo.ValueSemantics is { Count: > 0 })
+        {
+            var parts = mo.ValueSemantics
+                .Where(v => v is not null)
+                .Select(v => $"{v.RawValue} → {v.DisplayLabel} ({v.Canonical})")
+                .Take(8);
+            semantics = " Known value map: " + string.Join("; ", parts) + ".";
+        }
+
+        return domainFraming + baseText + semantics;
     }
 
     private static string BuildWhyItMatters(ManagedObject mo)
@@ -205,6 +191,8 @@ public static class SettingExplanationFactory
                 "Antivirus posture is part of host security. Changes here alter detection and protection behavior rather than privacy labeling alone.",
             ProductDomain.WindowsUpdate =>
                 "Update configuration determines whether the device stays current with security fixes and how much control users or administrators retain over timing and sources.",
+            ProductDomain.Firewall =>
+                "Firewall profile state and defaults determine which unsolicited network traffic can reach local services.",
             _ =>
                 "This setting is part of the broader Windows privacy and security configuration map. Seeing its effective layer helps explain real system behavior."
         };
@@ -241,6 +229,9 @@ public static class SettingExplanationFactory
 
     private static string BuildEnterpriseImpact(ManagedObject mo, string controlHint)
     {
+        if (!string.IsNullOrWhiteSpace(mo.TypicalEnterpriseUse))
+            return controlHint + " " + mo.TypicalEnterpriseUse.Trim();
+
         if (mo.ControlLevel == ControlLevel.AdministratorControlled)
             return controlHint + " Enterprise deployments often set this once and rely on precedence so users cannot locally reopen the surface.";
         return controlHint;
@@ -264,16 +255,19 @@ public static class SettingExplanationFactory
             "Environments that do not use Timeline or do not want activity history uploaded.",
         ProductDomain.Location =>
             "Hosts that must not report physical location, including some high-privacy or offline scenarios.",
+        ProductDomain.Firewall =>
+            "Confirming host firewall profile posture and whether the firewall service is running.",
         _ =>
             "Understanding current configuration before interpreting related settings or policy layers."
     };
 
     private static string BuildContextNotes(ManagedObject mo, string controlHint)
     {
-        // Informational only — never framed as an instruction to change the system.
         var parts = new List<string> { controlHint };
         if (!string.IsNullOrWhiteSpace(mo.Rationale))
             parts.Add("Related settings and layer precedence often matter more than any single raw value.");
+        if (!string.IsNullOrWhiteSpace(mo.WhenIgnored))
+            parts.Add("When Windows may ignore this: " + mo.WhenIgnored.Trim());
         parts.Add("This platform only explains configuration; it does not change Windows.");
         return string.Join(" ", parts);
     }
@@ -345,6 +339,9 @@ public static class SettingExplanationFactory
 
     private static string BuildExceptions(ManagedObject mo)
     {
+        if (!string.IsNullOrWhiteSpace(mo.WhenIgnored))
+            return mo.WhenIgnored.Trim();
+
         if (mo.ProductDomain is ProductDomain.ConsentStore)
             return "Machine AppPrivacy policy (LetApps*) can force-allow or force-deny a capability and override the per-user ConsentStore value.";
 
@@ -359,6 +356,9 @@ public static class SettingExplanationFactory
 
     private static string BuildMisconceptions(ManagedObject mo)
     {
+        if (!string.IsNullOrWhiteSpace(mo.CommonMisconception))
+            return mo.CommonMisconception.Trim();
+
         return mo.ProductDomain switch
         {
             ProductDomain.Advertising =>
@@ -384,6 +384,9 @@ public static class SettingExplanationFactory
 
         if (mo.ProductDomain == ProductDomain.Firewall)
             parts.Add("Firewall coverage in the catalog is partial; many profiles and rule sets are not yet modeled.");
+
+        if (mo.ValueSemantics is null || mo.ValueSemantics.Count == 0)
+            parts.Add("No ValueSemantics map is defined for this ObjectId; raw values are shown without catalog meaning.");
 
         if (mo.Observation?.Resolution?.Confidence == EffectiveConfidence.Unknown ||
             mo.Observation?.Effective?.Confidence == EffectiveConfidence.Unknown)
