@@ -29,5 +29,21 @@
                    Text="No registry writes · No service changes · No task changes · No firewall changes · No elevation · No product telemetry · Unknown remains first-class" />
       </StackPanel>
     </Border>
+
+    <Border Style="{StaticResource Card}">
+      <StackPanel>
+        <TextBlock Text="Keyboard shortcuts" FontWeight="SemiBold" Margin="0,0,0,8" />
+        <TextBlock TextWrapping="Wrap" Style="{StaticResource ValueText}"
+                   Text="F5 or Ctrl+R — rescan&#10;Ctrl+F — focus search&#10;Enter (in search) — run search&#10;Esc — clear search focus" />
+      </StackPanel>
+    </Border>
+
+    <Border Style="{StaticResource Card}">
+      <StackPanel>
+        <TextBlock Text="Project" FontWeight="SemiBold" Margin="0,0,0,8" />
+        <TextBlock TextWrapping="Wrap" Style="{StaticResource ValueText}"
+                   Text="Repository: https://github.com/HighLionNet/Windows-Privacy-Platform&#10;Target: .NET 8 / Windows 11&#10;Application version: 1.0&#10;Knowledge catalog: 1.0" />
+      </StackPanel>
+    </Border>
   </StackPanel>
 </UserControl>
