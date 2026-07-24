@@ -194,6 +194,7 @@ namespace WindowsPrivacyPlatform.Scanner
             {
                 ObjectId = mo.ObjectId,
                 ObjectName = mo.ObjectName,
+                ProductDomain = mo.ProductDomain,
                 SubCategory = mo.SubCategory ?? string.Empty,
                 RiskLevel = mo.RiskLevel,
                 CurrentState = state
