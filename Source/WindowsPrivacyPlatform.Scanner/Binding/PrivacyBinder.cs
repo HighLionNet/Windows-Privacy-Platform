@@ -7,7 +7,7 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
 {
     /// <summary>
     /// Binds HKCU ConsentStore / privacy preference inventory onto catalog privacy settings.
-    /// Read-only.
+    /// Read-only. Populates full ConfigurationObservation provenance (v0.9 evidence maturity).
     /// </summary>
     public sealed class PrivacyBinder : IStateBinder
     {
@@ -46,15 +46,29 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
                 return;
             }
 
+            var sourcePath = string.IsNullOrWhiteSpace(managedObject.DiscoveryMethod)
+                ? "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore"
+                : managedObject.DiscoveryMethod;
+
+            var isUnknown = string.IsNullOrWhiteSpace(privacy.Value) ||
+                            privacy.Value.Equals("Not set", StringComparison.OrdinalIgnoreCase) ||
+                            privacy.Value.Equals("Not observed in this scan", StringComparison.OrdinalIgnoreCase);
+
             var layer = new ConfigurationObservation
             {
                 ObjectId = managedObject.ObjectId,
                 Layer = ConfigurationLayer.UserPreference,
                 RawValue = privacy.Value,
-                SourcePath = managedObject.DiscoveryMethod,
+                SourcePath = sourcePath,
                 Hive = "HKCU",
                 ObservedAt = DateTime.UtcNow,
-                ConfidenceScore = managedObject.ConfidenceScore
+                ConfidenceScore = isUnknown ? 40 : managedObject.ConfidenceScore > 0 ? managedObject.ConfidenceScore : 85,
+                CollectorName = "PrivacyCollector",
+                EvidenceSource = $"Registry {sourcePath}",
+                CollectionNotes = isUnknown
+                    ? "Value not present or not set under current-user ConsentStore / privacy preference."
+                    : string.Empty,
+                EffectiveConfidence = isUnknown ? EffectiveConfidence.Low : EffectiveConfidence.High
             };
 
             BinderHelpers.ApplyObservation(managedObject, privacy.Value, layer);
