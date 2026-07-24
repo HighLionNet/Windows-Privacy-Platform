@@ -58,7 +58,7 @@
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="HorizontalContentAlignment" Value="Left" />
-    <Setter Property="Padding" Value="16,10" />
+    <Setter Property="Padding" Value="14,9" />
     <Setter Property="Margin" Value="4,1" />
     <Setter Property="Cursor" Value="Hand" />
     <Setter Property="Foreground" Value="{StaticResource BrushTextPrimary}" />
@@ -77,6 +77,8 @@
             </Trigger>
             <Trigger Property="IsKeyboardFocused" Value="True">
               <Setter TargetName="Bd" Property="Background" Value="{StaticResource BrushBgHover}" />
+              <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource BrushAccent}" />
+              <Setter TargetName="Bd" Property="BorderThickness" Value="1" />
             </Trigger>
             <Trigger Property="IsEnabled" Value="False">
               <Setter Property="Opacity" Value="0.5" />
@@ -93,6 +95,14 @@
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
 
+  <Style x:Key="SidebarGroupLabel" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{StaticResource BrushTextMuted}" />
+    <Setter Property="Margin" Value="14,14,0,4" />
+    <Setter Property="TextOptions.TextFormattingMode" Value="Display" />
+  </Style>
+
   <Style x:Key="Card" TargetType="Border">
     <Setter Property="Background" Value="{StaticResource BrushBgCard}" />
     <Setter Property="BorderBrush" Value="{StaticResource BrushBorder}" />
@@ -102,11 +112,21 @@
     <Setter Property="Margin" Value="0,0,0,12" />
   </Style>
 
+  <Style x:Key="CardAccent" TargetType="Border" BasedOn="{StaticResource Card}">
+    <Setter Property="BorderThickness" Value="3,1,1,1" />
+    <Setter Property="BorderBrush" Value="{StaticResource BrushAccent}" />
+  </Style>
+
+  <Style x:Key="CardConflict" TargetType="Border" BasedOn="{StaticResource Card}">
+    <Setter Property="BorderThickness" Value="3,1,1,1" />
+    <Setter Property="BorderBrush" Value="{StaticResource BrushConflict}" />
+  </Style>
+
   <Style x:Key="SectionTitle" TargetType="TextBlock">
-    <Setter Property="FontSize" Value="20" />
+    <Setter Property="FontSize" Value="22" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{StaticResource BrushTextPrimary}" />
-    <Setter Property="Margin" Value="0,0,0,8" />
+    <Setter Property="Margin" Value="0,0,0,4" />
   </Style>
 
   <Style x:Key="SectionSubtitle" TargetType="TextBlock">
@@ -123,6 +143,13 @@
 
   <Style x:Key="ValueText" TargetType="TextBlock">
     <Setter Property="FontSize" Value="13" />
+    <Setter Property="Foreground" Value="{StaticResource BrushTextPrimary}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+
+  <Style x:Key="PrimaryValue" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="15" />
+    <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{StaticResource BrushTextPrimary}" />
     <Setter Property="TextWrapping" Value="Wrap" />
   </Style>
@@ -167,6 +194,9 @@
             <Trigger Property="IsMouseOver" Value="True">
               <Setter TargetName="Bd" Property="Opacity" Value="0.9" />
             </Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="Bd" Property="Opacity" Value="0.95" />
+            </Trigger>
             <Trigger Property="IsEnabled" Value="False">
               <Setter Property="Opacity" Value="0.5" />
             </Trigger>
@@ -185,6 +215,31 @@
     <Setter Property="Padding" Value="10,4" />
     <Setter Property="FontWeight" Value="Normal" />
     <Setter Property="FontSize" Value="12" />
+  </Style>
+
+  <Style x:Key="BreadcrumbText" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{StaticResource BrushTextMuted}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <Style x:Key="BreadcrumbLink" TargetType="Button" BasedOn="{StaticResource LinkButton}">
+    <Setter Property="Padding" Value="4,2" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{StaticResource BrushAccent}" />
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+
+  <Style TargetType="Expander">
+    <Setter Property="Foreground" Value="{StaticResource BrushTextPrimary}" />
+    <Setter Property="Margin" Value="0,0,0,8" />
+    <Setter Property="Padding" Value="0" />
+  </Style>
+
+  <Style x:Key="DetailExpander" TargetType="Expander" BasedOn="{StaticResource {x:Type Expander}}">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Margin" Value="0,4,0,4" />
   </Style>
 
 </ResourceDictionary>
