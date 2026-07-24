@@ -1,41 +1,39 @@
 # Windows Privacy Platform
-## Implementation Map — Prototype v0.6 FINAL
+## Implementation Map — Prototype v0.7
 
-**Last Updated:** 2026-07-24  
-**Purpose:** Map of what exists on disk and where future pieces plug in.  
-**Note:** Intermediate foundation work briefly labeled “v0.6.5” is included here as **final v0.6**.
+**Last updated:** 2026-07-24  
+**Purpose:** Map of what exists on disk, where logic lives, and where future pieces plug in.  
+**Filename note:** Historical name retained for continuity; content tracks **v0.7**.
 
 ---
 
-# Version history (verbose)
+# 1. Version timeline (compressed)
 
 | Version | Summary |
 |---------|---------|
-| v0.1 | Seven-project skeleton, basic models |
-| v0.2 | Early identity/package collectors |
-| v0.3 | Services/tasks inventory expansion |
-| v0.4 | Live discovery skeleton (multi-collector → InventorySnapshot) |
-| v0.5 | PolicyCollector, ManagedObjectCatalog, full categorized report (archived) |
-| v0.6 core | Binder, ValidateAll, ObservationSummary, concise default report + high-risk watch list — runtime verified |
-| Step A | ProductDomain on all 65 catalog entries; domain-grouped reports |
-| Foundation → **final v0.6** | Domain snapshot sections; IStateBinder split; PolicyPrecedenceResolver; ConfigurationResolution; SettingExplanation; SettingsQuery; NavigationBuilder; CLI decision cards |
+| v0.1–v0.3 | Skeleton → identity/packages → services/tasks |
+| v0.4 | Live multi-collector InventorySnapshot |
+| v0.5 | PolicyCollector + ManagedObjectCatalog (archived) |
+| v0.6 FINAL | Binders, precedence, explanations, SettingsQuery, NavigationBuilder, CLI decision cards |
+| **v0.7** | TUI, explanation polish, human relationships, neutral impact language, capability transparency |
 
 ---
 
-# Source layout (active)
+# 2. Source layout (active)
 
 ```
 Source/
+  WindowsPrivacyPlatform.sln
   WindowsPrivacyPlatform.Models/
     Enums.cs
     ManagedObject.cs
-    ManagedObjectCatalog.cs
+    ManagedObjectCatalog.cs          # ~65 curated entries
     InventorySnapshot.cs
     InventorySections.cs
-    ConfigurationModels.cs      # Observation, Resolution, EffectiveState, Relationship
-    SettingExplanation.cs       # Decision-card model + factory
-    SettingsQuery.cs            # Application API
-    NavigationModels.cs         # NavigationNode, SettingDetailView, NavigationBuilder
+    ConfigurationModels.cs           # Observation, Resolution, Relationship
+    SettingExplanation.cs            # Card model + factory
+    SettingsQuery.cs                 # Application query API
+    NavigationModels.cs              # NavigationNode, SettingDetailView, NavigationBuilder
     ObservationSummary.cs
     ...
   WindowsPrivacyPlatform.Core/
@@ -43,107 +41,157 @@ Source/
   WindowsPrivacyPlatform.KnowledgeBase/
   WindowsPrivacyPlatform.Validator/
   WindowsPrivacyPlatform.Scanner/
-    Collectors/                 # Identity, Capability, Package, Service, Task, Privacy, Policy
+    WindowsIdentityCollector.cs
+    CapabilityCollector.cs
+    PackageCollector.cs
+    ServiceCollector.cs
+    ScheduledTaskCollector.cs
+    PrivacyCollector.cs
+    PolicyCollector.cs
+    InventoryScanner.cs
+    InventoryStateBinder.cs          # Orchestrator
     Binding/
       IStateBinder.cs
       BinderHelpers.cs
       PrivacyBinder.cs
       PolicyBinder.cs
       RelationshipBinder.cs
-      PolicyPrecedenceResolver.cs   # ONLY place for precedence rules
-    InventoryScanner.cs
-    InventoryStateBinder.cs     # Orchestrator
+      PolicyPrecedenceResolver.cs    # ONLY precedence rules
   WindowsPrivacyPlatform.CLI/
-    Program.cs                  # Pipeline + summary + high-risk + conflict cards + --full
+    Program.cs                       # Pipeline + reports + flags
+    TuiHost.cs                       # Read-only keyboard explorer
 ```
 
-Build outputs under each project’s `bin/` / `obj/` are compiled assemblies — not hand-written DLL sources.
+Build outputs under `bin/` / `obj/` are compiled assemblies — not hand-authored binary sources.
+
+Root also contains:
+
+```
+README.md
+Status/           # Engineering journal (this folder)
+KnowledgeBase/    # Legacy/top-level duplicates may exist; Source/ is authoritative for build
+```
 
 ---
 
-# Collectors (v0.6)
+# 3. Collectors
 
 | Collector | Mechanism | Notes |
 |-----------|-----------|-------|
-| WindowsIdentityCollector | HKLM registry | Verified |
-| CapabilityCollector | PowerShell / DISM | Often 0 results |
-| PackageCollector | PowerShell Get-AppxPackage | Verified |
-| ServiceCollector | ServiceController | Verified |
-| ScheduledTaskCollector | schtasks CSV | Verified |
-| PrivacyCollector | HKCU ConsentStore + prefs | Verified (~30 values) |
-| PolicyCollector | Curated HKLM/HKCU probes | Verified (~79 probes, ~45 configured on test box) |
-| *(none)* | Firewall | **Future** (`ProductDomain.Firewall` reserved) |
+| WindowsIdentityCollector | HKLM registry | Version / edition / build |
+| CapabilityCollector | powershell, pwsh, DISM | Often empty non-elevated; treat as Unknown |
+| PackageCollector | Get-AppxPackage | Current user |
+| ServiceCollector | ServiceController | Read-only |
+| ScheduledTaskCollector | schtasks CSV | Read-only |
+| PrivacyCollector | HKCU ConsentStore + prefs | ~30 values |
+| PolicyCollector | Curated HKLM/HKCU probes | ~79 probes |
+| *(none)* | Firewall | Future; domain reserved |
 
 ---
 
-# Binding + intelligence (v0.6 final)
+# 4. Binding and intelligence
 
 | Component | Role |
 |-----------|------|
-| PrivacyBinder | ConsentStore / privacy prefs → ManagedObject + UserPreference layer |
-| PolicyBinder | Policy probes → ManagedObject + MachinePolicy / AlternatePolicyStore / UserPreference layer |
-| RelationshipBinder | Wires known pairs; applies PolicyPrecedenceResolver results |
-| PolicyPrecedenceResolver | Consent vs AppPrivacy codes; dual machine policy paths; generic rank comparison |
-| InventoryStateBinder | Orchestrates binders + ObservationSummary |
+| PrivacyBinder | Privacy settings → CurrentState + UserPreference layer |
+| PolicyBinder | Policy probes → layers by hive/path |
+| RelationshipBinder | Curated pairs; applies resolver results |
+| PolicyPrecedenceResolver | Consent vs AppPrivacy; dual telemetry paths; layer rank |
+| InventoryStateBinder | Orchestrates bind + ObservationSummary |
 
-Known relationship pairs:
+### Known relationship groups (v0.7)
 
-- privacy.consentstore.location ↔ policy.appprivacy.location  
-- privacy.consentstore.webcam ↔ policy.appprivacy.camera  
-- privacy.consentstore.microphone ↔ policy.appprivacy.microphone  
-- privacy.consentstore.broadFileSystemAccess ↔ policy.appprivacy.filesystem  
-- policy.telemetry.allowtelemetry ↔ policy.telemetry.allowtelemetry.currentversion  
+**Consent ↔ AppPrivacy**
+
+- location, webcam/camera, microphone, broadFileSystemAccess/filesystem  
+
+**Alternate paths**
+
+- policy.telemetry.allowtelemetry ↔ …currentversion  
+
+**User vs GPO**
+
+- privacy.advertisingid.enabled ↔ policy.advertising.disabledbygpo  
+
+**Related documentation edges**
+
+- Location kill-switch, Find My Device  
+- Tailored Experiences ↔ telemetry  
+- Activity History trio  
+- Search web/location/Cortana related edges  
 
 ---
 
-# Application API (UI-independent)
+# 5. Application API (UI-independent)
 
 | Type | Role |
 |------|------|
-| SettingsQuery | GetByDomain/Id, GetRelatedSettings, GetConflicts, GetMachineControlledSettings, GetSettingsNeedingReview, Search, GetExplanation |
-| NavigationBuilder | Domain → feature → setting tree; SettingDetailView cards |
-| SettingExplanationFactory | Human decision-card text from catalog definitions |
+| SettingsQuery | Domain/id/related/conflicts/search/explanations |
+| NavigationBuilder | Domain tree + SettingDetailView |
+| SettingExplanationFactory | Documentation-style card text |
 
-Future TUI/GUI **must** consume these — do not fork a second model.
+**Rule:** Future GUI must consume these. Do not invent a parallel model in the UI project.
 
 ---
 
-# Pipeline insertion map (for next features)
+# 6. Presentation
+
+| Entry | File | Behavior |
+|-------|------|----------|
+| Default report | Program.cs | Summary + high-impact watch list + conflict cards |
+| `--full` | Program.cs | Domain-grouped dump |
+| `--tui` | TuiHost.cs | Interactive explorer |
+| `--help` | Program.cs | Usage |
+
+TUI is presentation-only. Detail cards separate Observed vs Interpretation and show provenance.
+
+---
+
+# 7. Pipeline insertion map
 
 ```
 CLI flags
-  → Scanner.Collect*                 ← add new IInventoryCollector (e.g. FirewallCollector)
-  → InventorySnapshot sections       ← add lists/fields for new surfaces
-  → ManagedObjectCatalog             ← new explained objects HERE FIRST; always set ProductDomain
-  → PrivacyBinder / PolicyBinder     ← bind observations + layers
-  → RelationshipBinder               ← add relationship pairs here
-  → PolicyPrecedenceResolver         ← add precedence rules here ONLY
+  → new IInventoryCollector              ← discovery surface
+  → InventorySnapshot section fields     ← storage
+  → ManagedObjectCatalog                 ← ALWAYS first for product meaning
+  → PrivacyBinder / PolicyBinder         ← observations + layers
+  → RelationshipBinder                   ← edges
+  → PolicyPrecedenceResolver             ← precedence ONLY here
   → KnowledgeBase.Add
-  → SchemaValidator.ValidateAll      ← structural only; keep risk/baseline logic separate
-  → SettingsQuery / NavigationBuilder ← TUI consumes here
-  → CLI report writers               ← presentation only
-  → Safety confirmation
+  → SchemaValidator                      ← structural only
+  → SettingsQuery / NavigationBuilder    ← UI consumes here
+  → Program / TuiHost                    ← presentation only
 ```
 
 ---
 
-# Future work (compressed)
+# 8. Design constraints checklist (before PR)
 
-1. ~~ProductDomain + domain reports~~ **DONE**  
-2. ~~Effective layer foundation + explanations + query/nav~~ **DONE (final v0.6)**  
-3. **Read-only TUI** over NavigationBuilder + SettingsQuery — recommended v0.7 start  
-4. Expand relationship pairs + richer SettingExplanation overrides  
-5. CapabilityCollector fix  
-6. FirewallCollector + catalog (read-only; document elevation limits)  
-7. Expand Defender/Update/Telemetry/Edge curated sets with human GPO names  
-8. Optional baseline compare-only profiles  
-9. Optional explicit RiskAssessment feature (documented rules)  
-10. No writes/UI frameworks until human authorises  
-
-See **AI_Handoff.md** for full rationale and owner constraints.
+- [ ] Read-only?  
+- [ ] No elevation?  
+- [ ] Models free of registry I/O?  
+- [ ] Precedence only in PolicyPrecedenceResolver?  
+- [ ] UI free of business decisions?  
+- [ ] Unknown preserved where evidence is weak?  
+- [ ] Catalog explanation quality acceptable?  
+- [ ] Solution builds Release?  
 
 ---
 
-# Deferred
+# 9. Future plug-ins (not started)
 
-Remediation, elevation UI, interactive TUI/GUI host (until models adopted by a host), full ADMX import, network telemetry, auto-hardening, security scores.
+| Feature | Insert at |
+|---------|-----------|
+| FirewallCollector | New collector + catalog ProductDomain.Firewall |
+| `--domain=` filter | CLI + SettingsQuery |
+| Baseline compare-only | DesiredState fields already exist; report section only |
+| MDM collector | New observations with ConfigurationLayer.MDMPolicy |
+| GUI host | New project consuming NavigationBuilder only |
+
+---
+
+# 10. Deferred
+
+Remediation, elevation UX, bulk ADMX import, scoring, network product telemetry, auto-hardening, inferred relationship graphs.
+
+See `Status/AI_Handoff.md` for rationale and owner constraints.
