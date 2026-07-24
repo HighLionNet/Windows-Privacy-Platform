@@ -15,10 +15,14 @@
   <Color x:Key="Accent">#0B57D0</Color>
   <Color x:Key="AccentSoft">#D3E3FD</Color>
   <Color x:Key="Warning">#B06000</Color>
+  <Color x:Key="WarningSoft">#FEF0C7</Color>
   <Color x:Key="Error">#C5221F</Color>
   <Color x:Key="Success">#137333</Color>
+  <Color x:Key="SuccessSoft">#CEFAD0</Color>
   <Color x:Key="Unknown">#5F6368</Color>
+  <Color x:Key="UnknownSoft">#E8EAED</Color>
   <Color x:Key="Conflict">#E37400</Color>
+  <Color x:Key="ConflictSoft">#FCE8CD</Color>
   <Color x:Key="ReadOnlyBadge">#0B57D0</Color>
 
   <SolidColorBrush x:Key="BrushBgWindow" Color="{StaticResource BgWindow}" />
@@ -34,10 +38,14 @@
   <SolidColorBrush x:Key="BrushAccent" Color="{StaticResource Accent}" />
   <SolidColorBrush x:Key="BrushAccentSoft" Color="{StaticResource AccentSoft}" />
   <SolidColorBrush x:Key="BrushWarning" Color="{StaticResource Warning}" />
+  <SolidColorBrush x:Key="BrushWarningSoft" Color="{StaticResource WarningSoft}" />
   <SolidColorBrush x:Key="BrushError" Color="{StaticResource Error}" />
   <SolidColorBrush x:Key="BrushSuccess" Color="{StaticResource Success}" />
+  <SolidColorBrush x:Key="BrushSuccessSoft" Color="{StaticResource SuccessSoft}" />
   <SolidColorBrush x:Key="BrushUnknown" Color="{StaticResource Unknown}" />
+  <SolidColorBrush x:Key="BrushUnknownSoft" Color="{StaticResource UnknownSoft}" />
   <SolidColorBrush x:Key="BrushConflict" Color="{StaticResource Conflict}" />
+  <SolidColorBrush x:Key="BrushConflictSoft" Color="{StaticResource ConflictSoft}" />
 
   <Style TargetType="Window">
     <Setter Property="Background" Value="{StaticResource BrushBgWindow}" />
@@ -65,6 +73,9 @@
           </Border>
           <ControlTemplate.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
+              <Setter TargetName="Bd" Property="Background" Value="{StaticResource BrushBgHover}" />
+            </Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
               <Setter TargetName="Bd" Property="Background" Value="{StaticResource BrushBgHover}" />
             </Trigger>
             <Trigger Property="IsEnabled" Value="False">
@@ -122,6 +133,22 @@
     <Setter Property="Background" Value="{StaticResource BrushAccentSoft}" />
   </Style>
 
+  <Style x:Key="BadgeSuccess" TargetType="Border" BasedOn="{StaticResource Badge}">
+    <Setter Property="Background" Value="{StaticResource BrushSuccessSoft}" />
+  </Style>
+
+  <Style x:Key="BadgeWarning" TargetType="Border" BasedOn="{StaticResource Badge}">
+    <Setter Property="Background" Value="{StaticResource BrushWarningSoft}" />
+  </Style>
+
+  <Style x:Key="BadgeConflict" TargetType="Border" BasedOn="{StaticResource Badge}">
+    <Setter Property="Background" Value="{StaticResource BrushConflictSoft}" />
+  </Style>
+
+  <Style x:Key="BadgeUnknown" TargetType="Border" BasedOn="{StaticResource Badge}">
+    <Setter Property="Background" Value="{StaticResource BrushUnknownSoft}" />
+  </Style>
+
   <Style x:Key="PrimaryButton" TargetType="Button">
     <Setter Property="Background" Value="{StaticResource BrushAccent}" />
     <Setter Property="Foreground" Value="White" />
@@ -152,6 +179,12 @@
   <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
     <Setter Property="Background" Value="{StaticResource BrushBgHover}" />
     <Setter Property="Foreground" Value="{StaticResource BrushTextPrimary}" />
+  </Style>
+
+  <Style x:Key="LinkButton" TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+    <Setter Property="Padding" Value="10,4" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="FontSize" Value="12" />
   </Style>
 
 </ResourceDictionary>
