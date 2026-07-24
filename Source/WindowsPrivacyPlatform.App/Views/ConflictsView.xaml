@@ -3,8 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <StackPanel>
     <TextBlock Text="Layer conflicts" Style="{StaticResource SectionTitle}" />
-    <TextBlock Text="Settings where observed layers disagree. Educational cards — not a score."
-               Style="{StaticResource SectionSubtitle}" />
+    <TextBlock x:Name="SubtitleText" Style="{StaticResource SectionSubtitle}"
+               Text="Settings where observed configuration layers disagree." />
     <ItemsControl x:Name="List" />
   </StackPanel>
 </UserControl>

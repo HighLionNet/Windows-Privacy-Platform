@@ -5,71 +5,69 @@
     <TextBlock x:Name="TitleText" Style="{StaticResource SectionTitle}" />
     <TextBlock x:Name="DomainPathText" Style="{StaticResource SectionSubtitle}" />
 
-    <StackPanel x:Name="BadgeRow" Orientation="Horizontal" Margin="0,0,0,12" />
+    <StackPanel x:Name="BadgeRow" Orientation="Horizontal" Margin="0,0,0,10" />
 
-    <!-- Primary state -->
+    <!-- Primary configuration state -->
     <Border Style="{StaticResource CardAccent}">
       <StackPanel>
-        <TextBlock Text="Current state" FontWeight="SemiBold" Margin="0,0,0,6" />
+        <TextBlock Text="Current configuration" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,6" />
         <TextBlock x:Name="ObservedText" Style="{StaticResource PrimaryValue}" />
-        <TextBlock x:Name="EffectiveText" Style="{StaticResource ValueText}" Margin="0,6,0,0" />
-        <TextBlock x:Name="ConfidenceText" Style="{StaticResource ValueText}" Margin="0,6,0,0" />
-        <TextBlock x:Name="ReasonText" Style="{StaticResource ValueText}" Margin="0,8,0,0"
+        <TextBlock x:Name="EffectiveText" Style="{StaticResource ValueText}" Margin="0,5,0,0" />
+        <TextBlock x:Name="ConfidenceText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
+        <TextBlock x:Name="ReasonText" Style="{StaticResource ValueText}" Margin="0,6,0,0"
                    Foreground="{StaticResource BrushTextSecondary}" />
       </StackPanel>
     </Border>
 
-    <Border Style="{StaticResource Card}">
+    <Border Style="{StaticResource PropertyGroup}">
       <StackPanel>
-        <TextBlock Text="What this controls" FontWeight="SemiBold" Margin="0,0,0,6" />
+        <TextBlock Text="What this controls" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,4" />
         <TextBlock x:Name="WhatText" Style="{StaticResource ValueText}" />
       </StackPanel>
     </Border>
 
-    <Border Style="{StaticResource Card}">
+    <Border Style="{StaticResource PropertyGroup}">
       <StackPanel>
-        <TextBlock Text="Why Windows has this" FontWeight="SemiBold" Margin="0,0,0,6" />
+        <TextBlock Text="Why Windows has this" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,4" />
         <TextBlock x:Name="WhyText" Style="{StaticResource ValueText}" />
       </StackPanel>
     </Border>
 
-    <!-- Expandable technical layers -->
-    <Expander Header="Observed layers (technical evidence)" Style="{StaticResource DetailExpander}" IsExpanded="False">
-      <Border Style="{StaticResource Card}" Margin="0,6,0,0">
-        <ItemsControl x:Name="LayersList" />
-      </Border>
-    </Expander>
-
-    <!-- Impact (primary summary visible, detail expandable) -->
-    <Border Style="{StaticResource Card}">
+    <Border Style="{StaticResource PropertyGroup}">
       <StackPanel>
-        <TextBlock Text="Impact" FontWeight="SemiBold" Margin="0,0,0,6" />
+        <TextBlock Text="Impact" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,4" />
         <TextBlock x:Name="ImpactText" Style="{StaticResource ValueText}" />
-        <Expander Header="User, enterprise, and common misconceptions" Style="{StaticResource DetailExpander}" IsExpanded="False" Margin="0,8,0,0">
-          <StackPanel Margin="0,6,0,0">
+        <Expander Header="User · enterprise · misconceptions" Style="{StaticResource DetailExpander}" IsExpanded="False" Margin="0,6,0,0">
+          <StackPanel Margin="0,4,0,0">
             <TextBlock x:Name="UserImpactText" Style="{StaticResource ValueText}" />
-            <TextBlock x:Name="EnterpriseText" Style="{StaticResource ValueText}" Margin="0,8,0,0" />
-            <TextBlock x:Name="MisconceptionText" Style="{StaticResource ValueText}" Margin="0,8,0,0"
+            <TextBlock x:Name="EnterpriseText" Style="{StaticResource ValueText}" Margin="0,6,0,0" />
+            <TextBlock x:Name="MisconceptionText" Style="{StaticResource ValueText}" Margin="0,6,0,0"
                        Foreground="{StaticResource BrushWarning}" />
-            <TextBlock x:Name="UnknownsText" Style="{StaticResource ValueText}" Margin="0,8,0,0"
+            <TextBlock x:Name="UnknownsText" Style="{StaticResource ValueText}" Margin="0,6,0,0"
                        Foreground="{StaticResource BrushTextMuted}" />
           </StackPanel>
         </Expander>
       </StackPanel>
     </Border>
 
-    <Border Style="{StaticResource Card}">
+    <Expander Header="Observed layers (evidence)" Style="{StaticResource DetailExpander}" IsExpanded="False">
+      <Border Style="{StaticResource PropertyGroup}" Margin="0,4,0,0">
+        <ItemsControl x:Name="LayersList" />
+      </Border>
+    </Expander>
+
+    <Border Style="{StaticResource PropertyGroup}">
       <StackPanel>
-        <TextBlock Text="Related settings" FontWeight="SemiBold" Margin="0,0,0,6" />
+        <TextBlock Text="Related settings" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,6" />
         <ItemsControl x:Name="RelatedList" />
       </StackPanel>
     </Border>
 
-    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-      <TextBlock x:Name="ObjectIdText" Style="{StaticResource LabelMuted}" VerticalAlignment="Center" />
+    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+      <TextBlock x:Name="ObjectIdText" Style="{StaticResource MetaText}" VerticalAlignment="Center" />
       <Button x:Name="CopyIdButton" Content="Copy ObjectId" Style="{StaticResource LinkButton}"
-              Margin="12,0,0,0" Click="CopyIdButton_Click"
-              ToolTip="Copy ObjectId to the clipboard" />
+              Margin="10,0,0,0" Click="CopyIdButton_Click"
+              ToolTip="Copy ObjectId to clipboard" />
     </StackPanel>
   </StackPanel>
 </UserControl>

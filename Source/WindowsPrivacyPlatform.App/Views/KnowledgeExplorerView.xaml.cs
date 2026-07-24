@@ -2,7 +2,9 @@ using System;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using WindowsPrivacyPlatform.App.Services;
+using WindowsPrivacyPlatform.Models;
 
 namespace WindowsPrivacyPlatform.App.Views;
 
@@ -16,24 +18,43 @@ public partial class KnowledgeExplorerView : UserControl
         {
             List.Items.Add(new TextBlock
             {
-                Text = group.Key.ToString(),
+                Text = NavigationBuilder.HumanizeDomain(group.Key),
                 FontWeight = FontWeights.SemiBold,
-                FontSize = 15,
-                Margin = new Thickness(0, 12, 0, 6)
+                FontSize = 14,
+                Margin = new Thickness(0, 12, 0, 4)
             });
 
             foreach (var mo in group.OrderBy(m => m.ObjectName))
             {
-                var border = new Border { Style = (Style)FindResource("Card"), Cursor = System.Windows.Input.Cursors.Hand, Padding = new Thickness(12) };
+                var border = new Border
+                {
+                    Style = (Style)FindResource("ListRow"),
+                    Padding = new Thickness(10, 8, 10, 8)
+                };
                 var panel = new StackPanel();
-                panel.Children.Add(new TextBlock { Text = mo.ObjectName, FontWeight = FontWeights.SemiBold });
                 panel.Children.Add(new TextBlock
                 {
-                    Text = mo.Description,
-                    TextWrapping = TextWrapping.Wrap,
-                    Margin = new Thickness(0, 4, 0, 0),
-                    Foreground = (System.Windows.Media.Brush)FindResource("BrushTextSecondary")
+                    Text = mo.ObjectName,
+                    FontWeight = FontWeights.SemiBold,
+                    FontSize = 13
                 });
+                panel.Children.Add(new TextBlock
+                {
+                    Text = mo.ObjectId,
+                    Style = (Style)FindResource("MetaText"),
+                    Margin = new Thickness(0, 1, 0, 0)
+                });
+                if (!string.IsNullOrWhiteSpace(mo.Description))
+                {
+                    panel.Children.Add(new TextBlock
+                    {
+                        Text = mo.Description,
+                        TextWrapping = TextWrapping.Wrap,
+                        Margin = new Thickness(0, 3, 0, 0),
+                        FontSize = 12,
+                        Foreground = (Brush)FindResource("BrushTextSecondary")
+                    });
+                }
                 border.Child = panel;
                 var id = mo.ObjectId;
                 border.MouseLeftButtonUp += (_, _) => openSetting(id);

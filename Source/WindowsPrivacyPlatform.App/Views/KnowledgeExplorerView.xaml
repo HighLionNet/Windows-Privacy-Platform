@@ -3,8 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <StackPanel>
     <TextBlock Text="Knowledge Explorer" Style="{StaticResource SectionTitle}" />
-    <TextBlock Text="Browse the curated catalog independent of live observations. Click any entry for full explanation."
-               Style="{StaticResource SectionSubtitle}" />
+    <TextBlock Style="{StaticResource SectionSubtitle}"
+               Text="Curated catalog independent of live observation values." />
     <ItemsControl x:Name="List" />
   </StackPanel>
 </UserControl>

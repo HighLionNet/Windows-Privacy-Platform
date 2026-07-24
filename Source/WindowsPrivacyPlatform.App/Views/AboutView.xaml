@@ -2,55 +2,47 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <StackPanel>
-    <TextBlock Text="About Windows Privacy Platform" Style="{StaticResource SectionTitle}" />
+    <TextBlock Text="About" Style="{StaticResource SectionTitle}" />
     <TextBlock Style="{StaticResource SectionSubtitle}"
-               Text="Version 1.0 — professional read-only Windows privacy and security knowledge explorer." />
+               Text="Windows Privacy Platform 1.0 — local read-only configuration knowledge explorer." />
 
-    <Border Style="{StaticResource CardAccent}">
+    <Border Style="{StaticResource PropertyGroup}">
       <StackPanel>
-        <TextBlock Text="Mode" FontWeight="SemiBold" Margin="0,0,0,6" />
+        <TextBlock Text="Mode" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,4" />
         <TextBlock TextWrapping="Wrap" Style="{StaticResource ValueText}"
-                   Text="Inspect (current) — discover, explain, and navigate configuration without modification.&#10;Modify (future) — reserved for a controlled-change architecture that does not exist in 1.0." />
+                   Text="Inspect (active) — discover and explain configuration without modification.&#10;Modify (future) — reserved for a controlled-change architecture. Not available in 1.0." />
       </StackPanel>
     </Border>
 
-    <Border Style="{StaticResource Card}">
+    <Border Style="{StaticResource PropertyGroup}">
       <StackPanel>
-        <TextBlock Text="Philosophy" FontWeight="SemiBold" Margin="0,0,0,8" />
+        <TextBlock Text="Safety" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,4" />
         <TextBlock TextWrapping="Wrap" Style="{StaticResource ValueText}"
-                   Text="Understand first. Change later.&#10;&#10;This application discovers Windows configuration, explains effective layer precedence, and surfaces honest unknowns. It never writes to the registry, services, tasks, policies, or firewall. It never requests elevation. It never invents a security score." />
+                   Text="No registry writes · No service / task / policy / firewall changes · No elevation · No product telemetry · Unknown remains first-class" />
       </StackPanel>
     </Border>
 
-    <Border Style="{StaticResource Card}">
+    <Border Style="{StaticResource PropertyGroup}">
       <StackPanel>
-        <TextBlock Text="Architecture" FontWeight="SemiBold" Margin="0,0,0,8" />
+        <TextBlock Text="Architecture" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,4" />
         <TextBlock TextWrapping="Wrap" Style="{StaticResource ValueText}"
-                   Text="Models → Core → Logging → KnowledgeBase → Validator → Scanner → CLI / App&#10;&#10;The GUI is a presentation host only. Collectors gather facts. KnowledgeBase owns meaning. Resolvers determine precedence. Presentation never contains Windows logic." />
+                   Text="Models → Core → Logging → KnowledgeBase → Validator → Scanner → CLI / App&#10;Presentation hosts contain no Windows configuration logic." />
       </StackPanel>
     </Border>
 
-    <Border Style="{StaticResource Card}">
+    <Border Style="{StaticResource PropertyGroup}">
       <StackPanel>
-        <TextBlock Text="Safety" FontWeight="SemiBold" Margin="0,0,0,8" />
+        <TextBlock Text="Keyboard" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,4" />
         <TextBlock TextWrapping="Wrap" Style="{StaticResource ValueText}"
-                   Text="No registry writes · No service changes · No task changes · No firewall changes · No elevation · No product telemetry · Unknown remains first-class" />
+                   Text="F5 / Ctrl+R — rescan&#10;Ctrl+F — focus search&#10;Enter (search) — run search&#10;Esc — clear search" />
       </StackPanel>
     </Border>
 
-    <Border Style="{StaticResource Card}">
+    <Border Style="{StaticResource PropertyGroup}">
       <StackPanel>
-        <TextBlock Text="Keyboard shortcuts" FontWeight="SemiBold" Margin="0,0,0,8" />
+        <TextBlock Text="Project" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,4" />
         <TextBlock TextWrapping="Wrap" Style="{StaticResource ValueText}"
-                   Text="F5 or Ctrl+R — rescan&#10;Ctrl+F — focus search&#10;Enter (in search) — run search&#10;Esc — clear search focus / text" />
-      </StackPanel>
-    </Border>
-
-    <Border Style="{StaticResource Card}">
-      <StackPanel>
-        <TextBlock Text="Project" FontWeight="SemiBold" Margin="0,0,0,8" />
-        <TextBlock TextWrapping="Wrap" Style="{StaticResource ValueText}"
-                   Text="Repository: https://github.com/HighLionNet/Windows-Privacy-Platform&#10;Target: .NET 8 / Windows 11&#10;Application version: 1.0&#10;Knowledge catalog: 1.0&#10;Build: 2026-07-24" />
+                   Text="https://github.com/HighLionNet/Windows-Privacy-Platform&#10;.NET 8 / Windows 11 · Application 1.0 · Knowledge 1.0 · 2026-07-24" />
       </StackPanel>
     </Border>
   </StackPanel>

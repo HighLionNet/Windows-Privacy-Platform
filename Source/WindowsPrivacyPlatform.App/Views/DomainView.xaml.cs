@@ -22,12 +22,12 @@ public partial class DomainView : UserControl
 
         if (items.Count == 0)
         {
-            SubtitleText.Text = "This domain has no managed settings in the current catalog.";
+            SubtitleText.Text = "No managed settings in the current catalog for this domain.";
             SettingsList.Items.Add(new TextBlock
             {
-                Text = "No curated entries for this domain yet.",
+                Text = "No curated entries yet.",
                 Foreground = (Brush)FindResource("BrushTextMuted"),
-                Margin = new Thickness(0, 8, 0, 0)
+                Margin = new Thickness(0, 6, 0, 0)
             });
             return;
         }
@@ -37,8 +37,8 @@ public partial class DomainView : UserControl
             m.Observation?.Effective?.HasConflict == true);
 
         SubtitleText.Text = conflicts > 0
-            ? $"{items.Count} settings · {conflicts} with layer conflict. Click a card for the full explanation."
-            : $"{items.Count} settings in this domain. Click a card to open the full explanation.";
+            ? $"{items.Count} settings · {conflicts} with layer conflict"
+            : $"{items.Count} settings";
 
         foreach (var mo in items)
         {
@@ -52,30 +52,62 @@ public partial class DomainView : UserControl
 
             var border = new Border
             {
-                Style = (Style)FindResource(hasConflict ? "CardConflict" : "Card"),
-                Cursor = System.Windows.Input.Cursors.Hand
+                Style = (Style)FindResource(hasConflict ? "ListRowConflict" : "ListRow")
             };
-            var panel = new StackPanel();
 
-            var header = new DockPanel { LastChildFill = true };
-            var title = new TextBlock
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            var left = new StackPanel();
+            left.Children.Add(new TextBlock
             {
                 Text = mo.ObjectName,
                 FontWeight = FontWeights.SemiBold,
-                FontSize = 14,
+                FontSize = 13,
                 TextWrapping = TextWrapping.Wrap
-            };
-            DockPanel.SetDock(title, Dock.Left);
-            header.Children.Add(title);
+            });
+            left.Children.Add(new TextBlock
+            {
+                Text = mo.ObjectId,
+                Style = (Style)FindResource("MetaText"),
+                Margin = new Thickness(0, 1, 0, 0)
+            });
+
+            var effective = mo.Observation?.Resolution?.EffectiveValue
+                            ?? mo.Observation?.Effective?.EffectiveValue;
+            var stateLine = effective is not null
+                ? $"Observed: {observed}  ·  Effective: {effective}"
+                : $"Observed: {observed}";
+
+            left.Children.Add(new TextBlock
+            {
+                Text = stateLine,
+                Margin = new Thickness(0, 4, 0, 0),
+                TextWrapping = TextWrapping.Wrap,
+                FontSize = 12
+            });
+
+            if (!string.IsNullOrWhiteSpace(mo.SubCategory))
+            {
+                left.Children.Add(new TextBlock
+                {
+                    Text = mo.SubCategory,
+                    Style = (Style)FindResource("MetaText"),
+                    Margin = new Thickness(0, 2, 0, 0)
+                });
+            }
+
+            Grid.SetColumn(left, 0);
+            grid.Children.Add(left);
 
             if (hasConflict || isUnknown)
             {
                 var badge = new Border
                 {
                     Style = (Style)FindResource(hasConflict ? "BadgeConflict" : "BadgeUnknown"),
-                    Margin = new Thickness(12, 0, 0, 0),
                     VerticalAlignment = VerticalAlignment.Top,
-                    HorizontalAlignment = HorizontalAlignment.Right
+                    Margin = new Thickness(10, 0, 0, 0)
                 };
                 badge.Child = new TextBlock
                 {
@@ -84,48 +116,14 @@ public partial class DomainView : UserControl
                     FontWeight = FontWeights.SemiBold,
                     Foreground = (Brush)FindResource(hasConflict ? "BrushConflict" : "BrushUnknown")
                 };
-                DockPanel.SetDock(badge, Dock.Right);
-                header.Children.Add(badge);
+                Grid.SetColumn(badge, 1);
+                grid.Children.Add(badge);
             }
 
-            panel.Children.Add(header);
-
-            panel.Children.Add(new TextBlock
-            {
-                Text = mo.ObjectId,
-                Foreground = (Brush)FindResource("BrushTextMuted"),
-                FontSize = 11,
-                Margin = new Thickness(0, 2, 0, 0)
-            });
-
-            var effective = mo.Observation?.Resolution?.EffectiveValue
-                            ?? mo.Observation?.Effective?.EffectiveValue;
-            var line = effective is not null
-                ? $"Observed: {observed} · Effective: {effective}"
-                : $"Observed: {observed}";
-
-            panel.Children.Add(new TextBlock
-            {
-                Text = line,
-                Margin = new Thickness(0, 6, 0, 0),
-                TextWrapping = TextWrapping.Wrap
-            });
-
-            if (!string.IsNullOrWhiteSpace(mo.SubCategory))
-            {
-                panel.Children.Add(new TextBlock
-                {
-                    Text = mo.SubCategory,
-                    FontSize = 11,
-                    Foreground = (Brush)FindResource("BrushTextMuted"),
-                    Margin = new Thickness(0, 4, 0, 0)
-                });
-            }
-
-            border.Child = panel;
+            border.Child = grid;
             var id = mo.ObjectId;
             border.MouseLeftButtonUp += (_, _) => openSetting(id);
-            border.ToolTip = "Open full knowledge card";
+            border.ToolTip = "Open setting details";
             SettingsList.Items.Add(border);
         }
     }

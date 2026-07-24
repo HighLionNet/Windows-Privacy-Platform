@@ -25,39 +25,48 @@ public partial class SearchResultsView : UserControl
 
         if (results.Count == 0)
         {
-            SubtitleText.Text = "No matching catalog entries.";
+            SubtitleText.Text = "No matches";
             List.Items.Add(new TextBlock
             {
-                Text = "Try a different keyword, ObjectId fragment, domain name, or description term.",
+                Text = "Try ObjectId fragment, name, domain, or description term.",
                 Foreground = (Brush)FindResource("BrushTextMuted"),
-                Margin = new Thickness(0, 8, 0, 0),
+                Margin = new Thickness(0, 6, 0, 0),
                 TextWrapping = TextWrapping.Wrap
             });
             return;
         }
 
-        SubtitleText.Text = $"{results.Count} matching catalog entries.";
+        SubtitleText.Text = $"{results.Count} match(es)";
 
         foreach (var mo in results)
         {
-            var border = new Border { Style = (Style)FindResource("Card"), Cursor = System.Windows.Input.Cursors.Hand };
+            var border = new Border { Style = (Style)FindResource("ListRow") };
             var panel = new StackPanel();
-            panel.Children.Add(new TextBlock { Text = mo.ObjectName, FontWeight = FontWeights.SemiBold });
+            panel.Children.Add(new TextBlock
+            {
+                Text = mo.ObjectName,
+                FontWeight = FontWeights.SemiBold,
+                FontSize = 13
+            });
             panel.Children.Add(new TextBlock
             {
                 Text = $"{mo.ProductDomain} · {mo.ObjectId}",
-                FontSize = 11,
-                Foreground = (Brush)FindResource("BrushTextMuted"),
-                Margin = new Thickness(0, 2, 0, 0)
+                Style = (Style)FindResource("MetaText"),
+                Margin = new Thickness(0, 1, 0, 0)
             });
-            panel.Children.Add(new TextBlock
+            if (!string.IsNullOrWhiteSpace(mo.Description))
             {
-                Text = mo.Description ?? string.Empty,
-                TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(0, 6, 0, 0)
-            });
+                panel.Children.Add(new TextBlock
+                {
+                    Text = mo.Description,
+                    TextWrapping = TextWrapping.Wrap,
+                    Margin = new Thickness(0, 4, 0, 0),
+                    FontSize = 12,
+                    Foreground = (Brush)FindResource("BrushTextSecondary")
+                });
+            }
             border.Child = panel;
-            border.ToolTip = "Open full knowledge card";
+            border.ToolTip = "Open setting details";
             var id = mo.ObjectId;
             border.MouseLeftButtonUp += (_, _) => openSetting(id);
             List.Items.Add(border);
