@@ -2,7 +2,7 @@
 ## AI Project Handoff Document
 
 **Document Status:** Authoritative Continuity Document  
-**Applies To:** Prototype v0.6 + Step A (ProductDomain taxonomy) — **hardware verified**  
+**Applies To:** Prototype **v0.6 FINAL** (includes former Step A + v0.6.5 architectural foundation)  
 **Last Updated:** 2026-07-24  
 **Audience:** Next AI implementer. Read this entire file before any code change. Do not assume undocumented behavior.
 
@@ -12,23 +12,33 @@
 
 Primary continuity document. Every AI session must read this completely before any code change.
 
-This document deliberately over-specifies **current behavior**, **verified runtime facts**, **product intent**, and **ordered future work** so a fresh chat can continue without the prior conversation.
+This document deliberately over-specifies **current behavior**, **verified runtime facts**, **product intent**, **architecture after the v0.6 foundation pass**, and **ordered future work** so a fresh chat can continue without the prior conversation.
+
+The human is archiving this repository state as the official **v0.6 backup** immediately after these docs land.
 
 ---
 
 # PROJECT VISION
 
-Local, declarative privacy intelligence platform for Windows.
+Local, declarative **privacy intelligence** platform for Windows.
 
-Long-term goal: a centralized, **human-navigable** view of privacy and security-related Windows settings — including GPO/policy surfaces with **clear names and explanations** (easier than raw gpedit / ADMX names) — so a semi-technical user can **understand** configuration before any change is offered.
+This is **not** primarily a CLI dump tool and **not** a tweaking/hardening utility.
 
-Development order is fixed and non-negotiable for the current phase:
+Long-term product:
+
+- Secure, local, **read-only decision-support** application
+- User navigates privacy/security settings by **domain**
+- Each setting presents a **human decision card**: what it is, why it matters, current effective value, which layer wins, related settings, user impact
+- Future interface: **keyboard-navigable TUI first**, optional GUI later
+- Data model must remain **UI-independent** (CLI / TUI / GUI consume the same query + navigation models)
+
+Development order remains:
 
 1. Discover  
 2. Model  
 3. Validate  
-4. Report  
-5. Understand relationships (including GPO vs UI effective layers)  
+4. Report / explain  
+5. Understand relationships and **effective configuration**  
 6. Only then consider controlled, reversible remediation (elevation only when required)
 
 Philosophy: **Understand first. Change later.**
@@ -39,21 +49,23 @@ Philosophy: **Understand first. Change later.**
 
 - ChatGPT — architecture, safety, continuity, review  
 - Grok — direct GitHub implementation on `HighLionNet/Windows-Privacy-Platform` (main)  
-- Human — local build + runtime verification, direction approval  
+- Human — local build + runtime verification, direction approval, archives  
 - Local path: `C:\Windows Privacy Platform`
 
 ---
 
 # MANDATORY RULES
 
-1. Every change must leave the solution compiling (0 errors preferred; no new warnings as a goal).  
+1. Every change must leave the solution compiling (0 errors; avoid new warnings).  
 2. Runtime check on Windows after every meaningful build.  
 3. Distinguish **Implemented** vs **Planned** in docs and code comments.  
 4. Never redesign the seven-project architecture without explicit approval.  
-5. Update Status documents at end of session.  
-6. **No write paths, no elevation, no interactive UI** until the model/report/relationship layer is solid.  
+5. Update Status documents at end of session **after** verification.  
+6. **No write paths, no elevation, no interactive UI framework** until authorised.  
 7. Prefer small, reviewable changes. Fail-soft collectors (never crash the pipeline).  
-8. Models project stays free of business logic (data + static catalog only).
+8. **Models** project stays free of registry logic and business calculations (data + pure composition only).  
+9. **Scanner** discovers and binds; **PolicyPrecedenceResolver** is the only place for layer precedence rules.  
+10. **CLI** is presentation-only — it must not invent meaning.
 
 ---
 
@@ -67,6 +79,7 @@ Strictly read-only. Prohibited:
 - Remediation, rollback, recovery  
 - Network calls for product telemetry  
 - Interactive prompts that block automation  
+- “Fix all” / auto-hardening  
 
 Future controlled changes (only when separately authorised) must: prompt for elevation only when needed; warn on sensitive settings; prefer reversible actions; never silently modify the system.
 
@@ -82,34 +95,51 @@ Models → Core → Logging → KnowledgeBase → Validator → Scanner → CLI
 
 - Scanner + CLI target `net8.0-windows`  
 - Others target `net8.0`  
-- `bin/` and `obj/` are **build outputs** (compiled DLLs/EXE from our `.cs` projects + NuGet deps such as `System.ServiceProcess.ServiceController`). Source of truth is `Source/**/*.cs`. Do not treat `bin` DLLs as hand-authored source.
+- `bin/` and `obj/` are **build outputs**. Source of truth is `Source/**/*.cs`.
 
-### Runtime pipeline (v0.6 + Step A actual order)
+### Layer responsibilities (v0.6 final)
 
-1. **CLI** (`WindowsPrivacyPlatform.CLI/Program.cs`) starts; parses non-interactive flags only (`--full`, `--help`).  
-2. **InventoryScanner** runs collectors in sequence into one `InventorySnapshot`.  
+| Project | Responsibility |
+|---------|----------------|
+| **Models** | Data structures only: ManagedObject, catalog, InventorySnapshot domain sections, ConfigurationObservation, ConfigurationResolution, EffectiveState, SettingExplanation, SettingRelationship, SettingsQuery, NavigationNode / SettingDetailView |
+| **Core** | OperationResult, PathConstants, PlatformException |
+| **Logging** | IAuditLogger / AuditLogger |
+| **KnowledgeBase** | In-memory store of catalog entries |
+| **Validator** | Structural SchemaValidator (ObjectId, name, description, type, schema version) — **not** a security score |
+| **Scanner** | Collectors (discover); domain binders (attach observations); RelationshipBinder; **PolicyPrecedenceResolver** (effective-config reasoning) |
+| **CLI** | Flags, pipeline orchestration, **presentation only** (summary, high-risk list, conflict decision cards, `--full`) |
+
+### Runtime pipeline (v0.6 final — actual order)
+
+1. **CLI** (`Program.cs`) — non-interactive flags only (`--full`, `--help`).  
+2. **InventoryScanner** runs collectors sequentially into one **InventorySnapshot** (domain-organized sections with backward-compat accessors).  
 3. **Collectors** (all read-only, fail-soft):
    - `WindowsIdentityCollector` — HKLM NT\CurrentVersion  
-   - `CapabilityCollector` — PowerShell Get-WindowsCapability; DISM `/English` fallback (**often returns 0** on test machine)  
+   - `CapabilityCollector` — PowerShell Get-WindowsCapability; DISM `/English` fallback (**often returns 0**)  
    - `PackageCollector` — PowerShell Get-AppxPackage (current user)  
    - `ServiceCollector` — ServiceController.GetServices()  
    - `ScheduledTaskCollector` — schtasks CSV  
    - `PrivacyCollector` — HKCU ConsentStore + related HKCU privacy prefs  
    - `PolicyCollector` — curated HKLM/HKCU policy/preference probes; missing → `"Not configured"`  
-4. **ManagedObjectCatalog** (Models) — static explained settings; every entry has exactly one `ProductDomain`.  
-5. **InventoryStateBinder** (Scanner) — sets each catalog item’s `CurrentState` from snapshot; builds `ObservationSummary` (includes `ProductDomain` on observed items).  
-6. **InMemoryKnowledgeBaseRepository** — stores catalog entries.  
-7. **SchemaValidator.ValidateAll** — structural rules (ObjectId, ObjectName, Description, ObjectType, SchemaVersion).  
-8. **CLI report** — default: Observation & Risk Summary + High-Risk Configured Items **grouped by ProductDomain then SubCategory**; `--full`: complete dump under `## Domain: …` headers.  
-9. Safety confirmation lines.
+4. **ManagedObjectCatalog** — static explained settings; every entry has exactly one `ProductDomain`.  
+5. **InventoryStateBinder** (orchestrator) → domain binders:
+   - `PrivacyBinder` / `PolicyBinder` (`IStateBinder`) attach `CurrentState` + `ConfigurationObservation` layers  
+   - `RelationshipBinder` wires known pairs and calls **PolicyPrecedenceResolver**  
+6. **InMemoryKnowledgeBaseRepository** stores catalog entries.  
+7. **SchemaValidator.ValidateAll** — structural rules only.  
+8. **SettingsQuery** + **NavigationBuilder** available as the application API for reports (and future TUI).  
+9. **CLI report**:
+   - Default: Observation & Risk Summary + High-Risk Configured Items + **Effective-Layer Conflict decision cards**  
+   - `--full`: complete dump under `## Domain:` with What/Why explanation lines  
+10. Safety confirmation lines.
 
-**There is no firewall collector.** `ProductDomain.Firewall` is reserved. Firewall discovery is planned, not implemented.
+**There is no firewall collector.** `ProductDomain.Firewall` is reserved.
 
 ---
 
-# PRODUCT DOMAIN TAXONOMY (IMPLEMENTED — Step A)
+# PRODUCT DOMAIN TAXONOMY (IMPLEMENTED)
 
-`ProductDomain` enum on `ManagedObject` (Models). Primary navigation axis for reports.
+`ProductDomain` enum on every `ManagedObject`. Primary navigation axis.
 
 | Domain | Role |
 |--------|------|
@@ -130,215 +160,259 @@ Models → Core → Logging → KnowledgeBase → Validator → Scanner → CLI
 | Firewall | **Reserved** — no catalog entries yet |
 | Other | Catch-all |
 
-Every one of the 65 catalog ObjectIds is assigned exactly one primary domain. `SubCategory` remains for finer grain within a domain.
+All **65** catalog ObjectIds have exactly one primary domain. `SubCategory` is secondary.
 
 ---
 
-# VERIFIED RUNTIME (v0.6 + Step A on Windows 11 Pro 25H2 build 26200)
+# EFFECTIVE CONFIGURATION (IMPLEMENTED — foundation)
 
-**Build:** `dotnet build -c Release` — 0 Warning(s), 0 Error(s) (2026-07-24).
+### Types (Models)
+
+- `ConfigurationLayer`: Unknown, UserPreference, ApplicationPreference, AlternatePolicyStore, MachinePolicy, MDMPolicy, SecurityBaseline  
+- `ConfigurationObservation`: one raw value from one layer  
+- `ConfigurationResolution`: EffectiveValue, EffectiveSource, Confidence, **ResolutionReason**, HasConflict, RawObservations  
+- `EffectiveState`: compatibility projection used by older consumers  
+- `SettingRelationship` + `RelationshipKind`: Related, Overrides, OverriddenBy, ConflictsWith, DependsOn, Requires, Affects, SameFeatureAlternatePath  
+
+### PolicyPrecedenceResolver (Scanner)
+
+**Single place** for precedence logic. Never silently guesses.
+
+- Layer rank order (highest wins when both configured): SecurityBaseline > MDMPolicy > MachinePolicy > AlternatePolicyStore > ApplicationPreference > UserPreference  
+- `ResolveConsentVsAppPrivacy`: AppPrivacy codes 0=user, 1=force allow, 2=force deny  
+- `ResolveAlternateMachinePolicyPaths`: prefers SOFTWARE\Policies over CurrentVersion\Policies when both differ; marks conflict  
+- `ResolveByLayerRank`: generic fallback; ties → Unknown + conflict  
+
+### Known wired pairs (RelationshipBinder)
+
+ConsentStore ↔ AppPrivacy:
+
+- location ↔ policy.appprivacy.location  
+- webcam ↔ policy.appprivacy.camera  
+- microphone ↔ policy.appprivacy.microphone  
+- broadFileSystemAccess ↔ policy.appprivacy.filesystem  
+
+Alternate paths:
+
+- policy.telemetry.allowtelemetry ↔ policy.telemetry.allowtelemetry.currentversion  
+
+Dual telemetry values on the test machine (0 vs 1) remain a **live conflict test case**.
+
+---
+
+# EXPLANATION + NAVIGATION FOUNDATION (IMPLEMENTED)
+
+### SettingExplanation + SettingExplanationFactory (Models)
+
+Human decision-card fields derived from catalog definition (no registry logic):
+
+- WhatIsIt, WhyItMatters, UserImpact, EnterpriseImpact, TypicalUseCases, DecisionGuidance, RelatedApplications  
+- DomainPath, RiskSummary  
+
+Presentation layers format this object; they do not invent meaning.
+
+### SettingsQuery (Models) — future API surface
+
+Read-only methods intended for CLI / TUI / GUI / possible API:
+
+- `GetByDomain`, `GetById`, `GetRelatedSettings`, `GetRelationshipEdges`  
+- `GetConflicts`, `GetMachineControlledSettings`, `GetSettingsNeedingReview`  
+- `Search` (plain-text filter, max 200 chars — never execute search text)  
+- `GetExplanation` / `TryGetExplanation`  
+
+### NavigationBuilder + SettingDetailView (Models)
+
+- Domain → feature → setting tree with conflict/risk counts on nodes  
+- Detail card combines explanation + resolution + layers + related edges  
+- Display sanitization strips control characters from untrusted discovered strings  
+- **No Terminal.Gui or other UI dependency yet**
+
+### CLI decision cards (default mode)
+
+For each unique effective-layer conflict, prints a card:
+
+Domain, Risk, What is this, Why it matters, Current raw, Effective value, Source + confidence, Why it wins, Observed layers, Related settings, Related apps, User impact, Guidance.
+
+---
+
+# VERIFIED RUNTIME (v0.6 on Windows 11 Pro 25H2 build 26200)
+
+**Build:** `dotnet build -c Release` — 0 Warning(s), 0 Error(s) after final CLI fix (2026-07-24).
+
+Representative inventory (counts may vary slightly by host state):
 
 ```
 Identity : Windows 11 Pro | 25H2 | Build 26200
-Capabilities : 0 | Packages : 165 | Services : 303 | Tasks : 247
-Privacy settings : 30 | Policy probes : 79 (configured: 45)
+Capabilities : 0 | Packages : ~165 | Services : ~303 | Tasks : ~247
+Privacy settings : ~30 | Policy probes : ~79 (configured: ~45)
 KnowledgeBase: 65 catalog entries
 Validator batch: passed=65, failed=0
-Observed / not observed: 63 / 2
-Policy configured / not: 45 / 34
+Observed / not observed: ~63 / ~2
 Risk (H/M/L catalog) : 30 / 26 / 9
-Privacy Allow/Deny/Prompt: 18 / 2 / 0
-High-risk configured : 25 | Medium-risk configured : 22
+Layer conflicts : present when dual telemetry / force policy pairs disagree
+Nav domains : enumerated from catalog
 ```
 
-High-risk list and `--full` report show domain prefixes (e.g. `[ConsentStore/ConsentStore]`, `[AppPrivacy/AppPrivacy]`, `## Domain: CloudContent`). Pipeline ~2–3 seconds. Safety confirmation present. No elevation, no writes.
+Pipeline ~2–3 seconds. Safety confirmation present. No elevation, no writes.
 
-### Critical interpretation of the “risk” output (do not misread)
+### Critical interpretation of “risk” output (do not misread)
 
-- **Not an overall security score.** There is no 0–100 grade and no machine pass/fail.  
-- **Risk (H/M/L catalog)** = static tags on catalog *definitions*, not a live score of the PC.  
-- **High-Risk Configured Items** = catalog entries tagged High that have a real observed value (not “Not configured”). It is a **watch list** for human review.  
-- High-risk does **not** mean “misconfigured.” Example: Location=Deny still appears under high-risk *topic* because location is high-impact.  
-- Numeric GPO values (0/1/2) are reported raw; the app does **not** yet interpret “0 is good/bad” per setting.
-
-### Verified overlap example (motivates Step B)
-
-On the test machine, telemetry appeared under **two** paths with **different** values:
-
-- `policy.telemetry.allowtelemetry` → `0 (HKLM)` (SOFTWARE\Policies path)  
-- `policy.telemetry.allowtelemetry.currentversion` → `1 (HKLM)` (CurrentVersion\Policies path)  
-
-AppPrivacy GPO values (e.g. camera=`2`) and ConsentStore Allow/Deny both appear for related capabilities. Discovery is correct; **effective-setting resolution is not implemented.**
+- **Not an overall security score.** No 0–100 grade. No machine pass/fail.  
+- **Risk (H/M/L catalog)** = static tags on catalog *definitions*.  
+- **High-Risk Configured Items** = high-impact topics that have a real observed value — a **watch list** for human review.  
+- High-risk does **not** mean “misconfigured.” Location=Deny can still appear under high-risk *topic*.  
+- Effective resolution explains **who wins and why**; it still does not auto-judge “good vs bad” policy for the user.
 
 ---
 
-# VERSION HISTORY (VERBOSE)
+# VERSION HISTORY (VERBOSE — FULL)
 
 | Version | What shipped | Status |
 |---------|--------------|--------|
 | **v0.1** | Initial project skeleton, seven-project solution layout, basic models | Historical |
 | **v0.2** | Early collector experiments, identity/package probes | Historical |
 | **v0.3** | Expanded inventory surfaces; services/tasks paths | Historical |
-| **v0.4** | Live discovery skeleton — multi-collector InventoryScanner into InventorySnapshot | Historical |
+| **v0.4** | Live discovery skeleton — multi-collector InventoryScanner → InventorySnapshot | Historical |
 | **v0.5** | PolicyCollector (curated probes), ManagedObjectCatalog with human names/rationales, full categorized report | Archived by human |
-| **v0.6** | InventoryStateBinder (`CurrentState`), SchemaValidator.ValidateAll, ObservationSummary, concise default report + high-risk watch list, safety confirmation | **Runtime verified** on Win11 Pro 25H2 (build 26200) |
-| **Step A (on v0.6)** | `ProductDomain` enum + property; all 65 catalog entries assigned; ObservedItem + binder + CLI report group by domain then SubCategory | **Build + runtime verified** 2026-07-24 |
+| **v0.6 core** | InventoryStateBinder (`CurrentState`), SchemaValidator.ValidateAll, ObservationSummary, concise default report + high-risk watch list, safety confirmation | Runtime verified on Win11 Pro 25H2 |
+| **Step A** | `ProductDomain` enum + property; all 65 catalog entries assigned; ObservedItem + binder + CLI report group by domain then SubCategory | Verified 2026-07-24 |
+| **Foundation pass (documented as interim “v0.6.5”, now folded into final v0.6)** | Domain-organized InventorySnapshot; split binders (`IStateBinder`, PrivacyBinder, PolicyBinder, RelationshipBinder); ConfigurationLayer / ConfigurationObservation / EffectiveState / ConfigurationResolution; PolicyPrecedenceResolver; SettingExplanation; SettingsQuery application API; NavigationBuilder + SettingDetailView; CLI conflict decision cards; display sanitization; search length cap | **Build verified 2026-07-24; this is FINAL v0.6** |
 
-Next code milestone is **Step B** (effective layers), still under the v0.6 product line until a version bump is explicitly requested.
+**There is no separate shipping version called v0.6.5.** That label was an internal implementation milestone. The archive the human is taking is **Prototype v0.6 final**.
 
 ---
 
-# PRODUCT INTENT (OWNER DIRECTION — BIND NEXT WORK TO THIS)
+# PRODUCT INTENT (OWNER DIRECTION)
 
-## Navigation / taxonomy
+## What the product is becoming
 
-**Step A delivered** the domain axis. Settings are navigable by product domain in both default and `--full` reports. Continue to keep domain assignment mandatory for every new catalog entry.
+A Windows **privacy understanding** tool:
 
-## Overlap and override (must design before expanding blindly)
+- Navigate by domain (Privacy, Update, Defender, …)  
+- Open a setting → see explanation card, effective state, layers, relationships  
+- Never force the user to start from raw registry paths  
+- Technical discovery engine exists to **serve human understanding**
 
-Windows layers can override each other:
+## What the product is not
 
-1. Per-user UI / ConsentStore (HKCU)  
-2. Machine AppPrivacy and other GPOs (often HKLM Policies)  
-3. Alternate policy stores (e.g. CurrentVersion\Policies vs SOFTWARE\Policies)  
-4. Future: MDM/Intune, security baselines  
-
-**Requirement (Step B):** when two surfaces touch the same capability (e.g. camera), the model must show each layer’s raw value, which layer is **effective** (or conflict/unknown), and that GPO can shadow Settings UI.
-
-Without this, expanding the catalog creates duplicate “high risk” rows and confuses users.
+- Not a gpedit clone  
+- Not a full ADMX importer  
+- Not a security score product  
+- Not an auto-hardener  
+- Not a remediation tool in this phase  
 
 ## Coverage vs complexity (hard constraint)
 
 - **Do not** import all of gpedit/ADMX in one version.  
 - **Do** grow **domain by domain** with curated high-value settings + human labels.  
-- Every new setting needs: stable ObjectId, human name, description, rationale, risk tag, discovery path, **ProductDomain**, subcategory.  
-- Collectors stay fail-soft; missing keys → Not configured / skip, never throw out of Collect.
+- Every new setting needs: stable ObjectId, human name, description, rationale, risk tag, discovery path, **ProductDomain**, subcategory, and ideally relationship edges when overlap exists.  
+- Collectors stay fail-soft.
 
-## Optional future product features (approved as ideas, not implemented)
+## UI direction (future)
 
-- Overall **risk assessment** feature (explicitly designed, not the current H/M/L catalog counts)  
-- **Recommended settings sets** / baselines — observation vs desired state, compare-only first  
-- Still **no remediation** until authorised
-
-## Explicitly not next
-
-- Interactive TUI/GUI  
-- Writes / elevation helpers  
-- “Score” that pretends current High-Risk list is a security grade  
+- Prefer **TUI** (keyboard: arrows, Enter, Back, search/filter, domain browse, detail view) before full GUI  
+- Consume existing `NavigationBuilder` + `SettingsQuery` + `SettingDetailView` — do **not** invent a parallel data model  
+- No Terminal.Gui / GUI framework until authorised
 
 ---
 
-# FUTURE STEPS (ORDERED — WHERE TO INSERT IN THE PIPELINE)
+# FUTURE STEPS (ORDERED — WHERE TO INSERT)
 
-Use this sequence. Each step should leave the solution build-green and read-only.
+Use this sequence. Each step must leave the solution build-green and read-only.
 
-## Step A — Domain taxonomy on the model — **DONE**
+## Completed in final v0.6
 
-**Completed 2026-07-24.** `ProductDomain` enum; field on `ManagedObject`; all catalog entries assigned; report groups by domain then SubCategory. Verified build + runtime on 25H2.
+- Step A — Product domain taxonomy  
+- Effective configuration foundation (layers, resolution, precedence resolver, known pairs)  
+- Explanation card model  
+- Query / navigation application API  
+- Binder split + snapshot domain organization  
+- CLI decision cards for conflicts  
 
-## Step B — Effective layer metadata (Models + Binder) — **NEXT**
+## Next recommended work (v0.7 starting points)
 
-**Insert at:** Models (layer enum / fields on ManagedObject or a small related type); **InventoryStateBinder** (compute effective state); CLI report (show layers).
+### 1. Thin read-only TUI host (highest product leverage)
 
-**Work:**
+**Insert at:** new optional project or CLI mode that only **consumes** Models navigation/query types.  
+**Work:** keyboard navigation over `NavigationBuilder.BuildDomainTree`; detail pane from `SettingDetailView`.  
+**Do not** add writes, elevation, or a second catalog model.
 
-- Represent layers: `UserPreference`, `MachinePolicy`, `AlternatePolicyStore`, etc.  
-- For linked settings (e.g. camera ConsentStore + AppPrivacy LetAppsAccessCamera), store relationship ids (`RelatedFeature` / `ConflictsWith` already exist on ManagedObject — use them).  
-- Binder outputs both raw states and a best-effort `EffectiveState` + `EffectiveSource` when determinable; otherwise `Conflict` / `Unknown`.  
-- Report must explain conflicts, not hide them.  
-- Concrete test case already on the machine: dual AllowTelemetry paths (0 vs 1).
+### 2. Expand known relationship pairs + editorial explanation overrides
 
-**Why before mass GPO expansion:** prevents double-counting and false “high risk” noise.
+**Insert at:** RelationshipBinder pair tables; optional richer text in SettingExplanationFactory for top settings.  
+**Work:** more Consent↔AppPrivacy pairs; advertising ID user vs GPO; location machine kill-switch vs ConsentStore.  
+Still curated — not ADMX dump.
 
-## Step C — CapabilityCollector fix (Scanner)
+### 3. CapabilityCollector reliability (Step C)
 
-**Insert at:** `CapabilityCollector` only.
+**Insert at:** `CapabilityCollector` only.  
+**Work:** diagnose 0 results on 25H2; keep read-only; fail-soft.
 
-**Work:** diagnose why count is 0 on 25H2 (elevation, PowerShell errors, parsing). Keep read-only. Log stderr on failure at Debug level if useful. Do not block other work if still 0 after best effort.
+### 4. Domain-scoped discovery expansion (Firewall first among gaps)
 
-## Step D — Domain-scoped discovery expansion (Scanner + Catalog together)
+**Insert at:** new `IInventoryCollector` + matching catalog entries with ProductDomain.Firewall + relationships.  
+**Work:** read-only netsh/registry/WMI patterns; document elevation limits honestly.  
+**Rule:** catalog explanations land with the collector.
 
-**Insert at:** new or extended collectors in Scanner; matching catalog entries in Models; wire collector in CLI list.
+### 5. Optional `--domain=` CLI filter
 
-**Preferred domain order (suggested):**
+**Insert at:** CLI flags only; filter via SettingsQuery.
 
-1. **Firewall** — new read-only collector (netsh / registry / WMI patterns that work non-elevated where possible; document elevation limits honestly).  
-2. **Defender** — deepen beyond current policy probes if safe read-only APIs exist.  
-3. **Windows Update** — deepen schedule/channel related readable values.  
-4. **App privacy / ConsentStore** — already strong; keep aligned with AppPrivacy GPO via relationships.  
-5. **Telemetry** — already partially present; resolve dual-path effective value (depends on Step B).  
-6. **Edge / Search / Activity / Cloud** — expand curated sets, not entire ADMX.
+### 6. Observation vs baseline (compare-only)
 
-**Rule:** no domain lands without catalog explanations (name, description, rationale, risk, ProductDomain).
+**Insert at:** desired-state fields already exist on ManagedObject shape; compare-only report section.  
+**No enforcement.**
 
-## Step E — Report UX without interactivity (CLI)
+### 7. Optional formal RiskAssessment feature
 
-**Partially done by Step A** (domain grouping). Remaining:
+Separate pure computation with documented rules — **must not** reuse “High-Risk Configured count” as a fake score.
 
-- Optional later flag `--domain=Firewall` (or similar).  
-- Conflict/effective-layer presentation once Step B lands.  
-- Still no prompts.
+### 8. Controlled change design only (docs first)
 
-## Step F — Observation vs baseline (Models + Validator or CLI compare-only)
-
-**Insert at:** after bind; optional desired-state fields on ManagedObject (`DesiredState` already exists on the type); compare-only report section.
-
-**Work:** define one optional baseline profile as data (not enforcement). Report “matches baseline / differs / not observed.” Do **not** auto-remediate.
-
-## Step G — Optional formal risk assessment feature
-
-**Insert at:** new pure computation after bind (CLI or thin helper); separate from structural SchemaValidator.
-
-**Work:** name it clearly (`RiskAssessment` / `ExposureSummary`); document methodology; must not reuse “High-Risk Configured count” as a fake score; prefer transparent rule lists.
-
-## Step H — Relationships graph (after domains + layers)
-
-**Insert at:** catalog metadata + report section “Related settings.” Use existing `Requires`, `ConflictsWith`, `RelatedFeature`.
-
-## Step I — Controlled change design only (docs first)
-
-**Insert at:** Status design note only until authorised. Elevation-on-demand, per-setting warnings, reversibility. **No implementation** until human explicitly requests.
-
-## Step J — Terminal UI (last among UX)
-
-Only after domains, effective layers, and report are understandable in CLI form.
+Elevation-on-demand, per-setting warnings, reversibility. **No implementation** until human explicitly requests.
 
 ---
 
-# CODE REVIEW NOTES (Step A session, 2026-07-24)
+# CODE REVIEW NOTES (foundation pass, 2026-07-24)
 
-Reviewed Models (Enums, ManagedObject, Catalog, ObservationSummary), Scanner binder + collectors, CLI report, Validator rules.
+**Fixed during pass:**
 
-**No blocking bugs.** Build 0/0; runtime matches prior v0.6 counts with domain labels.
+- Precedence logic centralized (no longer only inline in RelationshipBinder)  
+- `GetSettingsNeedingReview` operator-precedence bug  
+- CLI full-report `??` / pattern-match compile errors (CS0019 / CS0165)  
+- Search term length capped; display strings sanitized  
+- Dictionary builds tolerant of duplicate ObjectIds via GroupBy  
 
 **Security / safety:**
 
-- All registry opens use `writable: false`.  
-- Process launches (PowerShell, DISM, schtasks) use fixed argument strings — no user-controlled injection surface.  
-- No elevation, no writes, no network product telemetry, no deserialization of untrusted input.  
-- Console output is display-only of observed values.
+- All registry opens use `writable: false`  
+- Process launches use fixed argument strings — no user-controlled injection  
+- No elevation, no writes, no network product telemetry  
+- Untrusted discovered values treated as display text only  
 
-**Non-blocking observations (do not block Step B):**
+**Non-blocking residual notes:**
 
-- High-risk lines can read `[ConsentStore/ConsentStore]` when domain equals SubCategory — cosmetic.  
-- Default enum value for unset `ProductDomain` is `ConsentStore` (0); future catalog authors must set the field explicitly (all current entries do). Optional later: SchemaValidator rule requiring non-default domain, or a dedicated sentinel.  
-- `NamesLooselyMatch` in binder uses substring Contains — pre-existing; low risk with curated ObjectIds.  
-- PolicyCollector has more probes (79) than policy catalog rows (~39) — intentional curated model.  
-- CapabilityCollector still returns 0 on this host — Step C.  
-- Dual telemetry paths still both listed — Step B.
+- Default enum value for unset `ProductDomain` is `ConsentStore` (0); catalog authors must set domain explicitly (all 65 do)  
+- CapabilityCollector still returns 0 on test host  
+- Only a subset of possible Windows overlaps are wired as relationships  
+- Explanation text is mostly catalog-derived + light inference, not full editorial content for every setting  
+- No TUI host yet  
 
 ---
 
-# KNOWN GAPS (v0.6 + Step A)
+# KNOWN GAPS (final v0.6)
 
 | Gap | Severity | Notes |
 |-----|----------|-------|
-| Capabilities = 0 | Medium | Collector issue on test host (Step C) |
-| No firewall surface | Medium | Domain reserved; collector not started (Step D) |
-| No effective-layer resolution | High for product clarity | Dual telemetry paths already visible (Step B) |
-| Catalog is curated (~65), not full GPO | By design | Expand by domain |
+| Capabilities = 0 | Medium | Collector issue on test host |
+| No firewall surface | Medium | Domain reserved; collector not started |
+| Limited relationship graph | Medium | Only known pairs wired; expand curated |
+| MDM / SecurityBaseline ranks unused | Low | Enum ranks ready; no collectors yet |
+| Catalog curated (~65), not full GPO | By design | Expand by domain |
 | Risk list ≠ security score | Documentation | Do not market as score |
-| No baselines / recommended sets | Planned optional | Compare-only first (Step F) |
+| No baselines / recommended sets | Planned optional | Compare-only first |
+| No TUI/GUI host | Planned | Models ready |
+| No remediation | Deferred | Until authorised |
 
 ---
 
@@ -353,7 +427,21 @@ dotnet run -c Release -- --full
 dotnet run -c Release -- --help
 ```
 
-Confirm: inventory counts, policy configured count, validator batch, observation summary, domain-grouped high-risk lines, safety confirmation.
+Confirm: inventory counts, validator 65/0, domain-grouped high-risk lines, conflict decision cards (when conflicts exist), safety confirmation.
+
+---
+
+# HOW THE APP WORKS (MEDIUM-LEVEL — FOR NEXT CHAT)
+
+1. **Discover** — collectors read identity, packages, services, tasks, ConsentStore, and curated policy keys into a domain-organized snapshot.  
+2. **Define** — static catalog explains each setting (name, domain, risk, description, rationale).  
+3. **Bind** — privacy/policy binders attach live values and tag the configuration layer.  
+4. **Relate + resolve** — RelationshipBinder links known pairs; PolicyPrecedenceResolver computes effective value, source, confidence, and a human-readable reason (or Unknown when unsafe to guess).  
+5. **Query** — SettingsQuery answers domains, conflicts, related settings, “needs review,” explanations.  
+6. **Navigate (data)** — NavigationBuilder builds domain trees and detail cards for any future UI.  
+7. **Present** — CLI prints summary, high-risk watch list, and decision cards for conflicts.  
+
+Discovery exists to support **understanding**, not silent system change.
 
 ---
 
