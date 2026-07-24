@@ -10,11 +10,14 @@ using WindowsPrivacyPlatform.Validator;
 
 namespace WindowsPrivacyPlatform.CLI
 {
+    /// <summary>
+    /// Presentation-only host. Discovery, binding, and reasoning live elsewhere.
+    /// Non-interactive; read-only; no elevation.
+    /// </summary>
     internal static class Program
     {
         private static void Main(string[] args)
         {
-            // Non-interactive flags only. No prompts.
             var fullReport = HasFlag(args, "--full");
             if (HasFlag(args, "--help") || HasFlag(args, "-h"))
             {
@@ -23,10 +26,10 @@ namespace WindowsPrivacyPlatform.CLI
             }
 
             Console.WriteLine("Windows Privacy Platform - Prototype v0.6.5");
-            Console.WriteLine("Read-only discovery + model bind + validate + risk summary");
+            Console.WriteLine("Read-only discovery + bind + validate + explanation");
             Console.WriteLine(fullReport
                 ? "Report mode: full categorized detail"
-                : "Report mode: summary + high-risk detail (use --full for complete catalog dump)");
+                : "Report mode: summary + high-risk + conflicts with decision cards");
             Console.WriteLine();
 
             var logger = new AuditLogger();
@@ -48,7 +51,6 @@ namespace WindowsPrivacyPlatform.CLI
             var scanner = new InventoryScanner(logger, collectors);
             var validator = new SchemaValidator(logger);
 
-            // 1. Scan
             InventorySnapshot? snapshot = null;
             var scanResult = scanner.Scan();
             if (scanResult.Success && scanResult.Snapshot is not null)
@@ -71,7 +73,6 @@ namespace WindowsPrivacyPlatform.CLI
                 Console.WriteLine($"Scanner failed: {scanResult.Message}");
             }
 
-            // 2. Catalog + bind observed state onto ManagedObjects (orchestrated domain binders)
             var catalog = ManagedObjectCatalog.All.ToList();
             if (snapshot is not null)
                 InventoryStateBinder.Bind(snapshot, catalog);
@@ -93,7 +94,6 @@ namespace WindowsPrivacyPlatform.CLI
             Console.WriteLine(
                 $"KnowledgeBase: stored {catalog.Count} catalog entries, count={knowledgeBase.Count}");
 
-            // 3. Batch structural validation of entire catalog
             var validationResults = validator.ValidateAll(knowledgeBase.GetAll());
             var passed = validationResults.Count(r => r.IsValid);
             var failed = validationResults.Count(r => !r.IsValid);
@@ -101,27 +101,25 @@ namespace WindowsPrivacyPlatform.CLI
             if (failed > 0)
             {
                 foreach (var bad in validationResults.Where(r => !r.IsValid).Take(10))
-                {
                     Console.WriteLine($"  FAIL {bad.ObjectId}: {string.Join("; ", bad.Errors)}");
-                }
                 if (failed > 10)
                     Console.WriteLine($"  ... and {failed - 10} more");
             }
 
-            // 4. Observation / risk summary + report (query layer available for navigation)
             if (snapshot is not null)
             {
                 var summary = InventoryStateBinder.BuildSummary(snapshot, catalog, passed, failed);
                 var query = new SettingsQuery(catalog);
+                var nav = NavigationBuilder.BuildDomainTree(catalog);
 
-                WriteRiskSummary(summary, query);
+                WriteRiskSummary(summary, query, nav);
 
                 if (fullReport)
                     WriteFullCategorizedReport(catalog, query);
                 else
                 {
                     WriteHighRiskDetail(summary);
-                    WriteConflictDetail(query);
+                    WriteConflictCards(query);
                 }
             }
 
@@ -141,8 +139,8 @@ namespace WindowsPrivacyPlatform.CLI
             Console.WriteLine("  dotnet run -c Release -- [options]");
             Console.WriteLine();
             Console.WriteLine("Options:");
-            Console.WriteLine("  (default)   Risk summary + high-risk configured items + layer conflicts");
-            Console.WriteLine("  --full      Full categorized catalog report (long)");
+            Console.WriteLine("  (default)   Summary + high-risk + conflict decision cards");
+            Console.WriteLine("  --full      Full categorized catalog report");
             Console.WriteLine("  --help, -h  Show this help");
             Console.WriteLine();
             Console.WriteLine("Always read-only. No elevation. No system changes.");
@@ -155,9 +153,10 @@ namespace WindowsPrivacyPlatform.CLI
             return args.Any(a => string.Equals(a, flag, StringComparison.OrdinalIgnoreCase));
         }
 
-        private static void WriteRiskSummary(ObservationSummary summary, SettingsQuery query)
+        private static void WriteRiskSummary(ObservationSummary summary, SettingsQuery query, NavigationNode nav)
         {
-            var conflictCount = query.Conflicts().Count();
+            var conflictCount = query.GetConflicts().Count();
+            var reviewCount = query.GetSettingsNeedingReview().Count();
 
             Console.WriteLine();
             Console.WriteLine("=== Observation & Risk Summary ===");
@@ -171,6 +170,8 @@ namespace WindowsPrivacyPlatform.CLI
             Console.WriteLine($"High-risk configured   : {summary.HighRiskItems.Count}");
             Console.WriteLine($"Medium-risk configured : {summary.MediumRiskItems.Count}");
             Console.WriteLine($"Layer conflicts        : {conflictCount}");
+            Console.WriteLine($"Needs review (query)   : {reviewCount}");
+            Console.WriteLine($"Nav domains            : {nav.ChildCount} (conflicts in tree: {nav.ConflictCount})");
             Console.WriteLine();
         }
 
@@ -196,10 +197,10 @@ namespace WindowsPrivacyPlatform.CLI
             }
         }
 
-        private static void WriteConflictDetail(SettingsQuery query)
+        private static void WriteConflictCards(SettingsQuery query)
         {
-            var conflicts = query.Conflicts().ToList();
-            Console.WriteLine("=== Effective-Layer Conflicts ===");
+            var conflicts = query.GetConflicts().ToList();
+            Console.WriteLine("=== Effective-Layer Conflicts (decision cards) ===");
             if (conflicts.Count == 0)
             {
                 Console.WriteLine("  (none detected among known relationship pairs)");
@@ -207,23 +208,54 @@ namespace WindowsPrivacyPlatform.CLI
                 return;
             }
 
-            // Deduplicate by effective explanation feature pairs
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var mo in conflicts.OrderBy(m => m.ProductDomain).ThenBy(m => m.ObjectName))
             {
-                var eff = mo.Observation?.Effective;
-                if (eff is null)
+                var reason = mo.Observation?.Resolution?.ResolutionReason
+                             ?? mo.Observation?.Effective?.Explanation
+                             ?? mo.ObjectId;
+                if (!seen.Add(reason))
                     continue;
 
-                var key = eff.Explanation ?? mo.ObjectId;
-                if (!seen.Add(key))
+                var card = NavigationBuilder.BuildDetail(mo, query);
+                if (card is null)
                     continue;
 
-                Console.WriteLine($"  [{mo.ProductDomain}] {mo.ObjectName}");
-                Console.WriteLine($"    Id         : {mo.ObjectId}");
-                Console.WriteLine($"    Effective  : {eff.EffectiveValue ?? "(unknown)"}");
-                Console.WriteLine($"    Source     : {eff.EffectiveSource} (confidence: {eff.Confidence})");
-                Console.WriteLine($"    Explanation: {eff.Explanation}");
+                Console.WriteLine(new string('-', 56));
+                Console.WriteLine(card.Title);
+                Console.WriteLine(new string('-', 56));
+                Console.WriteLine($"Domain        : {card.DomainPath}");
+                Console.WriteLine($"Risk          : {card.RiskLevel} — {card.Explanation.RiskSummary}");
+                Console.WriteLine($"What is this  : {card.Explanation.WhatIsIt}");
+                Console.WriteLine($"Why it matters: {card.Explanation.WhyItMatters}");
+                Console.WriteLine($"Current raw   : {card.CurrentStateDisplay}");
+                Console.WriteLine($"Effective     : {card.EffectiveValueDisplay ?? "(unknown)"}");
+                Console.WriteLine($"Source        : {card.EffectiveSourceDisplay} (confidence: {card.Confidence})");
+                Console.WriteLine($"Why it wins   : {card.ResolutionReason}");
+
+                if (card.Layers.Count > 0)
+                {
+                    Console.WriteLine("Observed layers:");
+                    foreach (var layer in card.Layers)
+                        Console.WriteLine($"  - {layer.LayerName}: {layer.ValueDisplay}");
+                }
+
+                if (card.Related.Count > 0)
+                {
+                    Console.WriteLine("Related settings:");
+                    foreach (var rel in card.Related.Take(6))
+                        Console.WriteLine($"  - [{rel.Relationship}] {rel.Title}");
+                }
+
+                if (card.Explanation.RelatedApplications.Count > 0)
+                {
+                    Console.WriteLine("Often related apps:");
+                    foreach (var app in card.Explanation.RelatedApplications)
+                        Console.WriteLine($"  - {app}");
+                }
+
+                Console.WriteLine($"User impact   : {card.Explanation.UserImpact}");
+                Console.WriteLine($"Guidance      : {card.Explanation.DecisionGuidance}");
                 Console.WriteLine();
             }
         }
@@ -233,20 +265,14 @@ namespace WindowsPrivacyPlatform.CLI
             Console.WriteLine("=== Full Categorized Privacy & Policy Report ===");
             Console.WriteLine();
 
-            var byDomain = catalog
-                .GroupBy(m => m.ProductDomain)
-                .OrderBy(g => g.Key);
-
-            foreach (var domainGroup in byDomain)
+            foreach (var domainGroup in catalog.GroupBy(m => m.ProductDomain).OrderBy(g => g.Key))
             {
                 Console.WriteLine($"## Domain: {domainGroup.Key}");
                 Console.WriteLine();
 
-                var bySub = domainGroup
-                    .GroupBy(m => m.SubCategory ?? domainGroup.Key.ToString())
-                    .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase);
-
-                foreach (var subGroup in bySub)
+                foreach (var subGroup in domainGroup
+                             .GroupBy(m => m.SubCategory ?? domainGroup.Key.ToString())
+                             .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase))
                 {
                     Console.WriteLine($"[{subGroup.Key}]");
 
@@ -257,24 +283,31 @@ namespace WindowsPrivacyPlatform.CLI
                         Console.WriteLine($"    Risk        : {mo.RiskLevel} | Control: {mo.ControlLevel}");
                         Console.WriteLine($"    Current     : {mo.CurrentState ?? "(unbound)"}");
 
-                        var eff = mo.Observation?.Effective;
-                        if (eff is not null && (!string.IsNullOrWhiteSpace(eff.EffectiveValue) || eff.HasConflict))
+                        var res = mo.Observation?.Resolution ?? mo.Observation?.Effective is { } eff
+                            ? new ConfigurationResolution
+                            {
+                                EffectiveValue = eff.EffectiveValue,
+                                EffectiveSource = eff.EffectiveSource,
+                                Confidence = eff.Confidence,
+                                ResolutionReason = eff.Explanation,
+                                HasConflict = eff.HasConflict
+                            }
+                            : null;
+
+                        if (res is not null && (!string.IsNullOrWhiteSpace(res.EffectiveValue) || res.HasConflict))
                         {
-                            Console.WriteLine($"    Effective   : {eff.EffectiveValue ?? "(unknown)"} [{eff.EffectiveSource}]");
-                            if (eff.HasConflict)
-                                Console.WriteLine($"    Conflict    : {eff.Explanation}");
+                            Console.WriteLine($"    Effective   : {res.EffectiveValue ?? "(unknown)"} [{res.EffectiveSource}]");
+                            Console.WriteLine($"    Reason      : {res.ResolutionReason}");
                         }
 
-                        Console.WriteLine($"    Description : {mo.Description}");
-                        if (!string.IsNullOrWhiteSpace(mo.Rationale))
-                            Console.WriteLine($"    Rationale   : {mo.Rationale}");
+                        var explanation = SettingExplanationFactory.FromDefinition(mo);
+                        Console.WriteLine($"    What        : {explanation.WhatIsIt}");
+                        Console.WriteLine($"    Why         : {explanation.WhyItMatters}");
                         Console.WriteLine();
                     }
                 }
             }
 
-            // Navigation tree is available for future TUI; not printed in full by default.
-            _ = NavigationBuilder.BuildDomainTree(catalog);
             _ = query;
         }
     }
