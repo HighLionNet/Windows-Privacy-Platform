@@ -41,7 +41,7 @@ namespace WindowsPrivacyPlatform.Scanner
                 {
                     Success = true,
                     Snapshot = snapshot,
-                    Message = "Scan completed successfully (placeholder data)."
+                    Message = "Scan completed successfully."
                 };
             }
             catch (Exception ex)
