@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Windows.Controls;
 using WindowsPrivacyPlatform.App.Services;
 
@@ -43,6 +44,15 @@ public partial class HomeView : UserControl
                 $"Impact tags (H/M/L): {s.HighRiskCount} / {s.MediumRiskCount} / {s.LowRiskCount} (significance tags, not a score)\n" +
                 $"Validation: passed={s.CatalogValidationPassed}, failed={s.CatalogValidationFailed}";
         }
+        else
+        {
+            SummaryText.Text = "Observation summary unavailable for this scan.";
+        }
+
+        var conflictCount = scan.Query?.GetConflicts().Count() ?? 0;
+        ConflictsText.Text = conflictCount == 0
+            ? "No layer conflicts detected among known relationship pairs on this scan."
+            : $"{conflictCount} setting(s) report a layer conflict. Open Conflicts in the sidebar for detail cards.";
     }
 
     private static string Disp(string? v) =>
