@@ -126,8 +126,7 @@ public sealed class SettingsQuery
 
     public IEnumerable<ManagedObject> GetSettingsNeedingReview() =>
         _catalog.Where(m =>
-            m.RiskLevel == RiskLevel.High &&
-            IsConfigured(m.CurrentState) ||
+            (m.RiskLevel == RiskLevel.High && IsConfigured(m.CurrentState)) ||
             m.Observation?.Effective?.HasConflict == true ||
             m.Observation?.Resolution?.HasConflict == true);
 
