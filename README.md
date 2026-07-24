@@ -26,12 +26,13 @@ Presentation hosts (App, CLI, TUI) never contain Windows configuration logic. Ba
 
 ## Version 1.0
 
-- Professional **WPF** desktop application designed as a Windows management console  
-- Grouped navigation (Machine / Privacy / Security / Windows / Applications / Knowledge)  
-- Breadcrumbs for orientation  
-- Machine Overview as mission-control hierarchy (identity → attention → posture → scan meta → technical evidence collapsed)  
-- Domain / Conflicts / Search / Knowledge pages use denser list rows (not equal card stacks)  
-- Setting Detail as property-sheet surface (primary state first; layers and long guidance behind expanders)  
+- Professional **WPF** desktop application designed as a Windows management console (Event Viewer / Device Manager family)  
+- Hierarchical navigation with group separators and left-accent selection  
+- **Full-width** content workspace  
+- Section / header rules and bordered list containers for visual structure  
+- Machine Overview as operational sections (identity · security · scan · evidence)  
+- Domain / Conflicts / Search / Knowledge pages use denser list rows with column headers  
+- Setting Detail as property-sheet surface (label/value primary state; layers and long guidance behind expanders)  
 - Application mode control: **Inspect** (active) / **Modify** (scaffold, disabled, future)  
 - Collapsible sidebar, remembered window size/position and sidebar state  
 - Keyboard: F5 / Ctrl+R scan, Ctrl+F search, Esc clears search  

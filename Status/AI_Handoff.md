@@ -1,7 +1,7 @@
 # Windows Privacy Platform
 ## AI / Engineer Handoff Document
 
-**Applies to:** **Version 1.0** (final presentation redesign complete)  
+**Applies to:** **Version 1.0** (final management-console presentation pass complete)  
 **Last updated:** 2026-07-24  
 
 **Read this file, then `Status/Current_Status.md`, `Status/Architecture.md`, `Status/Roadmap.md`, and `Status/History/v1.0.md` before changing code.**
@@ -14,7 +14,7 @@ Help humans **understand** Windows privacy and security configuration through tr
 
 **Understand first. Change later.**
 
-Presentation standard: first-party Windows management console information architecture.
+Presentation standard: first-party Windows management console information architecture (Event Viewer / Device Manager / Services / GPO family).
 
 ---
 
@@ -54,7 +54,17 @@ App is a WPF presentation host. `ScanService` composes the same pipeline as CLI.
 
 ---
 
-## 5. Build
+## 5. Presentation notes (1.0 final)
+
+- Content host is **full width** (no MaxWidth).  
+- Sidebar uses left accent selection + group section rules.  
+- Lists use bordered containers, header rows, bottom-border density.  
+- Detail page uses property-sheet label/value layout.  
+- Do not reintroduce card stacks or constrained reading width without explicit product decision.  
+
+---
+
+## 6. Build
 
 ```
 cd Source

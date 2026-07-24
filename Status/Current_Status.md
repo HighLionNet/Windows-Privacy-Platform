@@ -4,7 +4,7 @@
 **Document role:** Authoritative live snapshot.
 
 **Last updated:** 2026-07-24  
-**Current development version:** **1.0** (final presentation redesign complete)  
+**Current development version:** **1.0** (final management-console presentation pass complete)  
 **Previous archived milestone:** Prototype v0.9.5  
 **Runtime target:** Windows 11; Scanner / CLI / App target `net8.0-windows`  
 **Safety posture:** Strictly read-only. No writes. No elevation. No remediation. No scores.
@@ -17,7 +17,7 @@ Windows Privacy Platform is a **local, read-only Windows privacy and security kn
 
 Philosophy: **Understand first. Change later.**
 
-Presentation goal for 1.0 final: feel like a first-party Windows management console (Device Manager / Event Viewer / GPO information architecture), not a card-heavy modern dashboard.
+Presentation standard for 1.0 final: first-party Windows management console (Event Viewer / Device Manager / GPO / Services family) — not a card dashboard or Fluent showcase.
 
 ---
 
@@ -45,13 +45,15 @@ Backend architecture remains frozen.
 
 ---
 
-## 3. Version 1.0 capabilities (final)
+## 3. Version 1.0 capabilities (final presentation)
 
-- Professional WPF shell with grouped navigation, breadcrumbs, collapsible sidebar  
+- Professional WPF shell with hierarchical navigation, group separators, left-accent selection  
+- **Full-width content workspace** (no artificial MaxWidth constraint)  
+- Section rules, header rules, bordered list containers, property groups throughout  
 - Application mode: Inspect (active) / Modify (disabled scaffold + explanation)  
-- Machine Overview: mission-control hierarchy (attention first when conflicts exist, identity, posture, scan meta, technical evidence collapsed)  
-- Domain / Conflicts / Search / Knowledge: denser list rows with status badges  
-- Setting Detail: property-sheet sections; primary state first; layers and long guidance behind Expanders  
+- Machine Overview: operational sections (Attention · Identity · Security · Scan · evidence expanders)  
+- Domain / Conflicts / Search / Knowledge: dense bottom-border list rows with column headers and status badges  
+- Setting Detail: property-sheet label/value grid for primary state; sections with rules; related as list rows  
 - Window size / position / sidebar collapse remembered under LocalApplicationData  
 - Keyboard: F5 / Ctrl+R scan, Ctrl+F search, Esc clears search  
 - Status bar uses operational language (Objects, Conflicts, Validation, Inspect · Read-only)  
