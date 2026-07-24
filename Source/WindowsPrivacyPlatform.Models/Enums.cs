@@ -85,7 +85,19 @@ public enum RelationshipKind
     DependsOn,
     Requires,
     Affects,
-    SameFeatureAlternatePath
+    SameFeatureAlternatePath,
+    /// <summary>This setting is ignored when the target condition/setting is present.</summary>
+    IgnoredWhen,
+    /// <summary>Alternate registry or store path for the same semantic.</summary>
+    AlternativeStorage,
+    /// <summary>Legacy equivalent of a modern setting.</summary>
+    LegacyEquivalent,
+    /// <summary>Modern replacement for a legacy setting.</summary>
+    ModernReplacement,
+    /// <summary>Usually configured together in enterprise baselines.</summary>
+    UsuallyConfiguredWith,
+    /// <summary>Change may require reboot, sign-out, or service restart (see RebootRequirement on object).</summary>
+    RequiresRestart
 }
 
 public enum RiskLevel
