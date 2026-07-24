@@ -3,14 +3,13 @@ namespace WindowsPrivacyPlatform.Models;
 /// <summary>
 /// Catalog + runtime view of a managed Windows setting.
 ///
-/// Conceptual separation (v0.6.5):
-/// - Definition fields (identity, description, domain, risk, documentation) come from the static catalog.
+/// Conceptual separation:
+/// - Definition fields (identity, description, domain, risk, documentation, semantics) come from the static catalog.
 /// - Observation holds live discovered values and layer data after binding.
 /// - Desired holds optional baseline comparison data (compare-only).
 /// - StructuredRelationships describe overrides / related settings.
 ///
-/// Existing flat properties are retained for backward compatibility with catalog, validator, and CLI.
-/// Models remain pure data — no business logic.
+/// Models remain pure data — no business logic. Windows meaning lives in ValueSemantics and documentation fields only.
 /// </summary>
 public class ManagedObject
 {
@@ -30,15 +29,33 @@ public class ManagedObject
     public RiskLevel RiskLevel { get; set; }
     public ImpactLevel ImpactLevel { get; set; }
 
-    // VersionCompatibility
+    // Version / edition compatibility (metadata only; no runtime filtering yet)
     public int MinimumBuild { get; set; }
     public int? MaximumBuild { get; set; }
     public List<string>? SupportedEditions { get; set; }
+    /// <summary>e.g. "Windows 10", "Windows 11", "24H2", "25H2", "Server", "LTSC". Empty = general.</summary>
+    public List<string>? SupportedWindowsVersions { get; set; }
 
     // Documentation
     public string Description { get; set; } = string.Empty;
     public string? Rationale { get; set; }
     public List<string>? References { get; set; }
+
+    /// <summary>When Windows may ignore this setting (policy present, component disabled, edition, etc.).</summary>
+    public string? WhenIgnored { get; set; }
+
+    /// <summary>Common incorrect assumptions about this setting.</summary>
+    public string? CommonMisconception { get; set; }
+
+    /// <summary>Typical enterprise configuration context (informational).</summary>
+    public string? TypicalEnterpriseUse { get; set; }
+
+    /// <summary>Typical consumer impact (informational).</summary>
+    public string? ConsumerImpact { get; set; }
+
+    // Value semantics — single source of truth for raw → meaning (v0.9)
+    /// <summary>Known raw-value interpretations. Empty list means no map; interpreter returns Unknown.</summary>
+    public List<ValueMeaning> ValueSemantics { get; set; } = new();
 
     // ManagementInterface
     public InterfaceName InterfaceName { get; set; }
