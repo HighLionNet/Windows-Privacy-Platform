@@ -28,17 +28,11 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
             ("policy.telemetry.allowtelemetry", "policy.telemetry.allowtelemetry.currentversion", "Allow Telemetry")
         };
 
-        /// <summary>
-        /// User preference vs machine GPO for the same feature (non-ConsentStore).
-        /// </summary>
         private static readonly (string UserId, string PolicyId, string Feature)[] UserVsGpoPairs =
         {
             ("privacy.advertisingid.enabled", "policy.advertising.disabledbygpo", "Advertising ID")
         };
 
-        /// <summary>
-        /// Related feature groups (no automatic precedence; documentation edges).
-        /// </summary>
         private static readonly (string FromId, string ToId, RelationshipKind Kind, string Explanation)[] RelatedPairs =
         {
             // Location ecosystem
@@ -54,6 +48,9 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
             ("policy.findmydevice.allow", "policy.location.disablelocation",
                 RelationshipKind.DependsOn,
                 "Find My Device relies on location services; disabling location reduces Find My Device usefulness."),
+            ("policy.findmydevice.allow", "policy.location.disablelocation",
+                RelationshipKind.IgnoredWhen,
+                "Find My Device is ineffective when the location platform is disabled by policy."),
 
             // Advertising / telemetry personalization
             ("privacy.advertisingid.enabled", "privacy.tailoredexperiences",
@@ -65,10 +62,13 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
             ("privacy.tailoredexperiences", "policy.telemetry.allowtelemetry.currentversion",
                 RelationshipKind.Related,
                 "Tailored experiences reuse diagnostic data; alternate telemetry policy path may be the effective store."),
+            ("policy.telemetry.allowtelemetry", "policy.telemetry.allowtelemetry.currentversion",
+                RelationshipKind.AlternativeStorage,
+                "Two machine policy stores can hold AllowTelemetry; Group Policy path is preferred when both exist."),
 
             // Activity history group
             ("policy.activity.enableactivityfeed", "policy.activity.publishuseractivities",
-                RelationshipKind.Related,
+                RelationshipKind.UsuallyConfiguredWith,
                 "Activity feed and publish-user-activities together control local Timeline behavior."),
             ("policy.activity.publishuseractivities", "policy.activity.uploaduseractivities",
                 RelationshipKind.Related,
@@ -79,14 +79,28 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
 
             // Search group
             ("policy.search.disablewebsearch", "policy.search.connectedsearchuseweb",
-                RelationshipKind.Related,
+                RelationshipKind.UsuallyConfiguredWith,
                 "Both reduce or remove web-backed search results from Windows Search."),
             ("policy.search.allowsearchlocation", "privacy.consentstore.location",
                 RelationshipKind.Related,
                 "Search location use is a separate consumer of location data from general app ConsentStore location."),
             ("policy.search.allowcortana", "policy.search.disablewebsearch",
                 RelationshipKind.Related,
-                "Cortana/cloud assistant features and web search are related cloud search surfaces.")
+                "Cortana/cloud assistant features and web search are related cloud search surfaces."),
+
+            // Firewall profiles
+            ("firewall.profile.domain.enabled", "firewall.service.mpssvc",
+                RelationshipKind.DependsOn,
+                "Domain profile enablement is only enforced while the Windows Firewall service (MpsSvc) is running."),
+            ("firewall.profile.private.enabled", "firewall.service.mpssvc",
+                RelationshipKind.DependsOn,
+                "Private profile enablement depends on MpsSvc."),
+            ("firewall.profile.public.enabled", "firewall.service.mpssvc",
+                RelationshipKind.DependsOn,
+                "Public profile enablement depends on MpsSvc."),
+            ("firewall.service.mpssvc", "firewall.profile.public.enabled",
+                RelationshipKind.Affects,
+                "If MpsSvc is stopped, profile enable flags may not be enforced.")
         };
 
         public void Apply(IReadOnlyList<ManagedObject> catalog)
@@ -127,7 +141,7 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
                 var userLayer = user.Observation?.Layers?.FirstOrDefault();
                 var policyLayer = policy.Observation?.Layers?.FirstOrDefault();
                 var resolution = PolicyPrecedenceResolver.ResolveConsentVsAppPrivacy(
-                    userLayer, policyLayer, feature);
+                    userLayer, policyLayer, policy, feature);
 
                 ApplyResolution(user, resolution);
                 ApplyResolution(policy, resolution);
@@ -147,6 +161,8 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
                     $"{feature}: primary Group Policy store path.");
                 AddRelationship(primary, alternateId, RelationshipKind.ConflictsWith,
                     $"{feature}: dual policy stores can disagree.");
+                AddRelationship(primary, alternateId, RelationshipKind.AlternativeStorage,
+                    $"{feature}: SOFTWARE\\Policies vs CurrentVersion\\Policies stores.");
 
                 AddRelatedFeature(primary, alternateId);
                 AddRelatedFeature(alternate, primaryId);
@@ -154,7 +170,7 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
                 var primaryLayer = primary.Observation?.Layers?.FirstOrDefault();
                 var alternateLayer = alternate.Observation?.Layers?.FirstOrDefault();
                 var resolution = PolicyPrecedenceResolver.ResolveAlternateMachinePolicyPaths(
-                    primaryLayer, alternateLayer, feature);
+                    primaryLayer, alternateLayer, primary, feature);
 
                 ApplyResolution(primary, resolution);
                 ApplyResolution(alternate, resolution);
@@ -178,11 +194,11 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
                 AddRelatedFeature(user, policyId);
                 AddRelatedFeature(policy, userId);
 
-                // Generic layer-rank resolution (MachinePolicy > UserPreference)
                 var userLayer = user.Observation?.Layers?.FirstOrDefault();
                 var policyLayer = policy.Observation?.Layers?.FirstOrDefault();
                 var resolution = PolicyPrecedenceResolver.ResolveByLayerRank(
                     new[] { userLayer, policyLayer }.Where(l => l is not null).Cast<ConfigurationObservation>().ToList(),
+                    policy,
                     feature);
 
                 ApplyResolution(user, resolution);
