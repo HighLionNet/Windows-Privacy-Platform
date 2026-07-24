@@ -28,6 +28,67 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
             ("policy.telemetry.allowtelemetry", "policy.telemetry.allowtelemetry.currentversion", "Allow Telemetry")
         };
 
+        /// <summary>
+        /// User preference vs machine GPO for the same feature (non-ConsentStore).
+        /// </summary>
+        private static readonly (string UserId, string PolicyId, string Feature)[] UserVsGpoPairs =
+        {
+            ("privacy.advertisingid.enabled", "policy.advertising.disabledbygpo", "Advertising ID")
+        };
+
+        /// <summary>
+        /// Related feature groups (no automatic precedence; documentation edges).
+        /// </summary>
+        private static readonly (string FromId, string ToId, RelationshipKind Kind, string Explanation)[] RelatedPairs =
+        {
+            // Location ecosystem
+            ("privacy.consentstore.location", "policy.location.disablelocation",
+                RelationshipKind.OverriddenBy,
+                "Machine DisableLocation policy can turn off the location platform regardless of ConsentStore."),
+            ("policy.location.disablelocation", "privacy.consentstore.location",
+                RelationshipKind.Overrides,
+                "Machine DisableLocation is a stronger kill-switch than per-app ConsentStore location."),
+            ("policy.location.disablelocation", "policy.appprivacy.location",
+                RelationshipKind.Related,
+                "Both are machine-level location controls; DisableLocation targets the platform, AppPrivacy targets app access."),
+            ("policy.findmydevice.allow", "policy.location.disablelocation",
+                RelationshipKind.DependsOn,
+                "Find My Device relies on location services; disabling location reduces Find My Device usefulness."),
+
+            // Advertising / telemetry personalization
+            ("privacy.advertisingid.enabled", "privacy.tailoredexperiences",
+                RelationshipKind.Related,
+                "Advertising ID and tailored experiences both relate to personalized content, but control different mechanisms."),
+            ("privacy.tailoredexperiences", "policy.telemetry.allowtelemetry",
+                RelationshipKind.Related,
+                "Tailored experiences reuse diagnostic data; the diagnostic level is controlled separately by AllowTelemetry."),
+            ("privacy.tailoredexperiences", "policy.telemetry.allowtelemetry.currentversion",
+                RelationshipKind.Related,
+                "Tailored experiences reuse diagnostic data; alternate telemetry policy path may be the effective store."),
+
+            // Activity history group
+            ("policy.activity.enableactivityfeed", "policy.activity.publishuseractivities",
+                RelationshipKind.Related,
+                "Activity feed and publish-user-activities together control local Timeline behavior."),
+            ("policy.activity.publishuseractivities", "policy.activity.uploaduseractivities",
+                RelationshipKind.Related,
+                "Upload is a higher-privacy-impact step than local publish-only activity history."),
+            ("policy.activity.uploaduseractivities", "policy.activity.enableactivityfeed",
+                RelationshipKind.DependsOn,
+                "Cloud upload of activities is meaningful only when activity feed features are enabled."),
+
+            // Search group
+            ("policy.search.disablewebsearch", "policy.search.connectedsearchuseweb",
+                RelationshipKind.Related,
+                "Both reduce or remove web-backed search results from Windows Search."),
+            ("policy.search.allowsearchlocation", "privacy.consentstore.location",
+                RelationshipKind.Related,
+                "Search location use is a separate consumer of location data from general app ConsentStore location."),
+            ("policy.search.allowcortana", "policy.search.disablewebsearch",
+                RelationshipKind.Related,
+                "Cortana/cloud assistant features and web search are related cloud search surfaces.")
+        };
+
         public void Apply(IReadOnlyList<ManagedObject> catalog)
         {
             if (catalog is null || catalog.Count == 0)
@@ -40,6 +101,8 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
 
             WireConsentPolicyPairs(byId);
             WireAlternatePathPairs(byId);
+            WireUserVsGpoPairs(byId);
+            WireRelatedPairs(byId);
         }
 
         private static void WireConsentPolicyPairs(Dictionary<string, ManagedObject> byId)
@@ -95,6 +158,47 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
 
                 ApplyResolution(primary, resolution);
                 ApplyResolution(alternate, resolution);
+            }
+        }
+
+        private static void WireUserVsGpoPairs(Dictionary<string, ManagedObject> byId)
+        {
+            foreach (var (userId, policyId, feature) in UserVsGpoPairs)
+            {
+                if (!byId.TryGetValue(userId, out var user) || !byId.TryGetValue(policyId, out var policy))
+                    continue;
+
+                AddRelationship(user, policyId, RelationshipKind.OverriddenBy,
+                    $"Machine Group Policy can force {feature} off regardless of the user toggle.");
+                AddRelationship(policy, userId, RelationshipKind.Overrides,
+                    $"Machine Group Policy overrides the user {feature} preference.");
+                AddRelationship(user, policyId, RelationshipKind.ConflictsWith,
+                    $"User preference and machine policy may disagree for {feature}.");
+
+                AddRelatedFeature(user, policyId);
+                AddRelatedFeature(policy, userId);
+
+                // Generic layer-rank resolution (MachinePolicy > UserPreference)
+                var userLayer = user.Observation?.Layers?.FirstOrDefault();
+                var policyLayer = policy.Observation?.Layers?.FirstOrDefault();
+                var resolution = PolicyPrecedenceResolver.ResolveByLayerRank(
+                    new[] { userLayer, policyLayer }.Where(l => l is not null).Cast<ConfigurationObservation>().ToList(),
+                    feature);
+
+                ApplyResolution(user, resolution);
+                ApplyResolution(policy, resolution);
+            }
+        }
+
+        private static void WireRelatedPairs(Dictionary<string, ManagedObject> byId)
+        {
+            foreach (var (fromId, toId, kind, explanation) in RelatedPairs)
+            {
+                if (!byId.TryGetValue(fromId, out var from) || !byId.ContainsKey(toId))
+                    continue;
+
+                AddRelationship(from, toId, kind, explanation);
+                AddRelatedFeature(from, toId);
             }
         }
 
