@@ -2,18 +2,20 @@ namespace WindowsPrivacyPlatform.Models;
 
 /// <summary>
 /// Human decision-support content for a setting.
-/// Trusted catalog-derived text only — no registry paths as the primary message.
-/// Presentation layers (CLI/TUI/GUI) format this object; they do not invent meaning.
-/// Treat as documentation, not metadata.
+/// Trusted catalog-derived text only — presentation layers format this object.
+/// Written as technical documentation, not registry metadata.
 /// </summary>
 public class SettingExplanation
 {
     public string ObjectId { get; set; } = string.Empty;
     public string DisplayName { get; set; } = string.Empty;
     public string DomainPath { get; set; } = string.Empty;
+
+    /// <summary>Neutral impact significance label (not a judgment or score).</summary>
+    public string ImpactLabel { get; set; } = string.Empty;
+
     public string RiskSummary { get; set; } = string.Empty;
 
-    // Core documentation
     public string WhatIsIt { get; set; } = string.Empty;
     public string WhyItMatters { get; set; } = string.Empty;
     public string UserImpact { get; set; } = string.Empty;
@@ -21,7 +23,6 @@ public class SettingExplanation
     public string TypicalUseCases { get; set; } = string.Empty;
     public string DecisionGuidance { get; set; } = string.Empty;
 
-    // Expanded professional fields (v0.7)
     public string PrivacyImpactText { get; set; } = string.Empty;
     public string SecurityImpactText { get; set; } = string.Empty;
     public string SideEffects { get; set; } = string.Empty;
@@ -35,7 +36,7 @@ public class SettingExplanation
 /// <summary>
 /// Builds SettingExplanation from catalog definition fields.
 /// Pure composition — no system access, no observation logic.
-/// Writing standard: calm, neutral, factual, educational.
+/// Tone: professional, neutral, technical, educational.
 /// </summary>
 public static class SettingExplanationFactory
 {
@@ -45,47 +46,51 @@ public static class SettingExplanationFactory
             throw new ArgumentNullException(nameof(mo));
 
         var domainPath = string.IsNullOrWhiteSpace(mo.SubCategory)
-            ? mo.ProductDomain.ToString()
-            : $"{mo.ProductDomain} > {mo.SubCategory}";
+            ? HumanDomain(mo.ProductDomain)
+            : $"{HumanDomain(mo.ProductDomain)} › {mo.SubCategory}";
+
+        var impactLabel = mo.RiskLevel switch
+        {
+            RiskLevel.High => "High privacy or security impact",
+            RiskLevel.Medium => "Medium configuration impact",
+            _ => "Lower configuration impact"
+        };
 
         var riskSummary = mo.RiskLevel switch
         {
-            RiskLevel.High => "High-impact setting — review carefully before changing system policy.",
-            RiskLevel.Medium => "Medium impact — understand trade-offs before adjusting.",
-            _ => "Lower impact — still useful to understand in context."
+            RiskLevel.High =>
+                "This setting sits on a high-impact surface: sensor access, identity data, diagnostic volume, or host protection. Understanding it matters more than treating the label as a score.",
+            RiskLevel.Medium =>
+                "This setting has moderate effect on privacy, management, or day-to-day behavior. Context from related layers is often useful.",
+            _ =>
+                "This setting has a narrower effect. It is still part of the wider configuration map."
         };
 
         var controlHint = mo.ControlLevel switch
         {
             ControlLevel.AdministratorControlled =>
-                "Typically controlled by administrators or Group Policy on managed devices.",
+                "On managed devices this is commonly set by administrators through Group Policy or MDM and applied for every user on the machine.",
             ControlLevel.UserControlled =>
-                "Often adjustable by the signed-in user unless a higher policy layer overrides it.",
+                "The signed-in user can usually change this unless a higher policy layer overrides it.",
             ControlLevel.Locked =>
-                "Intended to remain fixed; changes may be blocked by the platform.",
-            _ => "Advisory control — guidance only."
+                "Windows treats this as a fixed platform behavior; local change may be blocked.",
+            _ =>
+                "Control is advisory in the catalog model; the live system may still enforce higher layers."
         };
-
-        var whatIsIt = string.IsNullOrWhiteSpace(mo.Description)
-            ? mo.ObjectName
-            : mo.Description;
-
-        var why = string.IsNullOrWhiteSpace(mo.Rationale)
-            ? riskSummary
-            : mo.Rationale;
 
         return new SettingExplanation
         {
             ObjectId = mo.ObjectId,
             DisplayName = mo.ObjectName,
             DomainPath = domainPath,
+            ImpactLabel = impactLabel,
             RiskSummary = riskSummary,
-            WhatIsIt = whatIsIt,
-            WhyItMatters = why,
+            WhatIsIt = BuildWhatIsIt(mo),
+            WhyItMatters = BuildWhyItMatters(mo),
             UserImpact = BuildUserImpact(mo),
             EnterpriseImpact = BuildEnterpriseImpact(mo, controlHint),
             TypicalUseCases = BuildUseCases(mo),
-            DecisionGuidance = BuildGuidance(mo, controlHint),
+            DecisionGuidance = BuildContextNotes(mo, controlHint),
             PrivacyImpactText = BuildPrivacyImpact(mo),
             SecurityImpactText = BuildSecurityImpact(mo),
             SideEffects = BuildSideEffects(mo),
@@ -96,98 +101,224 @@ public static class SettingExplanationFactory
         };
     }
 
+    private static string HumanDomain(ProductDomain domain) => domain switch
+    {
+        ProductDomain.ConsentStore => "App permissions",
+        ProductDomain.AppPrivacy => "App policy overrides",
+        ProductDomain.Telemetry => "Telemetry and diagnostics",
+        ProductDomain.WindowsUpdate => "Windows Update",
+        ProductDomain.Defender => "Microsoft Defender",
+        ProductDomain.Search => "Search",
+        ProductDomain.Edge => "Microsoft Edge",
+        ProductDomain.ActivityHistory => "Activity History",
+        ProductDomain.CloudContent => "Cloud content",
+        ProductDomain.Advertising => "Advertising",
+        ProductDomain.Location => "Location",
+        ProductDomain.Biometrics => "Biometrics",
+        ProductDomain.Device => "Device recovery",
+        ProductDomain.Speech => "Speech",
+        ProductDomain.Firewall => "Firewall",
+        _ => domain.ToString()
+    };
+
+    private static string BuildWhatIsIt(ManagedObject mo)
+    {
+        var baseText = string.IsNullOrWhiteSpace(mo.Description) ? mo.ObjectName : mo.Description.Trim();
+
+        // Domain framing turns short catalog lines into documentation-style overview.
+        return mo.ProductDomain switch
+        {
+            ProductDomain.Advertising when mo.ObjectId.Contains("advertising", StringComparison.OrdinalIgnoreCase) =>
+                "Windows can create a unique Advertising ID for each user account. Applications may request this identifier to personalize advertising, measure engagement, and distinguish one user from another without relying only on traditional web cookies. " +
+                baseText,
+
+            ProductDomain.ConsentStore =>
+                "This is a per-user capability permission stored in the Windows ConsentStore. It governs whether applications running under the current account may use a specific device or data capability. " +
+                baseText,
+
+            ProductDomain.AppPrivacy =>
+                "This is a machine-level AppPrivacy policy. It can force-allow, force-deny, or leave app access under user control for a given capability, independent of the per-user ConsentStore value. " +
+                baseText,
+
+            ProductDomain.Telemetry =>
+                "This setting participates in Windows diagnostic data configuration. Diagnostic data may include device, reliability, and usage information that Windows components send to Microsoft under the configured level. " +
+                baseText,
+
+            ProductDomain.WindowsUpdate =>
+                "This setting influences how Windows Update discovers, downloads, or presents updates on the device, including automatic update behavior and access to update UI. " +
+                baseText,
+
+            ProductDomain.Defender =>
+                "This setting belongs to Microsoft Defender Antivirus configuration. It can affect real-time protection, cloud-delivered protection, sample submission, or related antivirus policy. " +
+                baseText,
+
+            ProductDomain.ActivityHistory =>
+                "Activity History records recent app and document activity so features such as Timeline can help users resume work. Some related policies also control whether that history is uploaded for roaming. " +
+                baseText,
+
+            ProductDomain.Edge =>
+                "This setting configures Microsoft Edge browser policy. It can change tracking prevention, suggestions, metrics reporting, or credential features inside Edge. " +
+                baseText,
+
+            ProductDomain.Location =>
+                "This setting participates in Windows location services. Location data can reveal physical movement and habitual places and is consumed by apps, system features, and recovery scenarios. " +
+                baseText,
+
+            ProductDomain.Speech =>
+                "This setting controls whether speech input may be processed by online speech services. Online recognition can improve accuracy by using cloud models; local recognition keeps audio on the device when available. " +
+                baseText,
+
+            ProductDomain.Search =>
+                "This setting influences Windows Search behavior, including cloud-backed results, assistant features, or whether search may use location. " +
+                baseText,
+
+            ProductDomain.CloudContent =>
+                "This setting relates to consumer cloud content surfaces such as suggestions, Spotlight imagery, or soft-landing experiences after updates. " +
+                baseText,
+
+            ProductDomain.Biometrics =>
+                "This setting relates to the Windows biometric framework used by features such as Windows Hello face or fingerprint unlock. " +
+                baseText,
+
+            ProductDomain.Device =>
+                "This setting relates to device recovery or findability features that may depend on location and account services. " +
+                baseText,
+
+            _ => baseText
+        };
+    }
+
+    private static string BuildWhyItMatters(ManagedObject mo)
+    {
+        if (!string.IsNullOrWhiteSpace(mo.Rationale))
+            return mo.Rationale.Trim();
+
+        return mo.ProductDomain switch
+        {
+            ProductDomain.ConsentStore or ProductDomain.AppPrivacy =>
+                "Capability permissions decide which applications can reach sensors and personal data. Understanding both the user preference and any machine policy override is necessary to know what is actually effective.",
+            ProductDomain.Telemetry =>
+                "Diagnostic level and related personalization controls affect how much operational data leaves the device and whether that data is reused for tips or recommendations.",
+            ProductDomain.Advertising =>
+                "The Advertising ID is a specific personalization surface. It is narrower than general Windows diagnostics, but it is one of the clearer cross-app advertising correlation points Windows exposes to applications.",
+            ProductDomain.Defender =>
+                "Antivirus posture is part of host security. Changes here alter detection and protection behavior rather than privacy labeling alone.",
+            ProductDomain.WindowsUpdate =>
+                "Update configuration determines whether the device stays current with security fixes and how much control users or administrators retain over timing and sources.",
+            _ =>
+                "This setting is part of the broader Windows privacy and security configuration map. Seeing its effective layer helps explain real system behavior."
+        };
+    }
+
     private static string BuildUserImpact(ManagedObject mo)
     {
         if (mo.FeatureCategory == FeatureCategory.PrivacyPermission)
-            return "Affects whether applications on this device can use this capability for the current user account. " +
-                   "A Deny or Prompt value limits exposure; Allow grants capability to apps that request it (subject to higher policy layers).";
-        if (mo.ProductDomain == ProductDomain.WindowsUpdate)
-            return "Affects how and when this PC receives Windows quality and feature updates, and whether the user can interact with Windows Update UI.";
-        if (mo.ProductDomain == ProductDomain.Defender)
-            return "Affects built-in malware protection behavior, sample submission, and cloud-delivered protection on this PC.";
-        if (mo.ProductDomain == ProductDomain.Telemetry)
-            return "Affects how much diagnostic and usage data this device may send to Microsoft, and whether that data is reused for personalization.";
-        if (mo.ProductDomain == ProductDomain.Advertising)
-            return "Affects whether Windows supplies an Advertising ID that applications can use for cross-app advertising correlation.";
-        if (mo.ProductDomain == ProductDomain.ActivityHistory)
-            return "Affects local retention and optional cloud upload of recent activity used by Timeline and cross-device resume scenarios.";
-        if (mo.ProductDomain == ProductDomain.Edge)
-            return "Affects Microsoft Edge privacy defaults for tracking prevention, suggestions, metrics, and credential storage.";
-        return "May change available features, privacy exposure, or management behavior for this account or PC.";
+            return "For the signed-in user, this decides whether apps may use the capability when they request it. " +
+                   "Allow permits requesting apps (subject to higher policy). Prompt asks each time where supported. Deny blocks the capability for apps under this account unless a machine policy forces otherwise.";
+
+        return mo.ProductDomain switch
+        {
+            ProductDomain.WindowsUpdate =>
+                "Affects when updates arrive, whether the Windows Update interface remains available, and whether servicing follows local policy or public update endpoints.",
+            ProductDomain.Defender =>
+                "Affects real-time protection, cloud intelligence, and sample handling on this PC.",
+            ProductDomain.Telemetry =>
+                "Affects how much diagnostic and usage data this device may send, and whether diagnostic data is reused for tailored tips.",
+            ProductDomain.Advertising =>
+                "When disabled, applications should not receive the Advertising ID for advertising personalization. Other Windows and application telemetry channels remain separate.",
+            ProductDomain.ActivityHistory =>
+                "Affects whether recent activity is kept locally for Timeline-style resume, and whether that history may be uploaded for roaming.",
+            ProductDomain.Edge =>
+                "Affects Edge tracking prevention, suggestions, metrics, and related browser privacy defaults.",
+            ProductDomain.Location =>
+                "Affects whether the location platform is available to apps and system features on this machine.",
+            ProductDomain.Speech =>
+                "Affects whether speech audio may be sent to online recognition services.",
+            _ =>
+                "May change available features, data exposure, or management behavior for this account or PC."
+        };
     }
 
     private static string BuildEnterpriseImpact(ManagedObject mo, string controlHint)
     {
         if (mo.ControlLevel == ControlLevel.AdministratorControlled)
-            return $"{controlHint} In managed environments this is often set once via Group Policy or MDM and enforced for all users on the device.";
+            return controlHint + " Enterprise deployments often set this once and rely on precedence so users cannot locally reopen the surface.";
         return controlHint;
     }
 
     private static string BuildUseCases(ManagedObject mo) => mo.ProductDomain switch
     {
         ProductDomain.ConsentStore or ProductDomain.AppPrivacy =>
-            "Personal privacy hardening, shared PCs, kiosks, compliance reviews of app capabilities, and environments where camera/microphone/location must be restricted.",
+            "Shared PCs, kiosks, privacy reviews of app capabilities, and environments that restrict camera, microphone, location, or broad filesystem access.",
         ProductDomain.Telemetry =>
-            "Reducing diagnostic data sharing, meeting enterprise data-handling requirements, or clarifying which diagnostic level is currently effective.",
+            "Clarifying the effective diagnostic level, meeting data-handling requirements, or separating diagnostic volume from advertising and activity features.",
         ProductDomain.WindowsUpdate =>
-            "Controlling patch cadence, bandwidth use, offline/WSUS servicing models, or locking down end-user update UI on managed devices.",
+            "Managed patch cadence, WSUS or Intune servicing, bandwidth control, or locking update UI on administered devices.",
         ProductDomain.Defender =>
-            "Ensuring antivirus posture, temporarily isolating protection during support scenarios, or balancing cloud sample submission against data sensitivity.",
+            "Confirming antivirus policy, understanding sample submission, or reviewing temporary support changes to protection.",
         ProductDomain.Edge =>
-            "Browser privacy defaults for tracking prevention, search suggestions, metrics, and password manager behavior.",
+            "Browser privacy defaults for tracking prevention, suggestions, metrics, and password storage.",
         ProductDomain.Advertising =>
-            "Reducing cross-app advertising correlation while leaving other Windows and application telemetry surfaces unchanged.",
+            "Understanding cross-app advertising correlation independently of Windows diagnostic data level.",
         ProductDomain.ActivityHistory =>
-            "Disabling Timeline or preventing activity upload when cross-device resume is not required.",
+            "Environments that do not use Timeline or do not want activity history uploaded.",
         ProductDomain.Location =>
-            "Machine-wide location control for high-privacy hosts, air-gapped systems, or environments that must not report physical location.",
-        _ => "Understanding current configuration before deciding whether a change is appropriate."
+            "Hosts that must not report physical location, including some high-privacy or offline scenarios.",
+        _ =>
+            "Understanding current configuration before interpreting related settings or policy layers."
     };
 
-    private static string BuildGuidance(ManagedObject mo, string controlHint)
+    private static string BuildContextNotes(ManagedObject mo, string controlHint)
     {
+        // Informational only — never framed as an instruction to change the system.
         var parts = new List<string> { controlHint };
-        if (mo.RiskLevel == RiskLevel.High)
-            parts.Add("Prefer the least privilege that still supports required applications and workflows.");
         if (!string.IsNullOrWhiteSpace(mo.Rationale))
-            parts.Add("Read the rationale and related settings before treating any single value as definitive.");
-        parts.Add("This guidance is informational only; the platform does not change the system.");
+            parts.Add("Related settings and layer precedence often matter more than any single raw value.");
+        parts.Add("This platform only explains configuration; it does not change Windows.");
         return string.Join(" ", parts);
     }
 
     private static string BuildPrivacyImpact(ManagedObject mo)
     {
         if (mo.FeatureCategory == FeatureCategory.PrivacyPermission)
-            return "Directly governs whether applications may access a sensitive capability (camera, microphone, location, files, contacts, etc.). " +
-                   "Broad Allow values increase the set of apps that can collect sensor or personal data.";
-        if (mo.ProductDomain == ProductDomain.Telemetry)
-            return "Controls volume and reuse of diagnostic data that may include usage patterns, device identifiers, and error reports sent to Microsoft.";
-        if (mo.ProductDomain == ProductDomain.Advertising)
-            return "The Advertising ID enables cross-application advertising correlation. Disabling it reduces that specific tracking vector; it does not disable all forms of telemetry or in-app tracking.";
-        if (mo.ProductDomain == ProductDomain.ActivityHistory)
-            return "Activity history can reconstruct recent application and document usage. Cloud upload increases exposure beyond the local device.";
-        if (mo.ProductDomain == ProductDomain.Speech)
-            return "Online speech recognition sends audio to cloud services. Local-only recognition avoids that transfer when available.";
-        if (mo.ProductDomain == ProductDomain.Edge)
-            return "Affects how Edge shares query fragments, metrics, and personalization data, and how aggressively it blocks trackers.";
-        if (mo.ProductDomain == ProductDomain.Location)
-            return "Location data reveals physical movement and habitual places. Machine-wide disable is stronger than per-app ConsentStore deny.";
-        return string.Empty;
+            return "Governs whether applications may access a sensitive capability such as camera, microphone, location, files, or contacts. " +
+                   "Wide Allow values enlarge the set of apps that can collect sensor or personal data under this account.";
+
+        return mo.ProductDomain switch
+        {
+            ProductDomain.Telemetry =>
+                "Influences the volume and reuse of diagnostic data, which can include usage patterns, device identifiers, and error reports sent to Microsoft.",
+            ProductDomain.Advertising =>
+                "The Advertising ID supports cross-application advertising correlation. Disabling it narrows that specific vector; it does not turn off Windows diagnostics, Microsoft account activity, or in-app tracking.",
+            ProductDomain.ActivityHistory =>
+                "Activity history can reconstruct recent application and document use. Cloud upload extends that history beyond the local device.",
+            ProductDomain.Speech =>
+                "Online speech recognition may send audio to cloud services. Local recognition avoids that transfer when the platform supports it.",
+            ProductDomain.Edge =>
+                "Affects how Edge handles trackers, query suggestions, metrics, and personalization data.",
+            ProductDomain.Location =>
+                "Location reveals physical movement and habitual places. A machine-wide disable is stronger than denying individual apps in ConsentStore.",
+            _ => string.Empty
+        };
     }
 
     private static string BuildSecurityImpact(ManagedObject mo)
     {
         if (mo.ProductDomain == ProductDomain.Defender)
-            return "Directly affects host malware protection. Disabling real-time monitoring or the antivirus engine significantly increases exposure unless an equivalent third-party product is active.";
+            return "Affects host malware protection. Turning off real-time monitoring or the antivirus engine increases exposure unless another product provides equivalent protection.";
+
         if (mo.ProductDomain == ProductDomain.WindowsUpdate)
-            return "Delaying or blocking updates increases the window of vulnerability to publicly known exploits. Appropriate only when an alternative patch process exists.";
+            return "Restricting updates can lengthen the window during which known vulnerabilities remain unpatched. That trade-off only makes sense when another servicing channel is intentional and working.";
+
         if (mo.ProductDomain == ProductDomain.Firewall)
-            return "Firewall rules control network exposure of local services. Misconfiguration can open attack surface or break required connectivity.";
+            return "Firewall configuration controls network exposure of local services. Errors can open attack surface or interrupt required connectivity.";
+
         if (mo.FeatureCategory == FeatureCategory.PrivacyPermission &&
             (mo.ObjectId.Contains("webcam", StringComparison.OrdinalIgnoreCase) ||
              mo.ObjectId.Contains("microphone", StringComparison.OrdinalIgnoreCase) ||
              mo.ObjectId.Contains("camera", StringComparison.OrdinalIgnoreCase)))
-            return "Unauthorized sensor access is both a privacy and a safety risk (surveillance, eavesdropping). Prefer Deny or Prompt on high-security hosts.";
+            return "Camera and microphone access can enable surveillance or eavesdropping if granted more broadly than intended. Effective policy may come from ConsentStore, AppPrivacy, or both.";
+
         return string.Empty;
     }
 
@@ -197,50 +328,71 @@ public static class SettingExplanationFactory
             return mo.KnownSideEffects;
 
         if (mo.ProductDomain is ProductDomain.ConsentStore or ProductDomain.AppPrivacy)
-            return "Denying a capability can break applications that legitimately require it (for example, video conferencing without camera/microphone access, or maps without location).";
+            return "Denying a capability can stop legitimate applications that need it—for example, video calls without camera or microphone access, or maps without location.";
+
         if (mo.ProductDomain == ProductDomain.WindowsUpdate)
-            return "Restrictive update policies can leave the device unpatched if no alternative servicing channel (WSUS, Intune, offline media) is configured.";
-        if (mo.ProductDomain == ProductDomain.Telemetry && mo.ObjectId.Contains("allowtelemetry", StringComparison.OrdinalIgnoreCase))
-            return "Very low diagnostic levels can limit some enterprise analytics, optional diagnostic features, and Microsoft support scenarios that rely on richer telemetry.";
+            return "Aggressive update restrictions can leave the device unpatched if WSUS, Intune, offline media, or another channel is not configured.";
+
+        if (mo.ProductDomain == ProductDomain.Telemetry &&
+            mo.ObjectId.Contains("allowtelemetry", StringComparison.OrdinalIgnoreCase))
+            return "Very low diagnostic levels can limit some enterprise analytics and support scenarios that rely on richer telemetry.";
+
+        if (mo.ProductDomain == ProductDomain.Advertising)
+            return "Some applications may fall back to other identifiers or first-party accounts when the Advertising ID is unavailable.";
+
         return string.Empty;
     }
 
     private static string BuildExceptions(ManagedObject mo)
     {
-        if (mo.ControlLevel == ControlLevel.AdministratorControlled)
-            return "On domain-joined or MDM-managed devices, a higher policy layer may force a value regardless of the user preference or local UI setting.";
         if (mo.ProductDomain is ProductDomain.ConsentStore)
-            return "Machine AppPrivacy Group Policy (LetApps*) can force-allow or force-deny the capability, overriding the per-user ConsentStore value.";
+            return "Machine AppPrivacy policy (LetApps*) can force-allow or force-deny a capability and override the per-user ConsentStore value.";
+
         if (mo.ProductDomain == ProductDomain.Advertising)
-            return "A Group Policy that disables Advertising ID overrides the per-user AdvertisingInfo toggle and prevents re-enablement by the user.";
+            return "A Group Policy that disables Advertising ID overrides the per-user toggle and can prevent the user from turning it back on.";
+
+        if (mo.ControlLevel == ControlLevel.AdministratorControlled)
+            return "On domain-joined or MDM-managed devices, a higher policy layer may force a value regardless of local UI or user preference.";
+
         return string.Empty;
     }
 
     private static string BuildMisconceptions(ManagedObject mo)
     {
-        if (mo.ProductDomain == ProductDomain.Advertising)
-            return "Disabling the Advertising ID does not disable Windows diagnostic data, Microsoft account activity, or tracking performed inside individual applications or websites.";
-        if (mo.ProductDomain == ProductDomain.Telemetry)
-            return "Setting a low diagnostic data level does not by itself disable all network communication with Microsoft (Windows Update, Store, licensing, and some feature endpoints remain separate).";
-        if (mo.FeatureCategory == FeatureCategory.PrivacyPermission)
-            return "A per-app ConsentStore Deny does not always equal machine-wide disable; Group Policy AppPrivacy settings and other platform components can still influence effective access.";
-        if (mo.ProductDomain == ProductDomain.Defender)
-            return "Disabling Defender is not a reliable privacy improvement; it primarily reduces malware protection. Privacy and security controls should be considered separately.";
-        return string.Empty;
+        return mo.ProductDomain switch
+        {
+            ProductDomain.Advertising =>
+                "Turning off the Advertising ID does not disable Windows diagnostic data, Microsoft account activity, website tracking, or tracking performed inside individual applications.",
+            ProductDomain.Telemetry =>
+                "A low diagnostic data level does not stop all communication with Microsoft. Windows Update, Store, licensing, and some feature endpoints remain separate channels.",
+            ProductDomain.ConsentStore or ProductDomain.AppPrivacy =>
+                "A ConsentStore Deny is not always the whole story. Machine AppPrivacy policy and other platform components can still change effective access.",
+            ProductDomain.Defender =>
+                "Disabling Defender is not a privacy improvement by itself; it primarily reduces malware protection. Privacy and security controls should be read as separate concerns.",
+            ProductDomain.ActivityHistory =>
+                "Disabling upload does not always clear local activity history; local publish and feed settings are separate controls.",
+            _ => string.Empty
+        };
     }
 
     private static string BuildUnknowns(ManagedObject mo)
     {
-        var parts = new List<string>();
-
-        parts.Add("MDM (Intune/CSP) precedence is ranked in the model but not fully collected in this prototype; effective state may be incomplete on MDM-managed devices.");
+        var parts = new List<string>
+        {
+            "MDM (Intune/CSP) precedence is modeled in layer ranking but not fully collected in this prototype, so effective state on MDM-managed devices may be incomplete."
+        };
 
         if (mo.ProductDomain == ProductDomain.Firewall)
-            parts.Add("Firewall catalog coverage is partial; many rule sets and profiles are not yet modeled.");
+            parts.Add("Firewall coverage in the catalog is partial; many profiles and rule sets are not yet modeled.");
 
         if (mo.Observation?.Resolution?.Confidence == EffectiveConfidence.Unknown ||
             mo.Observation?.Effective?.Confidence == EffectiveConfidence.Unknown)
-            parts.Add("Effective configuration confidence is Unknown for this setting on the current scan.");
+            parts.Add("On this scan, effective configuration confidence for this setting is Unknown.");
+
+        if (string.IsNullOrWhiteSpace(mo.CurrentState) ||
+            mo.CurrentState.Contains("Not observed", StringComparison.OrdinalIgnoreCase) ||
+            mo.CurrentState.Contains("Not configured", StringComparison.OrdinalIgnoreCase))
+            parts.Add("No configured value was observed for this setting in the current scan, or the collector reported it as not configured.");
 
         return string.Join(" ", parts);
     }
@@ -278,7 +430,7 @@ public static class SettingExplanationFactory
         else if (mo.ProductDomain == ProductDomain.WindowsUpdate)
         {
             list.Add("Windows Update");
-            list.Add("WSUS / update management tools");
+            list.Add("WSUS and update management tools");
         }
         else if (mo.ProductDomain == ProductDomain.Defender)
         {
