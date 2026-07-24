@@ -30,9 +30,9 @@ public partial class SettingDetailPage : UserControl
         WhatText.Text = detail.Explanation.WhatIsIt;
         WhyText.Text = detail.Explanation.WhyItMatters;
 
-        ObservedText.Text = $"Raw / current: {detail.CurrentStateDisplay ?? "Unknown"}";
-        EffectiveText.Text = $"Effective: {detail.EffectiveValueDisplay ?? "Unknown"}  [{detail.EffectiveSourceDisplay ?? "Unknown"}]";
-        ConfidenceText.Text = $"Confidence: {detail.Confidence}";
+        ObservedText.Text = detail.CurrentStateDisplay ?? "Unknown";
+        EffectiveText.Text = $"{detail.EffectiveValueDisplay ?? "Unknown"}  [{detail.EffectiveSourceDisplay ?? "Unknown"}]";
+        ConfidenceText.Text = detail.Confidence.ToString();
         ReasonText.Text = string.IsNullOrWhiteSpace(detail.ResolutionReason)
             ? "No resolution reason available on the current scan."
             : detail.ResolutionReason;
@@ -76,19 +76,15 @@ public partial class SettingDetailPage : UserControl
             RelatedList.Items.Add(new TextBlock
             {
                 Text = "No curated relationships.",
-                Foreground = (Brush)FindResource("BrushTextMuted")
+                Foreground = (Brush)FindResource("BrushTextMuted"),
+                Margin = new Thickness(10, 8, 10, 8)
             });
         }
         else
         {
             foreach (var rel in detail.Related)
             {
-                var row = new Border
-                {
-                    Style = (Style)FindResource("ListRow"),
-                    Margin = new Thickness(0, 0, 0, 4),
-                    Padding = new Thickness(10, 8, 10, 8)
-                };
+                var row = new Border { Style = (Style)FindResource("ListRow") };
                 var panel = new StackPanel();
                 panel.Children.Add(new TextBlock
                 {
@@ -102,9 +98,9 @@ public partial class SettingDetailPage : UserControl
                     {
                         Text = rel.Explanation,
                         TextWrapping = TextWrapping.Wrap,
-                        Margin = new Thickness(0, 3, 0, 0),
+                        Margin = new Thickness(0, 2, 0, 0),
                         Foreground = (Brush)FindResource("BrushTextSecondary"),
-                        FontSize = 12
+                        FontSize = 11
                     });
                 }
                 row.Child = panel;
@@ -124,12 +120,14 @@ public partial class SettingDetailPage : UserControl
         var badge = new Border
         {
             Style = (Style)FindResource(styleKey),
-            Margin = new Thickness(0, 0, 6, 0)
+            Margin = new Thickness(0, 0, 6, 0),
+            BorderBrush = (Brush)FindResource("BrushBorder"),
+            BorderThickness = new Thickness(1)
         };
         badge.Child = new TextBlock
         {
             Text = text,
-            FontSize = 11,
+            FontSize = 10,
             FontWeight = FontWeights.SemiBold,
             Foreground = (Brush)FindResource(foregroundKey)
         };

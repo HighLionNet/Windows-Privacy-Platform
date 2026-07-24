@@ -5,45 +5,36 @@
     <TextBlock Text="About" Style="{StaticResource SectionTitle}" />
     <TextBlock Style="{StaticResource SectionSubtitle}"
                Text="Windows Privacy Platform 1.0 — local read-only configuration knowledge explorer." />
+    <Border Style="{StaticResource HeaderRule}" />
 
+    <TextBlock Text="Mode" Style="{StaticResource GroupHeader}" Margin="0,0,0,4" />
     <Border Style="{StaticResource PropertyGroup}">
-      <StackPanel>
-        <TextBlock Text="Mode" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,4" />
-        <TextBlock TextWrapping="Wrap" Style="{StaticResource ValueText}"
-                   Text="Inspect (active) — discover and explain configuration without modification.&#10;Modify (future) — reserved for a controlled-change architecture. Not available in 1.0." />
-      </StackPanel>
+      <TextBlock TextWrapping="Wrap" Style="{StaticResource ValueText}"
+                 Text="Inspect (active) — discover and explain configuration without modification.&#10;Modify (future) — reserved for a controlled-change architecture. Not available in 1.0." />
     </Border>
 
+    <TextBlock Text="Safety" Style="{StaticResource GroupHeader}" Margin="0,2,0,4" />
     <Border Style="{StaticResource PropertyGroup}">
-      <StackPanel>
-        <TextBlock Text="Safety" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,4" />
-        <TextBlock TextWrapping="Wrap" Style="{StaticResource ValueText}"
-                   Text="No registry writes · No service / task / policy / firewall changes · No elevation · No product telemetry · Unknown remains first-class" />
-      </StackPanel>
+      <TextBlock TextWrapping="Wrap" Style="{StaticResource ValueText}"
+                 Text="No registry writes · No service / task / policy / firewall changes · No elevation · No product telemetry · Unknown remains first-class" />
     </Border>
 
+    <TextBlock Text="Architecture" Style="{StaticResource GroupHeader}" Margin="0,2,0,4" />
     <Border Style="{StaticResource PropertyGroup}">
-      <StackPanel>
-        <TextBlock Text="Architecture" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,4" />
-        <TextBlock TextWrapping="Wrap" Style="{StaticResource ValueText}"
-                   Text="Models → Core → Logging → KnowledgeBase → Validator → Scanner → CLI / App&#10;Presentation hosts contain no Windows configuration logic." />
-      </StackPanel>
+      <TextBlock TextWrapping="Wrap" Style="{StaticResource ValueText}"
+                 Text="Models → Core → Logging → KnowledgeBase → Validator → Scanner → CLI / App&#10;Presentation hosts contain no Windows configuration logic." />
     </Border>
 
+    <TextBlock Text="Keyboard" Style="{StaticResource GroupHeader}" Margin="0,2,0,4" />
     <Border Style="{StaticResource PropertyGroup}">
-      <StackPanel>
-        <TextBlock Text="Keyboard" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,4" />
-        <TextBlock TextWrapping="Wrap" Style="{StaticResource ValueText}"
-                   Text="F5 / Ctrl+R — rescan&#10;Ctrl+F — focus search&#10;Enter (search) — run search&#10;Esc — clear search" />
-      </StackPanel>
+      <TextBlock TextWrapping="Wrap" Style="{StaticResource ValueText}"
+                 Text="F5 / Ctrl+R — rescan&#10;Ctrl+F — focus search&#10;Enter (search) — run search&#10;Esc — clear search" />
     </Border>
 
+    <TextBlock Text="Project" Style="{StaticResource GroupHeader}" Margin="0,2,0,4" />
     <Border Style="{StaticResource PropertyGroup}">
-      <StackPanel>
-        <TextBlock Text="Project" FontWeight="SemiBold" FontSize="13" Margin="0,0,0,4" />
-        <TextBlock TextWrapping="Wrap" Style="{StaticResource ValueText}"
-                   Text="https://github.com/HighLionNet/Windows-Privacy-Platform&#10;.NET 8 / Windows 11 · Application 1.0 · Knowledge 1.0 · 2026-07-24" />
-      </StackPanel>
+      <TextBlock TextWrapping="Wrap" Style="{StaticResource ValueText}"
+                 Text="https://github.com/HighLionNet/Windows-Privacy-Platform&#10;.NET 8 / Windows 11 · Application 1.0 · Knowledge 1.0 · 2026-07-24" />
     </Border>
   </StackPanel>
 </UserControl>
