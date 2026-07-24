@@ -41,6 +41,8 @@ public partial class MainWindow : Window
         Loaded += async (_, _) =>
         {
             CollectNavButtons();
+            if (_sidebarCollapsed)
+                NavPanel.Visibility = Visibility.Collapsed;
             UpdateBreadcrumbs("Machine Overview");
             ShowWelcome();
             await RunScanAsync();
@@ -146,7 +148,7 @@ public partial class MainWindow : Window
 
         if (tag == "home")
         {
-            ContentHost.Content = new HomeView(_scan, OpenSetting, NavigateDomain);
+            ContentHost.Content = new HomeView(_scan, OpenSetting, NavigateDomain, OpenConflicts);
             UpdateBreadcrumbs("Machine Overview");
             return;
         }
@@ -190,6 +192,15 @@ public partial class MainWindow : Window
         }
 
         ShowWelcome();
+    }
+
+    private void OpenConflicts()
+    {
+        _currentNav = "conflicts";
+        var btn = _navButtons.FirstOrDefault(b => b.Tag as string == "conflicts");
+        if (btn is not null)
+            HighlightNav(btn);
+        Navigate("conflicts");
     }
 
     private void NavigateDomain(ProductDomain domain)
@@ -286,7 +297,6 @@ public partial class MainWindow : Window
         if (domain is not null)
         {
             AddSep();
-            // domain is display name; we don't have reverse tag easily, leave as text
             BreadcrumbPanel.Children.Add(new TextBlock
             {
                 Text = domain,
@@ -298,10 +308,6 @@ public partial class MainWindow : Window
         {
             AddSep();
             AddLink(current, null);
-        }
-        else if (string.Equals(current, "Machine Overview", StringComparison.Ordinal))
-        {
-            // already Home
         }
     }
 
@@ -403,14 +409,7 @@ public partial class MainWindow : Window
                 WindowStartupLocation = WindowStartupLocation.Manual;
             }
             if (lines.Length >= 5 && bool.TryParse(lines[4], out var collapsed))
-            {
                 _sidebarCollapsed = collapsed;
-                if (collapsed)
-                {
-                    SidebarColumn.Width = new GridLength(48);
-                    // NavPanel visibility set after load
-                }
-            }
         }
         catch
         {

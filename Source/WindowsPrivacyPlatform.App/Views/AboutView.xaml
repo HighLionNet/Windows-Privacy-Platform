@@ -4,7 +4,15 @@
   <StackPanel>
     <TextBlock Text="About Windows Privacy Platform" Style="{StaticResource SectionTitle}" />
     <TextBlock Style="{StaticResource SectionSubtitle}"
-               Text="Version 1.0 — read-only Windows privacy and security knowledge explorer." />
+               Text="Version 1.0 — professional read-only Windows privacy and security knowledge explorer." />
+
+    <Border Style="{StaticResource CardAccent}">
+      <StackPanel>
+        <TextBlock Text="Mode" FontWeight="SemiBold" Margin="0,0,0,6" />
+        <TextBlock TextWrapping="Wrap" Style="{StaticResource ValueText}"
+                   Text="Inspect (current) — discover, explain, and navigate configuration without modification.&#10;Modify (future) — reserved for a controlled-change architecture that does not exist in 1.0." />
+      </StackPanel>
+    </Border>
 
     <Border Style="{StaticResource Card}">
       <StackPanel>
@@ -34,7 +42,7 @@
       <StackPanel>
         <TextBlock Text="Keyboard shortcuts" FontWeight="SemiBold" Margin="0,0,0,8" />
         <TextBlock TextWrapping="Wrap" Style="{StaticResource ValueText}"
-                   Text="F5 or Ctrl+R — rescan&#10;Ctrl+F — focus search&#10;Enter (in search) — run search&#10;Esc — clear search focus" />
+                   Text="F5 or Ctrl+R — rescan&#10;Ctrl+F — focus search&#10;Enter (in search) — run search&#10;Esc — clear search focus / text" />
       </StackPanel>
     </Border>
 
@@ -42,7 +50,7 @@
       <StackPanel>
         <TextBlock Text="Project" FontWeight="SemiBold" Margin="0,0,0,8" />
         <TextBlock TextWrapping="Wrap" Style="{StaticResource ValueText}"
-                   Text="Repository: https://github.com/HighLionNet/Windows-Privacy-Platform&#10;Target: .NET 8 / Windows 11&#10;Application version: 1.0&#10;Knowledge catalog: 1.0" />
+                   Text="Repository: https://github.com/HighLionNet/Windows-Privacy-Platform&#10;Target: .NET 8 / Windows 11&#10;Application version: 1.0&#10;Knowledge catalog: 1.0&#10;Build: 2026-07-24" />
       </StackPanel>
     </Border>
   </StackPanel>

@@ -10,7 +10,7 @@ namespace WindowsPrivacyPlatform.App.Views;
 
 public partial class HomeView : UserControl
 {
-    public HomeView(ScanService scan, Action<string> openSetting, Action<ProductDomain> navigateDomain)
+    public HomeView(ScanService scan, Action<string> openSetting, Action<ProductDomain> navigateDomain, Action? openConflicts = null)
     {
         InitializeComponent();
         var o = scan.Overview;
@@ -64,12 +64,10 @@ public partial class HomeView : UserControl
             ConflictsText.Text = $"{conflictCount} setting(s) report a layer conflict. Review the Conflicts page for educational cards.";
             ConflictsCard.Style = (Style)FindResource("CardConflict");
             OpenConflictsBtn.Visibility = Visibility.Visible;
-            OpenConflictsBtn.Click += (_, _) => navigateDomain(ProductDomain.ConsentStore); // placeholder; parent handles via nav
-            // Prefer direct nav to conflicts via parent callback if available; use domain for now is imperfect.
-            // Better: raise via a dedicated action. For v1.0 we surface the count and rely on sidebar.
+            if (openConflicts is not null)
+                OpenConflictsBtn.Click += (_, _) => openConflicts();
         }
 
-        // Quick navigation tiles
         void AddQuick(string label, ProductDomain domain)
         {
             var btn = new Button
