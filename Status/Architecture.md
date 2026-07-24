@@ -1,7 +1,7 @@
 # Windows Privacy Platform
 ## Architecture
 
-**Applies to:** Prototype **v0.8**  
+**Applies to:** Prototype **v0.9**  
 **Last updated:** 2026-07-24  
 **Document role:** Engineering architecture reference. Do not redesign the seven-project layout without explicit human approval.
 
@@ -11,6 +11,7 @@
 
 - Keep Models free of OS I/O and side effects.  
 - Isolate all discovery in Scanner collectors (fail-soft, read-only).  
+- **Catalog / ValueSemantics own Windows meaning**; resolvers never hardcode raw-value maps.  
 - Centralize layer precedence in **one** module: `PolicyPrecedenceResolver`.  
 - Keep CLI/TUI as presentation hosts only.  
 - Prefer composition and explicit tables over magic inference.  
@@ -58,44 +59,30 @@ External packages (minimal):
 
 Pure data and pure composition:
 
-- `ManagedObject` / `ManagedObjectCatalog` — curated knowledge definitions  
-- `InventorySnapshot` + domain sections (`IdentityInventory`, `NetworkingInventory`, …)  
-- `MachineOverview` — device context for Home / landing (not a settings tree)  
-- `ConfigurationObservation` / `ConfigurationResolution` / `SettingObservation`  
+- `ManagedObject` / `ManagedObjectCatalog` — curated knowledge definitions + **ValueSemantics**  
+- `ValueMeaning` / `ValueSemanticsInterpreter` — raw → canonical → display; never guess  
+- `InventorySnapshot` + domain sections  
+- `MachineOverview`  
+- `ConfigurationObservation` / `ConfigurationResolution` (incl. ConfidenceReason, SemanticValue)  
 - `SettingExplanation` + `SettingExplanationFactory`  
-- `SettingsQuery` — UI-independent query API  
-- `NavigationBuilder` / `NavigationNode` / `SettingDetailView`  
+- `SettingsQuery` / `NavigationBuilder`  
 
 **Forbidden in Models:** registry access, process starts, service control, writes.
 
-### Core
+### Core / Logging / KnowledgeBase / Validator
 
-Shared primitives (`OperationResult`, `PathConstants`, `PlatformException`).
-
-### Logging
-
-Audit logging interface and implementation. No business decisions.
-
-### KnowledgeBase
-
-In-memory repository of catalog entries after bind. Conceptual home of curated knowledge assets. Today: simple store; future: value semantics, richer evidence metadata.
-
-### Validator
-
-Structural completeness only (`SchemaValidator`). Validation is **not** a privacy/security score.
+Unchanged roles: primitives; audit log; in-memory bound catalog store; structural schema checks only.
 
 ### Scanner
 
-- `IInventoryCollector` implementations  
-- `InventoryScanner` orchestration  
-- `InventoryStateBinder` + domain binders (`PrivacyBinder`, `PolicyBinder`, Firewall mapping)  
-- `RelationshipBinder` (curated edges)  
-- `PolicyPrecedenceResolver` — **only** place for effective-layer rules  
+- Collectors: facts + provenance only  
+- Binders: attach layers and evidence fields  
+- `RelationshipBinder`: curated edges; calls resolver with **ManagedObject** definitions  
+- `PolicyPrecedenceResolver`: layer rank + apply **catalog canonical** meanings; **no raw-code semantic tables**  
 
 ### CLI
 
-- Flag parsing, pipeline wiring, report writers  
-- `TuiHost` — keyboard explorer; presentation only  
+Presentation only (`Program.cs`, `TuiHost`).
 
 ---
 
@@ -106,135 +93,98 @@ Discover → Model → Validate → Bind → Resolve → Explain → Navigate �
 ```
 
 1. Collectors fill `InventorySnapshot`.  
-2. Catalog definitions load from `ManagedObjectCatalog`.  
-3. Binders attach live values + `ConfigurationLayer` + provenance fields.  
-4. RelationshipBinder wires edges and calls PolicyPrecedenceResolver for known pairs.  
+2. Catalog loads with ValueSemantics maps.  
+3. Binders attach live values + layer + provenance.  
+4. RelationshipBinder + PolicyPrecedenceResolver (interpreter + educational reasons).  
 5. KnowledgeBase stores bound objects.  
-6. SchemaValidator runs structural checks.  
-7. SettingsQuery / NavigationBuilder / MachineOverview feed presentation.  
-8. CLI report or TUI renders; non-TUI prints safety confirmation.  
+6. SchemaValidator structural checks.  
+7. SettingsQuery / NavigationBuilder / MachineOverview / SettingExplanation feed presentation.  
+8. CLI or TUI; non-TUI safety confirmation.  
 
 ---
 
-## 5. Configuration layers and precedence
+## 5. Value semantics (v0.9)
 
-Conceptual strength (documentation order):
+| Rule | Detail |
+|------|--------|
+| Owner | Catalog `ManagedObject.ValueSemantics` + `ValueSemanticsInterpreter` |
+| Input | Raw observed token |
+| Output | Canonical + DisplayLabel + Description + optional edition/version notes |
+| Missing map | Return null / Unknown — **never invent** |
+| Resolver | May match on canonical names (e.g. ForceAllow) **after** interpretation; must not map `"1"` → meaning locally |
+
+ConsentStore string tokens (Allow/Deny/Prompt) may be normalized syntactically because those strings are the registry values themselves.
+
+---
+
+## 6. Configuration layers and precedence
 
 ```
 SecurityBaseline > MDMPolicy > MachinePolicy > AlternatePolicyStore
   > ApplicationPreference > UserPreference > Unknown
 ```
 
-Implemented resolution helpers:
+Helpers: `ResolveConsentVsAppPrivacy`, `ResolveAlternateMachinePolicyPaths`, `ResolveByLayerRank`.
 
-- `ResolveConsentVsAppPrivacy`  
-- `ResolveAlternateMachinePolicyPaths`  
-- `ResolveByLayerRank`  
-
-Rules:
-
-- Never silently guess.  
-- Always emit human-readable `ResolutionReason`.  
-- Conflicts are explicit (`HasConflict`).  
-- Ties at same rank → Unknown confidence, not a random winner.  
+Rules: never silently guess; always `ResolutionReason` + `ConfidenceReason`; conflicts explicit; same-rank ties → Unknown.
 
 ---
 
-## 6. Evidence / provenance (v0.8 foundation)
+## 7. Evidence / provenance
 
-`ConfigurationObservation` carries:
+`ConfigurationObservation`: Layer, RawValue, SourcePath, Hive, ObservedAt, ConfidenceScore, CollectorName, EvidenceSource, AlternativeSources, CollectionNotes, EffectiveConfidence.
 
-| Field | Intent |
-|-------|--------|
-| Layer | Configuration layer classification |
-| RawValue | Observed token (display text) |
-| SourcePath / Hive | Location evidence |
-| ObservedAt | Timestamp |
-| ConfidenceScore | Numeric 0–100 style signal |
-| CollectorName | Which collector produced the row |
-| EvidenceSource | Human-readable source label |
-| AlternativeSources | Cross-check list |
-| CollectionNotes | Limitations / conflicts / method notes |
-| EffectiveConfidence | High / Medium / Low / Unknown |
-
-Collectors must not invent provenance. Missing sources → Unknown + notes.
+Binders (Privacy, Policy, Firewall) populate provenance honestly.
 
 ---
 
-## 7. Machine Overview vs configuration exploration
+## 8. Machine Overview vs configuration exploration
 
-**Machine Overview** answers “What is this computer?” using best-effort identity and platform service visibility.
-
-**Configuration exploration** answers “What settings exist and who controls them?” via domain → category → setting → explanation card.
-
-Do not dump hardware fields into setting cards or relationship graphs as if they were GPO settings.
+Unchanged: Overview is device context; configuration trees are settings. Do not mix.
 
 ---
 
-## 8. Catalog and KnowledgeBase philosophy
+## 9. Catalog philosophy
 
-- Catalog-first domain expansion: human name, domain, rationale, impact tag, discovery path, relationships, then collector.  
-- Quality over quantity; no bulk ADMX import as a near-term path.  
-- Explanations written as neutral technical documentation (Microsoft-doc + educator tone).  
-- Separate **Observed** facts from **Interpretation**.  
-- Never “you should disable this” as product voice.  
-
----
-
-## 9. Relationship model
-
-- `SettingRelationship` + `RelationshipKind`  
-- Curated pairs in `RelationshipBinder`  
-- Presentation maps kinds to human phrases (“Controlled by”, “Potential conflicts”)  
-- No automatic ML inference in this phase  
+- Catalog-first: name, domain, explanation, **ValueSemantics**, WhenIgnored, relationships, then collector.  
+- Quality over quantity.  
+- Observed facts separate from interpretation.  
+- Neutral technical documentation tone.  
 
 ---
 
-## 10. UI contract
+## 10. Relationship model
 
-Any future GUI **must** consume:
-
-- `SettingsQuery`  
-- `NavigationBuilder` / `SettingDetailView`  
-- `MachineOverview`  
-- `SettingExplanation`  
-
-Do not invent a parallel domain model inside a UI project. Do not put registry reads in the UI.
-
-TUI (`TuiHost`) is the current proof of that contract.
+`SettingRelationship` + expanded `RelationshipKind` (Overrides, IgnoredWhen, AlternativeStorage, UsuallyConfiguredWith, …). Curated in RelationshipBinder. No ML inference.
 
 ---
 
-## 11. Safety architecture
+## 11. UI contract
 
-| Constraint | Mechanism |
-|------------|-----------|
-| No writes | Collectors open registry read-only; no SetValue / service change APIs |
-| No elevation | No manifest requireAdministrator; no UAC helpers |
-| Fail-soft | Collector exceptions caught; pipeline continues |
-| Untrusted inventory | Display sanitize; never execute discovered strings |
-| Fixed shell args | CapabilityCollector uses constant command strings |
+Future GUI must consume SettingsQuery, NavigationBuilder, MachineOverview, SettingExplanation, and resolution SemanticValue / ConfidenceReason fields. No registry in UI.
 
 ---
 
-## 12. Extension checklist (before PR)
+## 12. Safety architecture
+
+No writes; no elevation; fail-soft collectors; untrusted inventory never executed; fixed shell args only.
+
+---
+
+## 13. Extension checklist (before PR)
 
 - [ ] Read-only?  
 - [ ] No elevation?  
 - [ ] Models free of OS I/O?  
+- [ ] New meanings in catalog ValueSemantics (not resolver switches)?  
 - [ ] Precedence only in PolicyPrecedenceResolver?  
 - [ ] UI free of business decisions?  
 - [ ] Unknown preserved?  
-- [ ] Catalog explanation quality acceptable?  
-- [ ] Provenance honest (no invented sources)?  
-- [ ] Solution builds Release on Windows?  
+- [ ] Provenance honest?  
+- [ ] Release build on Windows?  
 
 ---
 
-## 13. Explicitly out of architecture scope (current phase)
+## 14. Explicitly out of scope (current phase)
 
-- Remediation / write path in the same pipeline  
-- Scoring engines  
-- Full firewall rule control plane  
-- Bulk ADMX clone  
-- Silent system modification “for testing”  
+Remediation in the same pipeline; scoring; full firewall rule control; bulk ADMX; silent system modification.
