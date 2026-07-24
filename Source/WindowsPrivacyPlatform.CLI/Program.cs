@@ -29,11 +29,11 @@ namespace WindowsPrivacyPlatform.CLI
 
             if (!tuiMode)
             {
-                Console.WriteLine("Windows Privacy Platform — Prototype v0.7");
+                Console.WriteLine("Windows Privacy Platform — Prototype v0.8");
                 Console.WriteLine("Read-only discovery, explanation, and effective-layer understanding");
                 Console.WriteLine(fullReport
                     ? "Report mode: full categorized detail"
-                    : "Report mode: observation summary + high-impact watch list + conflict cards");
+                    : "Report mode: machine overview + observation summary + high-impact watch list + conflict cards");
                 Console.WriteLine();
             }
 
@@ -50,7 +50,8 @@ namespace WindowsPrivacyPlatform.CLI
                 new ServiceCollector(),
                 new ScheduledTaskCollector(),
                 new PrivacyCollector(),
-                new PolicyCollector()
+                new PolicyCollector(),
+                new FirewallCollector()
             };
 
             var scanner = new InventoryScanner(logger, collectors);
@@ -73,7 +74,7 @@ namespace WindowsPrivacyPlatform.CLI
                         $"Capabilities : {snapshot.InstalledCapabilities.Count} | Packages : {snapshot.InstalledPackages.Count} | " +
                         $"Services : {snapshot.Services.Count} | Tasks : {snapshot.ScheduledTasks.Count} | " +
                         $"Privacy settings : {snapshot.PrivacySettings.Count} | Policy probes : {snapshot.PolicySettings.Count} " +
-                        $"(configured: {configuredPolicies})");
+                        $"(configured: {configuredPolicies}) | Firewall profiles : {snapshot.Networking.FirewallProfiles.Count}");
 
                     if (snapshot.InstalledCapabilities.Count == 0)
                     {
@@ -132,13 +133,15 @@ namespace WindowsPrivacyPlatform.CLI
                 var summary = InventoryStateBinder.BuildSummary(snapshot, catalog, passed, failed);
                 var query = new SettingsQuery(catalog);
                 var nav = NavigationBuilder.BuildDomainTree(catalog);
+                var overview = MachineOverview.FromSnapshot(snapshot, catalog.Count);
 
                 if (tuiMode)
                 {
-                    TuiHost.Run(catalog, query);
+                    TuiHost.Run(catalog, query, overview);
                 }
                 else
                 {
+                    WriteMachineOverview(overview);
                     WriteObservationSummary(summary, query, nav);
 
                     if (fullReport)
@@ -153,7 +156,7 @@ namespace WindowsPrivacyPlatform.CLI
             else if (tuiMode)
             {
                 var query = new SettingsQuery(catalog);
-                TuiHost.Run(catalog, query);
+                TuiHost.Run(catalog, query, null);
             }
 
             logger.Info("CLI", tuiMode ? "TUI session complete" : "Pipeline complete");
@@ -161,21 +164,60 @@ namespace WindowsPrivacyPlatform.CLI
             if (!tuiMode)
             {
                 Console.WriteLine();
-                Console.WriteLine("SAFETY CONFIRMATION: No Windows registry, services, tasks, packages, or policies were modified.");
+                Console.WriteLine("SAFETY CONFIRMATION: No Windows registry, services, tasks, packages, policies, or firewall rules were modified.");
                 Console.WriteLine("No elevation or UAC prompt occurred.");
                 Console.WriteLine("This build remains strictly read-only.");
             }
         }
 
+        private static void WriteMachineOverview(MachineOverview o)
+        {
+            Console.WriteLine();
+            Console.WriteLine("=== Machine Overview (device context) ===");
+            Console.WriteLine("Observed platform information — not a security score.");
+            Console.WriteLine();
+            Console.WriteLine($"  OS              : {Display(o.WindowsVersion)} | {Display(o.WindowsEdition)} | Build {o.BuildNumber}");
+            Console.WriteLine($"  Architecture    : {Display(o.Architecture)}");
+            Console.WriteLine($"  Manufacturer    : {Display(o.DeviceManufacturer)}");
+            Console.WriteLine($"  Model           : {Display(o.DeviceModel)}");
+            Console.WriteLine($"  Processor       : {Display(o.Processor)}");
+            Console.WriteLine($"  Memory (MiB)    : {(o.TotalPhysicalMemoryMiB > 0 ? o.TotalPhysicalMemoryMiB.ToString() : "Unknown")}");
+            Console.WriteLine($"  Secure Boot     : {Display(o.SecureBootState)}");
+            Console.WriteLine($"  TPM             : {Display(o.TpmPresent)} / {Display(o.TpmVersion)}");
+            Console.WriteLine($"  BitLocker       : {Display(o.BitLockerProtectionStatus)}");
+            Console.WriteLine($"  Domain          : {Display(o.DomainMembership)}");
+            Console.WriteLine($"  Entra / Azure AD: {Display(o.AzureAdJoined)}");
+            Console.WriteLine($"  PowerShell      : {Display(o.PowerShellVersion)}");
+            Console.WriteLine($"  .NET runtime    : {Display(o.DotNetRuntimeVersion)}");
+            Console.WriteLine($"  Firewall svc    : {Display(o.FirewallServiceState)}");
+            Console.WriteLine($"  Firewall profiles: {Display(o.FirewallProfilesSummary)}");
+            Console.WriteLine($"  Defender svc    : {Display(o.DefenderServiceState)}");
+            Console.WriteLine($"  Last scan (UTC) : {o.LastScanUtc:yyyy-MM-dd HH:mm:ss}");
+            Console.WriteLine($"  Catalog / KB    : {o.CatalogVersion} / {o.KnowledgeBaseVersion}");
+            Console.WriteLine($"  Identity conf.  : {o.IdentityConfidence}");
+            if (!string.IsNullOrWhiteSpace(o.IdentityCollectionNotes))
+            {
+                Console.WriteLine();
+                Console.WriteLine("  Collection notes:");
+                Console.WriteLine($"    {o.IdentityCollectionNotes}");
+            }
+            Console.WriteLine();
+        }
+
+        private static string Display(string? value) =>
+            string.IsNullOrWhiteSpace(value) || value.Equals("Unknown", StringComparison.OrdinalIgnoreCase)
+                ? "Unknown"
+                : value;
+
         private static void WriteHelp()
         {
-            Console.WriteLine("Windows Privacy Platform — Prototype v0.7");
+            Console.WriteLine("Windows Privacy Platform — Prototype v0.8");
             Console.WriteLine();
             Console.WriteLine("Usage:");
             Console.WriteLine("  dotnet run -c Release -- [options]");
             Console.WriteLine();
             Console.WriteLine("Options:");
-            Console.WriteLine("  (default)   Observation summary + high-impact watch list + conflict cards");
+            Console.WriteLine("  (default)   Machine overview + observation summary + high-impact watch list + conflict cards");
             Console.WriteLine("  --full      Full categorized catalog report");
             Console.WriteLine("  --tui       Interactive read-only terminal explorer");
             Console.WriteLine("  --help, -h  Show this help");
