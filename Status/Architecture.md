@@ -1,7 +1,7 @@
 # Windows Privacy Platform
 ## Architecture
 
-**Applies to:** Prototype **v0.9**  
+**Applies to:** Prototype **v0.9.5**  
 **Last updated:** 2026-07-24  
 **Document role:** Engineering architecture reference. Do not redesign the seven-project layout without explicit human approval.
 
@@ -71,13 +71,13 @@ Pure data and pure composition:
 
 ### Core / Logging / KnowledgeBase / Validator
 
-Unchanged roles: primitives; audit log; in-memory bound catalog store; structural schema checks only.
+Primitives; audit log; in-memory bound catalog store; structural schema checks + batch unique-ObjectId guard.
 
 ### Scanner
 
 - Collectors: facts + provenance only  
 - Binders: attach layers and evidence fields  
-- `RelationshipBinder`: curated edges; calls resolver with **ManagedObject** definitions  
+- `RelationshipBinder`: curated edges (full AppPrivacy–ConsentStore set); calls resolver with **ManagedObject** definitions  
 - `PolicyPrecedenceResolver`: layer rank + apply **catalog canonical** meanings; **no raw-code semantic tables**  
 
 ### CLI
@@ -97,13 +97,13 @@ Discover → Model → Validate → Bind → Resolve → Explain → Navigate �
 3. Binders attach live values + layer + provenance.  
 4. RelationshipBinder + PolicyPrecedenceResolver (interpreter + educational reasons).  
 5. KnowledgeBase stores bound objects.  
-6. SchemaValidator structural checks.  
+6. SchemaValidator structural checks + unique ID.  
 7. SettingsQuery / NavigationBuilder / MachineOverview / SettingExplanation feed presentation.  
 8. CLI or TUI; non-TUI safety confirmation.  
 
 ---
 
-## 5. Value semantics (v0.9)
+## 5. Value semantics (v0.9+)
 
 | Rule | Detail |
 |------|--------|
@@ -114,6 +114,8 @@ Discover → Model → Validate → Bind → Resolve → Explain → Navigate �
 | Resolver | May match on canonical names (e.g. ForceAllow) **after** interpretation; must not map `"1"` → meaning locally |
 
 ConsentStore string tokens (Allow/Deny/Prompt) may be normalized syntactically because those strings are the registry values themselves.
+
+v0.9.5 expands maps for AUOptions, DODownloadMode, MAPS, sample consent, Edge tracking, and binary polarity policies.
 
 ---
 
