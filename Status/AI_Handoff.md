@@ -1,7 +1,7 @@
 # Windows Privacy Platform
 ## AI / Engineer Handoff Document
 
-**Applies to:** **Version 1.0** (final management-console presentation pass complete)  
+**Applies to:** **Version 1.0** (final management-console presentation complete)  
 **Last updated:** 2026-07-24  
 
 **Read this file, then `Status/Current_Status.md`, `Status/Architecture.md`, `Status/Roadmap.md`, and `Status/History/v1.0.md` before changing code.**
@@ -20,7 +20,7 @@ Presentation standard: first-party Windows management console information archit
 
 ## 2. Mandatory rules
 
-1. Solution must compile (0 errors).  
+1. Solution must compile (**0 errors, 0 warnings** preferred).  
 2. Never redesign the project layout without explicit approval.  
 3. **No write paths, no elevation, no remediation.**  
 4. Models free of OS I/O.  
@@ -56,9 +56,13 @@ App is a WPF presentation host. `ScanService` composes the same pipeline as CLI.
 
 ## 5. Presentation notes (1.0 final)
 
+- Classic **File / View / Tools / Help** menu bar is part of the shell.  
 - Content host is **full width** (no MaxWidth).  
-- Sidebar uses left accent selection + group section rules.  
-- Lists use bordered containers, header rows, bottom-border density.  
+- Separators use dark rules (`BrushBorderStrong` / `#6D6D6D`) — keep them visible.  
+- Sidebar: left accent selection + group section rules.  
+- Breadcrumbs: Home and domain segments must remain navigable.  
+- Conflicts view is **single-column** (do not restore a cramped right-hand reason column).  
+- Domain lists use proportional columns and subcategory group headers.  
 - Detail page uses property-sheet label/value layout.  
 - Do not reintroduce card stacks or constrained reading width without explicit product decision.  
 
@@ -72,6 +76,8 @@ dotnet build -c Release
 cd WindowsPrivacyPlatform.App
 dotnet run -c Release
 ```
+
+Expected: 0 Warning(s), 0 Error(s).
 
 ---
 

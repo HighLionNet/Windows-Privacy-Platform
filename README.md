@@ -26,18 +26,21 @@ Presentation hosts (App, CLI, TUI) never contain Windows configuration logic. Ba
 
 ## Version 1.0
 
-- Professional **WPF** desktop application designed as a Windows management console (Event Viewer / Device Manager family)  
-- Hierarchical navigation with group separators and left-accent selection  
-- **Full-width** content workspace  
-- Section / header rules and bordered list containers for visual structure  
-- Machine Overview as operational sections (identity · security · scan · evidence)  
-- Domain / Conflicts / Search / Knowledge pages use denser list rows with column headers  
-- Setting Detail as property-sheet surface (label/value primary state; layers and long guidance behind expanders)  
-- Application mode control: **Inspect** (active) / **Modify** (scaffold, disabled, future)  
-- Collapsible sidebar, remembered window size/position and sidebar state  
+Desktop application designed as a Windows management console (Event Viewer / Device Manager / Services family):
+
+- Classic **File / View / Tools / Help** menu bar  
+- WPP brand tile, mode control (Inspect active / Modify disabled), search, Scan  
+- Hierarchical sidebar with left-accent selection and visible group rules  
+- **Full-width** content workspace (no artificial MaxWidth)  
+- Clickable breadcrumbs (Home and domain segments navigate)  
+- Machine Overview: operational sections (Attention · Identity · Security · Scan · evidence)  
+- Domain lists: column headers, subcategory groups, proportional columns, status badges  
+- Conflicts: single-column readable rows (title, path, effective value, reason)  
+- Setting Detail: property-sheet label/value primary state; expanders for layers and long guidance  
+- Knowledge Explorer and Search use the same dense list pattern  
+- Window geometry and sidebar collapse remembered under LocalApplicationData  
 - Keyboard: F5 / Ctrl+R scan, Ctrl+F search, Esc clears search  
-- Async read-only scan  
-- Same knowledge engine as v0.9.5 underneath  
+- Async read-only scan; same knowledge engine as v0.9.5  
 - CLI and TUI retained  
 
 ---
@@ -50,6 +53,8 @@ Requirements: .NET 8 SDK, Windows.
 cd Source
 dotnet build -c Release
 ```
+
+Expected: **0 Warning(s), 0 Error(s)**.
 
 ---
 
