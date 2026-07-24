@@ -1,7 +1,7 @@
 # Windows Privacy Platform
 ## AI / Engineer Handoff Document
 
-**Applies to:** **Version 1.0** (live)  
+**Applies to:** **Version 1.0** (final polish, live)  
 **Last updated:** 2026-07-24  
 
 **Read this file, then `Status/Current_Status.md`, `Status/Architecture.md`, `Status/Roadmap.md`, and `Status/History/v1.0.md` before changing code.**
@@ -38,7 +38,7 @@ Models → Core → Logging → KnowledgeBase → Validator → Scanner → CLI
                                                               ↘ App
 ```
 
-App is a WPF presentation host. `ScanService` composes the same pipeline as CLI.
+App is a WPF presentation host. `ScanService` composes the same pipeline as CLI. Backend is frozen for the 1.0 line.
 
 ---
 
@@ -47,8 +47,8 @@ App is a WPF presentation host. `ScanService` composes the same pipeline as CLI.
 | Version | Role |
 |---------|------|
 | v0.9.5 | Knowledge maturity |
-| **1.0** | Desktop GUI on frozen backend — see `History/v1.0.md` |
-| Next | Themes, richer semantics surfaces, domain depth |
+| **1.0** | Desktop GUI + final UX polish on frozen backend — see `History/v1.0.md` |
+| Next (v1.5) | Themes, export/snapshots design, deeper domain knowledge, relationship visualization |
 
 ---
 
