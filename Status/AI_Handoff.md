@@ -1,7 +1,7 @@
 # Windows Privacy Platform
 ## AI / Engineer Handoff Document
 
-**Applies to:** **Version 1.0** (final presentation polish, complete)  
+**Applies to:** **Version 1.0** (final presentation redesign complete)  
 **Last updated:** 2026-07-24  
 
 **Read this file, then `Status/Current_Status.md`, `Status/Architecture.md`, `Status/Roadmap.md`, and `Status/History/v1.0.md` before changing code.**
@@ -13,6 +13,8 @@
 Help humans **understand** Windows privacy and security configuration through transparent, trustworthy, **read-only** explanations and evidence.
 
 **Understand first. Change later.**
+
+Presentation standard: first-party Windows management console information architecture.
 
 ---
 
@@ -47,7 +49,7 @@ App is a WPF presentation host. `ScanService` composes the same pipeline as CLI.
 | Version | Role |
 |---------|------|
 | v0.9.5 | Knowledge maturity |
-| **1.0** | Desktop GUI + final UX polish on frozen backend — see `History/v1.0.md` |
+| **1.0** | Desktop GUI + final management-console presentation on frozen backend — see `History/v1.0.md` |
 | Next (v1.5) | Themes, export/snapshots design, deeper domain knowledge, relationship visualization |
 
 ---

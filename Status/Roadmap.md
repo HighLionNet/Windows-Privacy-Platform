@@ -2,7 +2,7 @@
 ## Roadmap
 
 **Last updated:** 2026-07-24  
-**Current completed milestone:** **Version 1.0** (final presentation polish complete)
+**Current completed milestone:** **Version 1.0** (final presentation redesign complete)
 
 ---
 
@@ -19,7 +19,7 @@
 
 - v0.9 — ValueSemantics foundation  
 - v0.9.5 — Knowledge maturity  
-- **v1.0** — Professional WPF desktop host + UX polish on frozen backend (see `History/v1.0.md`)  
+- **v1.0** — Professional WPF desktop host + management-console presentation on frozen backend (see `History/v1.0.md`)  
 
 ---
 

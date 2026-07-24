@@ -1,10 +1,10 @@
 # Windows Privacy Platform
-## Current Status — Version 1.0 (final presentation polish)
+## Current Status — Version 1.0 (final)
 
 **Document role:** Authoritative live snapshot.
 
 **Last updated:** 2026-07-24  
-**Current development version:** **1.0** (production-ready presentation polish complete)  
+**Current development version:** **1.0** (final presentation redesign complete)  
 **Previous archived milestone:** Prototype v0.9.5  
 **Runtime target:** Windows 11; Scanner / CLI / App target `net8.0-windows`  
 **Safety posture:** Strictly read-only. No writes. No elevation. No remediation. No scores.
@@ -16,6 +16,8 @@
 Windows Privacy Platform is a **local, read-only Windows privacy and security knowledge explorer** with a professional desktop application and optional CLI/TUI.
 
 Philosophy: **Understand first. Change later.**
+
+Presentation goal for 1.0 final: feel like a first-party Windows management console (Device Manager / Event Viewer / GPO information architecture), not a card-heavy modern dashboard.
 
 ---
 
@@ -43,17 +45,16 @@ Backend architecture remains frozen.
 
 ---
 
-## 3. Version 1.0 capabilities (final polish)
+## 3. Version 1.0 capabilities (final)
 
 - Professional WPF shell with grouped navigation, breadcrumbs, collapsible sidebar  
 - Application mode: Inspect (active) / Modify (disabled scaffold + explanation)  
-- Machine Overview dashboard: primary identity cards, attention row for conflicts, expandable technical notes, quick navigation tiles  
-- Domain pages with conflict-accented cards and Conflict / Unknown badges  
-- Setting Detail: primary state first; observed layers and long guidance behind Expanders  
-- Knowledge Explorer, Conflicts, Search  
+- Machine Overview: mission-control hierarchy (attention first when conflicts exist, identity, posture, scan meta, technical evidence collapsed)  
+- Domain / Conflicts / Search / Knowledge: denser list rows with status badges  
+- Setting Detail: property-sheet sections; primary state first; layers and long guidance behind Expanders  
 - Window size / position / sidebar collapse remembered under LocalApplicationData  
 - Keyboard: F5 / Ctrl+R scan, Ctrl+F search, Esc clears search  
-- Richer status bar (catalog, conflicts, validation)  
+- Status bar uses operational language (Objects, Conflicts, Validation, Inspect · Read-only)  
 - Async scan via ScanService  
 - Full v0.9.5 knowledge engine underneath  
 - CLI and TUI retained  
