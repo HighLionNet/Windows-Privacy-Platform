@@ -2,7 +2,7 @@
 ## Complete Technical Documentation
 
 **Document Status:** Living  
-**Current Applies To:** Prototype v0.6 (verified)  
+**Current Applies To:** Prototype v0.6 + Step A (ProductDomain) — verified  
 **Last Updated:** 2026-07-24
 
 For the exhaustive next-work roadmap, pipeline insertion points, and owner constraints, **AI_Handoff.md is authoritative**.
@@ -24,27 +24,41 @@ Discover → Model → Validate → Report → Relationships (incl. effective la
 
 ---
 
-# 3. Current capabilities (v0.6 verified)
+# 3. Version history (verbose)
+
+| Version | Summary |
+|---------|---------|
+| v0.1 | Seven-project solution skeleton, basic models |
+| v0.2 | Early identity and package discovery |
+| v0.3 | Services and scheduled-task inventory |
+| v0.4 | Live multi-collector discovery skeleton → InventorySnapshot |
+| v0.5 | PolicyCollector, ManagedObjectCatalog with descriptions/rationales, full categorized report (archived) |
+| v0.6 | InventoryStateBinder, SchemaValidator batch, ObservationSummary, concise default report, high-risk watch list, safety confirmation — hardware verified on Win11 Pro 25H2 |
+| Step A | ProductDomain taxonomy on every catalog entry; domain-grouped CLI reports — build and runtime verified |
+
+---
+
+# 4. Current capabilities (v0.6 + Step A verified)
 
 - Identity, AppX packages, services, scheduled tasks  
 - Privacy ConsentStore + related HKCU preferences  
 - Curated policy/GPO-style registry probes (missing → Not configured)  
-- ManagedObject catalog with description, rationale, risk tags  
+- ManagedObject catalog with description, rationale, risk tags, **and ProductDomain**  
 - Bind live values to catalog; batch structural validation  
-- Observation summary + high-risk watch list; `--full` dump  
+- Observation summary + high-risk watch list **grouped by domain**; `--full` dump under domain headers  
 - Strictly read-only, non-interactive CLI  
 
 Not implemented: firewall collector, effective GPO-vs-UI resolution, full ADMX set, security score, baselines, writes, GUI.
 
 ---
 
-# 4. Repository
+# 5. Repository
 
 `Archive/` · `KnowledgeBase/` · `Source/` (seven projects) · `Status/`
 
 ---
 
-# 5. Architecture
+# 6. Architecture
 
 Models → Core → Logging → KnowledgeBase → Validator → Scanner → CLI  
 Explicit composition. No DI. Models have no business logic.
@@ -53,25 +67,29 @@ Explicit composition. No DI. Models have no business logic.
 
 ---
 
-# 6. Pipeline
+# 7. Pipeline
 
-CLI → collectors → InventorySnapshot → catalog + InventoryStateBinder → KnowledgeBase → SchemaValidator.ValidateAll → ObservationSummary → report → safety confirmation
+CLI → collectors → InventorySnapshot → catalog (with ProductDomain) + InventoryStateBinder → KnowledgeBase → SchemaValidator.ValidateAll → ObservationSummary → domain-grouped report → safety confirmation
 
 ---
 
-# 7. Future architecture (planned)
+# 8. Product domains (implemented)
 
-## Domain taxonomy
+ConsentStore, AppPrivacy, Telemetry, WindowsUpdate, Defender, Search, Edge, ActivityHistory, CloudContent, Advertising, Location, Biometrics, Device, Speech, Firewall (reserved), Other.
 
-Group settings by product domain (Firewall, Defender, Windows Update, Telemetry, App privacy, Edge, Search, …) with human names. Primary navigation model for reports and later UI.
+Every catalog ObjectId has exactly one primary domain. SubCategory remains secondary classification.
 
-## Effective layers
+---
 
-Model User preference vs Machine policy vs alternate policy stores. Use ManagedObject relationship fields. Binder computes effective/conflict. Prevents silent double-counting when GPO overrides Settings UI.
+# 9. Future architecture (planned)
+
+## Effective layers (Step B — next)
+
+Model User preference vs Machine policy vs alternate policy stores. Use ManagedObject relationship fields. Binder computes effective/conflict. Prevents silent double-counting when GPO overrides Settings UI. Verified dual telemetry paths on the test machine motivate this work.
 
 ## Coverage policy
 
-Expand **domain by domain** with curated high-value settings. Do not import entire gpedit. Human-readable GPO explanations are a core product differentiator.
+Expand **domain by domain** with curated high-value settings. Do not import entire gpedit. Human-readable GPO explanations are a core product differentiator. New entries must set ProductDomain.
 
 ## Optional later
 
@@ -81,13 +99,13 @@ Insertion order and detail: **Status/AI_Handoff.md § FUTURE STEPS**.
 
 ---
 
-# 8. Safety
+# 10. Safety
 
 No writes, no elevation, no interactive blocking prompts, no product telemetry network.
 
 ---
 
-# 9. Build & run
+# 11. Build & run
 
 ```
 cd Source
