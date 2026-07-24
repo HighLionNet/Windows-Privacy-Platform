@@ -1,7 +1,7 @@
 namespace WindowsPrivacyPlatform.Models;
 
 /// <summary>
-/// Navigation / presentation models for future TUI (and optional GUI).
+/// Navigation / presentation models for TUI (and optional GUI).
 /// Pure data — no input handling, no rendering, no system calls.
 /// Trusted catalog metadata is kept separate from untrusted discovered values.
 /// </summary>
@@ -78,7 +78,8 @@ public static class NavigationBuilder
                 Title = HumanizeDomain(domainGroup.Key),
                 Domain = domainGroup.Key,
                 ChildCount = domainGroup.Count(),
-                ConflictCount = domainGroup.Count(m => m.Observation?.Effective?.HasConflict == true),
+                ConflictCount = domainGroup.Count(m => m.Observation?.Effective?.HasConflict == true ||
+                                                       m.Observation?.Resolution?.HasConflict == true),
                 HighRiskCount = domainGroup.Count(m => m.RiskLevel == RiskLevel.High)
             };
 
@@ -92,7 +93,8 @@ public static class NavigationBuilder
                     Title = subGroup.Key,
                     Domain = domainGroup.Key,
                     ChildCount = subGroup.Count(),
-                    ConflictCount = subGroup.Count(m => m.Observation?.Effective?.HasConflict == true),
+                    ConflictCount = subGroup.Count(m => m.Observation?.Effective?.HasConflict == true ||
+                                                        m.Observation?.Resolution?.HasConflict == true),
                     HighRiskCount = subGroup.Count(m => m.RiskLevel == RiskLevel.High)
                 };
 
@@ -102,11 +104,14 @@ public static class NavigationBuilder
                     {
                         Id = $"setting:{mo.ObjectId}",
                         Title = mo.ObjectName,
-                        Subtitle = mo.Observation?.Effective?.EffectiveValue ?? mo.CurrentState,
+                        Subtitle = mo.Observation?.Effective?.EffectiveValue
+                                   ?? mo.Observation?.Resolution?.EffectiveValue
+                                   ?? mo.CurrentState,
                         Domain = mo.ProductDomain,
                         ObjectId = mo.ObjectId,
                         RiskLevel = mo.RiskLevel,
-                        HasConflict = mo.Observation?.Effective?.HasConflict == true
+                        HasConflict = mo.Observation?.Effective?.HasConflict == true ||
+                                      mo.Observation?.Resolution?.HasConflict == true
                     });
                 }
 
@@ -194,9 +199,19 @@ public static class NavigationBuilder
     {
         ProductDomain.ConsentStore => "Privacy — App permissions",
         ProductDomain.AppPrivacy => "Privacy — App policy overrides",
+        ProductDomain.Telemetry => "Telemetry & diagnostics",
         ProductDomain.WindowsUpdate => "Windows Update",
+        ProductDomain.Defender => "Microsoft Defender",
+        ProductDomain.Search => "Search & Cortana",
+        ProductDomain.Edge => "Microsoft Edge",
         ProductDomain.ActivityHistory => "Activity History",
-        ProductDomain.CloudContent => "Cloud content",
+        ProductDomain.CloudContent => "Cloud content & suggestions",
+        ProductDomain.Advertising => "Advertising ID",
+        ProductDomain.Location => "Location services",
+        ProductDomain.Biometrics => "Biometrics",
+        ProductDomain.Device => "Device find & recovery",
+        ProductDomain.Speech => "Speech recognition",
+        ProductDomain.Firewall => "Windows Firewall",
         _ => domain.ToString()
     };
 
