@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using WindowsPrivacyPlatform.App.Services;
 
 namespace WindowsPrivacyPlatform.App.Views;
@@ -14,14 +15,26 @@ public partial class SearchResultsView : UserControl
         TitleText.Text = $"Search: {query}";
 
         var q = query.Trim();
-        var results = scan.Catalog.Where(m =>
+        var results = (scan.Query?.Search(q) ?? scan.Catalog.Where(m =>
                 Contains(m.ObjectName, q) ||
                 Contains(m.ObjectId, q) ||
                 Contains(m.Description, q) ||
-                Contains(m.DiscoveryMethod, q) ||
-                Contains(m.SubCategory, q))
+                Contains(m.SubCategory, q)))
             .OrderBy(m => m.ObjectName)
             .ToList();
+
+        if (results.Count == 0)
+        {
+            SubtitleText.Text = "No matching catalog entries.";
+            List.Items.Add(new TextBlock
+            {
+                Text = "Try a different keyword, ObjectId fragment, domain name, or description term.",
+                Foreground = (Brush)FindResource("BrushTextMuted"),
+                Margin = new Thickness(0, 8, 0, 0),
+                TextWrapping = TextWrapping.Wrap
+            });
+            return;
+        }
 
         SubtitleText.Text = $"{results.Count} matching catalog entries.";
 
@@ -34,16 +47,17 @@ public partial class SearchResultsView : UserControl
             {
                 Text = $"{mo.ProductDomain} · {mo.ObjectId}",
                 FontSize = 11,
-                Foreground = (System.Windows.Media.Brush)FindResource("BrushTextMuted"),
+                Foreground = (Brush)FindResource("BrushTextMuted"),
                 Margin = new Thickness(0, 2, 0, 0)
             });
             panel.Children.Add(new TextBlock
             {
-                Text = mo.Description,
+                Text = mo.Description ?? string.Empty,
                 TextWrapping = TextWrapping.Wrap,
                 Margin = new Thickness(0, 6, 0, 0)
             });
             border.Child = panel;
+            border.ToolTip = "Open full knowledge card";
             var id = mo.ObjectId;
             border.MouseLeftButtonUp += (_, _) => openSetting(id);
             List.Items.Add(border);
