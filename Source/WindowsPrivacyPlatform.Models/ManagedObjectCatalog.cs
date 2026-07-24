@@ -109,12 +109,11 @@ public static class ManagedObjectCatalog
     {
         var list = new List<ManagedObject>
         {
-            // Telemetry
             Pol("policy.telemetry.allowtelemetry", "Allow Telemetry (GPO)", "Sets the diagnostic data level via Group Policy (0=Security, 1=Basic, 2=Enhanced, 3=Full).",
                 "This is the primary enterprise control for how much diagnostic data leaves the device. Lower values reduce data sent to Microsoft; some enterprise features require higher levels.",
                 RiskLevel.High, FeatureCategory.RegistryPolicy, ComponentOwner.Telemetry, ControlLevel.AdministratorControlled, "Telemetry",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\DataCollection\\AllowTelemetry"),
-            Pol("policy.telemetry.allowtelemetry.currentversion", "Allow Telemetry (CurrentVersion Policies)", "Alternate path for diagnostic data level under CurrentVersion\\Policies\\DataCollection.",
+            Pol("policy.telemetry.allowtelemetry.currentversion", "Allow Telemetry (CurrentVersion Policies)", "Alternate path for diagnostic data level under CurrentVersion Policies DataCollection.",
                 "Same semantic as AllowTelemetry GPO; present on some images as the effective machine policy store.",
                 RiskLevel.High, FeatureCategory.RegistryPolicy, ComponentOwner.Telemetry, ControlLevel.AdministratorControlled, "Telemetry",
                 "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\DataCollection\\AllowTelemetry"),
@@ -123,7 +122,6 @@ public static class ManagedObjectCatalog
                 RiskLevel.Low, FeatureCategory.RegistryPolicy, ComponentOwner.Telemetry, ControlLevel.AdministratorControlled, "Telemetry",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\DataCollection\\DoNotShowFeedbackNotifications"),
 
-            // Windows Update
             Pol("policy.update.noautoupdate", "No Auto Update", "When set, disables automatic Windows Update checking/install behavior controlled by AU policy.",
                 "Stopping automatic updates increases security risk from unpatched systems. Use only with a deliberate alternative patch process.",
                 RiskLevel.High, FeatureCategory.RegistryPolicy, ComponentOwner.WindowsUpdate, ControlLevel.AdministratorControlled, "WindowsUpdate",
@@ -151,13 +149,12 @@ public static class ManagedObjectCatalog
             Pol("policy.update.excludewudrivers", "Exclude WU Drivers in Quality Update", "Excludes drivers from quality update offers.",
                 "Useful when drivers are managed separately. May delay hardware fixes delivered via Windows Update.",
                 RiskLevel.Low, FeatureCategory.RegistryPolicy, ComponentOwner.WindowsUpdate, ControlLevel.AdministratorControlled, "WindowsUpdate",
-                "HKLM\\SOFTWARE\\Policies\\Microsoft\Windows\\WindowsUpdate\\ExcludeWUDriversInQualityUpdate"),
+                "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\ExcludeWUDriversInQualityUpdate"),
             Pol("policy.deliveryopt.downloadmode", "Delivery Optimization Download Mode", "Controls peer-to-peer and cloud delivery of updates (0=HTTP only, 1=LAN, 2=Group, 3=Internet, etc.).",
                 "Restricting to HTTP-only reduces LAN/Internet sharing of update content; may increase bandwidth from Microsoft or WSUS.",
                 RiskLevel.Medium, FeatureCategory.NetworkSetting, ComponentOwner.WindowsUpdate, ControlLevel.AdministratorControlled, "WindowsUpdate",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\DeliveryOptimization\\DODownloadMode"),
 
-            // Defender
             Pol("policy.defender.disableantispyware", "Disable AntiSpyware (legacy)", "Legacy policy that can disable Microsoft Defender Antivirus.",
                 "Setting this is a severe security risk on systems relying on Defender. Prefer leaving Defender enabled unless a third-party AV is active.",
                 RiskLevel.High, FeatureCategory.DefenderSetting, ComponentOwner.Defender, ControlLevel.AdministratorControlled, "Defender",
@@ -179,7 +176,6 @@ public static class ManagedObjectCatalog
                 RiskLevel.Low, FeatureCategory.DefenderSetting, ComponentOwner.Defender, ControlLevel.AdministratorControlled, "Defender",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\PUAProtection"),
 
-            // Search
             Pol("policy.search.allowcortana", "Allow Cortana", "Enables or disables Cortana via policy.",
                 "Cortana/cloud assistant features increase cloud interaction. Disable on systems that do not need the assistant.",
                 RiskLevel.Medium, FeatureCategory.RegistryPolicy, ComponentOwner.WindowsSearch, ControlLevel.AdministratorControlled, "Search",
@@ -197,7 +193,6 @@ public static class ManagedObjectCatalog
                 RiskLevel.Medium, FeatureCategory.RegistryPolicy, ComponentOwner.WindowsSearch, ControlLevel.AdministratorControlled, "Search",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search\\AllowSearchToUseLocation"),
 
-            // Activity History
             Pol("policy.activity.enableactivityfeed", "Enable Activity Feed", "Enables the Timeline / activity feed feature.",
                 "Activity feed stores recent activity for resume scenarios. Disable if Timeline is unused to reduce local activity retention.",
                 RiskLevel.Medium, FeatureCategory.RegistryPolicy, ComponentOwner.Telemetry, ControlLevel.AdministratorControlled, "ActivityHistory",
@@ -211,12 +206,11 @@ public static class ManagedObjectCatalog
                 RiskLevel.High, FeatureCategory.RegistryPolicy, ComponentOwner.Telemetry, ControlLevel.AdministratorControlled, "ActivityHistory",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\System\\UploadUserActivities"),
 
-            // Cloud content
             Pol("policy.cloud.disableconsumerfeatures", "Disable Windows Consumer Features", "Turns off consumer experiences (suggested apps, etc.) via policy.",
                 "Reduces Store suggestions and consumer upsell surfaces. Common hardening setting for managed PCs.",
                 RiskLevel.Low, FeatureCategory.CloudComponent, ComponentOwner.Store, ControlLevel.AdministratorControlled, "CloudContent",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent\\DisableWindowsConsumerFeatures"),
-            Pol("policy.cloud.disablesoftlanding", "Disable Soft Landing", "Disables post-update 'soft landing' tips and experiences.",
+            Pol("policy.cloud.disablesoftlanding", "Disable Soft Landing", "Disables post-update soft landing tips and experiences.",
                 "Quietens first-run/post-update experiences. Low functional impact.",
                 RiskLevel.Low, FeatureCategory.CloudComponent, ComponentOwner.Other, ControlLevel.AdministratorControlled, "CloudContent",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent\\DisableSoftLanding"),
@@ -225,19 +219,16 @@ public static class ManagedObjectCatalog
                 RiskLevel.Low, FeatureCategory.CloudComponent, ComponentOwner.Other, ControlLevel.UserControlled, "CloudContent",
                 "HKCU\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent\\DisableWindowsSpotlightFeatures"),
 
-            // Advertising
             Pol("policy.advertising.disabledbygpo", "Advertising ID Disabled by Group Policy", "Forces advertising ID off via GPO.",
                 "Stronger than the per-user AdvertisingInfo toggle. Use in managed environments to prevent re-enablement.",
                 RiskLevel.Medium, FeatureCategory.RegistryPolicy, ComponentOwner.Other, ControlLevel.AdministratorControlled, "Advertising",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\AdvertisingInfo\\DisabledByGroupPolicy"),
 
-            // Location policy
             Pol("policy.location.disablelocation", "Disable Location", "Disables the Windows location feature via policy.",
                 "Machine-wide location kill switch. Breaks location-dependent apps and Find My Device scenarios.",
                 RiskLevel.High, FeatureCategory.RegistryPolicy, ComponentOwner.Other, ControlLevel.AdministratorControlled, "Location",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\LocationAndSensors\\DisableLocation"),
 
-            // App Privacy GPO
             Pol("policy.appprivacy.location", "Let Apps Access Location (GPO)", "Force-allows, force-denies, or user-controls app location access.",
                 "GPO override for ConsentStore location. Value semantics: 0=User, 1=Force allow, 2=Force deny (typical).",
                 RiskLevel.High, FeatureCategory.RegistryPolicy, ComponentOwner.Other, ControlLevel.AdministratorControlled, "AppPrivacy",
@@ -255,7 +246,6 @@ public static class ManagedObjectCatalog
                 RiskLevel.High, FeatureCategory.RegistryPolicy, ComponentOwner.Other, ControlLevel.AdministratorControlled, "AppPrivacy",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\AppPrivacy\\LetAppsAccessFileSystem"),
 
-            // Edge
             Pol("policy.edge.trackingprevention", "Edge Tracking Prevention", "Configures Microsoft Edge tracking prevention level via policy.",
                 "Higher tracking prevention reduces cross-site tracking at the cost of some site compatibility.",
                 RiskLevel.Medium, FeatureCategory.EdgePolicy, ComponentOwner.MicrosoftEdge, ControlLevel.AdministratorControlled, "Edge",
@@ -277,13 +267,11 @@ public static class ManagedObjectCatalog
                 RiskLevel.Medium, FeatureCategory.EdgePolicy, ComponentOwner.MicrosoftEdge, ControlLevel.AdministratorControlled, "Edge",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Edge\\PasswordManagerEnabled"),
 
-            // Biometrics
             Pol("policy.biometrics.enabled", "Biometrics Enabled", "Enables or disables Windows biometric framework via policy.",
                 "Disabling biometrics removes Windows Hello face/fingerprint unlock. Security vs convenience trade-off.",
                 RiskLevel.Medium, FeatureCategory.RegistryPolicy, ComponentOwner.Other, ControlLevel.AdministratorControlled, "Biometrics",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Biometrics\\Enabled"),
 
-            // Device
             Pol("policy.findmydevice.allow", "Allow Find My Device", "Allows the Find My Device feature.",
                 "Find My Device uses location and device registration with Microsoft account services. Disable on air-gapped or high-privacy hosts.",
                 RiskLevel.Medium, FeatureCategory.RegistryPolicy, ComponentOwner.Other, ControlLevel.AdministratorControlled, "Device",
