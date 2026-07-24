@@ -6,6 +6,11 @@
     <TextBlock Text="Device context only — not a security score. Unknown values stay Unknown."
                Style="{StaticResource SectionSubtitle}" />
 
+    <Border Style="{StaticResource Card}" Background="{StaticResource BrushAccentSoft}" BorderThickness="0">
+      <TextBlock TextWrapping="Wrap" FontSize="13"
+                 Text="This scan is read-only. No registry, service, task, policy, or firewall changes were made. Elevation was not requested." />
+    </Border>
+
     <UniformGrid Columns="2">
       <Border Style="{StaticResource Card}" Margin="0,0,8,12">
         <StackPanel>
@@ -32,7 +37,7 @@
       </Border>
       <Border Style="{StaticResource Card}" Margin="8,0,0,12">
         <StackPanel>
-          <TextBlock Text="Services &amp; network" Style="{StaticResource LabelMuted}" />
+          <TextBlock Text="Services & network" Style="{StaticResource LabelMuted}" />
           <TextBlock x:Name="FirewallText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
           <TextBlock x:Name="DefenderText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
           <TextBlock x:Name="DomainText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
@@ -42,7 +47,7 @@
 
     <Border Style="{StaticResource Card}">
       <StackPanel>
-        <TextBlock Text="Scan &amp; knowledge" Style="{StaticResource LabelMuted}" />
+        <TextBlock Text="Scan & knowledge" Style="{StaticResource LabelMuted}" />
         <TextBlock x:Name="ScanMetaText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
         <TextBlock x:Name="IdentityNotesText" Style="{StaticResource ValueText}" Margin="0,8,0,0"
                    Foreground="{StaticResource BrushTextSecondary}" />
@@ -53,6 +58,13 @@
       <StackPanel>
         <TextBlock Text="Observation summary" Style="{StaticResource LabelMuted}" />
         <TextBlock x:Name="SummaryText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
+      </StackPanel>
+    </Border>
+
+    <Border Style="{StaticResource Card}">
+      <StackPanel>
+        <TextBlock Text="Layer conflicts" Style="{StaticResource LabelMuted}" />
+        <TextBlock x:Name="ConflictsText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
       </StackPanel>
     </Border>
   </StackPanel>
