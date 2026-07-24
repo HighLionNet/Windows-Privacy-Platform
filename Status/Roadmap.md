@@ -2,7 +2,7 @@
 ## Roadmap
 
 **Last updated:** 2026-07-24  
-**Current completed milestone:** Prototype **v0.8**  
+**Current completed milestone:** Prototype **v0.9**  
 **Document role:** Ordered priorities, not calendar commitments. Preserve product identity on every horizon.
 
 ---
@@ -15,97 +15,80 @@
 - No privacy/security **score** as a product feature.  
 - No fear-based or “optimizer” language.  
 - Unknown remains valid. Evidence over assumption.  
-- Catalog-first: understand domain → catalog + explanation → collector → relationships.  
+- Catalog-first: understand domain → catalog + ValueSemantics + explanation → collector → relationships.  
+- **Windows meaning lives in catalog maps, not resolvers/CLI/UI.**  
 
 ---
 
-## v0.9 — Intelligence foundation (next)
+## Completed: v0.9 — Knowledge semantics foundation
 
-**Theme:** Evidence maturity, value semantics, relationship exploration, careful domain depth.
+Shipped (see `Status/History/v0.9.md`):
 
-### 1. True evidence model
+- ValueSemantics + ValueSemanticsInterpreter  
+- Educational resolution / confidence reasons  
+- Resolver free of hardcoded numeric semantic maps (verified)  
+- Provenance on Privacy/Policy binders  
+- Expanded relationship kinds  
+- Catalog WhenIgnored / CommonMisconception scaffolding  
 
-- Make every important observation answer “What exactly proves this?”  
-- Surface CollectorName / EvidenceSource / AlternativeSources / Notes on detail cards consistently.  
-- Support multi-source disagreement as first-class conflict evidence (not hidden).  
-- Keep Models pure; collectors still produce facts only.  
+---
 
-### 2. Value semantics (KnowledgeBase)
+## Next — v0.10 / presentation and depth
 
-- Reusable mapping from raw tokens (0/1/2/3, Allow/Deny, …) → human meaning.  
-- Owned by knowledge layer, not ad-hoc UI switches.  
-- Unknown raw values stay Unknown — never guess.  
+**Theme:** Make knowledge visible; deepen selected domains; still read-only.
 
-### 3. Relationship exploration API
+### 1. Surface semantics and evidence in UI
 
-- Query shapes such as: everything affecting microphone access; what controls Windows Update; why effective differs from user selection.  
-- Build on SettingsQuery + StructuredRelationships; still curated edges.  
-- Presentation remains neutral.  
+- TUI/CLI detail cards: SemanticValue, ConfidenceReason, EvidenceSource, WhenIgnored  
+- Conflict cards already educational; keep consistent  
 
-### 4. Machine understanding expansion
+### 2. Relationship exploration API
 
-- Improve best-effort Secure Boot / TPM / BitLocker / virtualization / Defender visibility **when read-only sources exist**.  
-- Always label confidence and Unknown reasons.  
+- Query shapes on SettingsQuery / StructuredRelationships (“everything affecting microphone”)  
+- Still curated edges  
 
-### 5. Domain expansion (careful)
+### 3. Expand ValueSemantics coverage
 
-Priority candidates (catalog + explanation before deep collectors):
+- Catalog-first maps for remaining high-traffic ObjectIds  
+- Never invent maps in resolvers  
 
-- Microsoft Defender (deeper than current policy probes)  
+### 4. Machine understanding
+
+- Best-effort Secure Boot / TPM / BitLocker / Defender visibility when read-only sources exist  
+- Always label confidence and Unknown reasons  
+
+### 5. Domain depth (careful)
+
+- Microsoft Defender (deeper)  
 - Windows Update (deeper)  
-- Firewall **rule inventory** (still read-only)  
-- Startup / services / tasks (understanding-oriented, not “disable these”)  
-
-Order for each domain: understand → catalog → explanation → collector → relationships.
+- Firewall **rule inventory** (read-only)  
+- Services / tasks understanding-oriented  
 
 ### 6. GUI preparation
 
-- No large GUI required in v0.9.  
-- Strengthen models so a future GUI can offer: Machine | Security | Privacy | Updates | Applications | Network | System.  
-- Detail view contract: Explanation · Observed · Evidence · Relationships · (future History).  
+- Strengthen detail-view contract only; no large GUI required yet  
 
-### 7. Comparison system (design / light scaffolding only if safe)
+### 7. Comparison (design / light scaffolding)
 
-- Plan scan history and compare-only diffs (“what changed since last week?”).  
-- No destructive actions. Prefer explicit design notes before heavy implementation.  
+- Scan history / compare-only diffs — design notes before heavy implementation  
 
 ---
 
 ## v1.0 vision
 
-A stable, trustworthy **read-only** Windows privacy and security **knowledge product**:
-
-- High-quality curated catalog  
-- Honest effective-layer reasoning  
-- Clear provenance and Unknowns  
-- Navigable TUI and/or thin GUI  
-- No scores, no silent writes  
-
-Success looks like: a technical user trusts the explanations enough to teach others how Windows configuration actually layers.
+Stable, trustworthy **read-only** Windows privacy and security **knowledge product**: curated catalog, honest effective-layer reasoning, clear provenance and Unknowns, navigable TUI and/or thin GUI — no scores, no silent writes.
 
 ---
 
 ## Far future (design-doc only until authorized)
 
-Controlled, reversible change:
-
-- Separate architecture pass  
-- Elevation only when required  
-- Per-setting warnings  
-- Prefer reversible actions  
-- Full auditability  
-- **Never** mixed silently into the current read-only pipeline  
+Controlled, reversible change as a **separate** architecture pass.
 
 ---
 
 ## Explicit non-goals (near term)
 
-- Bulk ADMX / gpedit clone  
-- Automatic relationship inference via ML  
-- Privacy or security scoring dashboards  
-- One-click harden / “fix all”  
-- Network product telemetry  
-- Feature count for its own sake  
+Bulk ADMX; ML relationship inference; scoring dashboards; one-click harden; product telemetry; feature count for its own sake.
 
 ---
 
@@ -113,7 +96,7 @@ Controlled, reversible change:
 
 1. Does it improve understanding, trust, evidence quality, or maintainability?  
 2. Does it preserve read-only and one-way dependencies?  
-3. Is catalog/explanation ready before a new collector?  
+3. Are meanings in catalog ValueSemantics, not resolver switches?  
 4. Will a future session understand it from Status docs alone?  
 
 If any answer is no, rethink before coding.
