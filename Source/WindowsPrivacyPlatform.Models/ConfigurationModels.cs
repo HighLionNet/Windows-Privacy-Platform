@@ -3,6 +3,7 @@ namespace WindowsPrivacyPlatform.Models;
 /// <summary>
 /// One observed value from a single Windows configuration layer.
 /// Pure data — no resolution logic.
+/// v0.8: carries explicit provenance so explanations can answer "How do you know?".
 /// </summary>
 public class ConfigurationObservation
 {
@@ -13,6 +14,23 @@ public class ConfigurationObservation
     public string? Hive { get; set; }
     public DateTime ObservedAt { get; set; } = DateTime.UtcNow;
     public int ConfidenceScore { get; set; } = 80;
+
+    // --- Evidence / provenance (v0.8) ---
+
+    /// <summary>Name of the collector that produced this observation.</summary>
+    public string CollectorName { get; set; } = string.Empty;
+
+    /// <summary>Human-readable evidence source (e.g. "Registry HKLM\\...", "WMI Win32_OperatingSystem", "ServiceController").</summary>
+    public string EvidenceSource { get; set; } = string.Empty;
+
+    /// <summary>Additional sources that were consulted or agreed/disagreed.</summary>
+    public List<string> AlternativeSources { get; set; } = new();
+
+    /// <summary>Notes about collection quality, conflicts, or limitations (never invents certainty).</summary>
+    public string CollectionNotes { get; set; } = string.Empty;
+
+    /// <summary>Mapped confidence for presentation; derived from ConfidenceScore or cross-validation.</summary>
+    public EffectiveConfidence EffectiveConfidence { get; set; } = EffectiveConfidence.Unknown;
 }
 
 /// <summary>
