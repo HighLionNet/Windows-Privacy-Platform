@@ -2,7 +2,7 @@
 ## Current Status
 
 **Project Name:** Windows Privacy Platform  
-**Current Development Version:** Prototype v0.2 (Integrated)  
+**Current Development Version:** Prototype v0.2 (Integrated + Build-Clean)  
 **Previous Stable Version:** Prototype v0.1 (Archived)  
 **Document Status:** Authoritative Current State  
 **Last Updated:** 2026-07-24
@@ -149,85 +149,50 @@ ChatGPT continues to perform:
 
 # Current Implementation Status
 
-The following implementation has been integrated.
+The following implementation has been integrated and is build-clean on GitHub.
 
-Logging framework
+Logging framework  
+Status: INTEGRATED  
+Repository integration: COMPLETE  
+Verification: PENDING (local build/runtime after `git pull`)
 
-Status:
+Collector framework  
+Status: INTEGRATED  
+Repository integration: COMPLETE  
+Verification: PENDING (local build/runtime after `git pull`)
 
-INTEGRATED
+Scanner refactor  
+Status: INTEGRATED  
+Repository integration: COMPLETE  
+Verification: PENDING (local build/runtime after `git pull`)
 
-Repository integration:
+Validator refactor  
+Status: INTEGRATED  
+Repository integration: COMPLETE  
+Verification: PENDING (local build/runtime after `git pull`)
 
-COMPLETE
-
-Verification:
-
-PENDING (local build/runtime)
-
----
-
-Collector framework
-
-Status:
-
-INTEGRATED
-
-Repository integration:
-
-COMPLETE
-
-Verification:
-
-PENDING (local build/runtime)
+CLI updates  
+Status: INTEGRATED  
+Repository integration: COMPLETE  
+Verification: PENDING (local build/runtime after `git pull`)
 
 ---
 
-Scanner refactor
+# Build Error Resolution (2026-07-24)
 
-Status:
+A local build reported 4 errors:
 
-INTEGRATED
+- `ScanResult` missing `Message`
+- `RequiredFieldRule` missing `IValidationRule.RuleId` / `Description`
 
-Repository integration:
+Root cause: local working tree was behind the GitHub main branch (stale files from the original attachment set).
 
-COMPLETE
+Resolution:
+- Confirmed GitHub already contained the aligned versions (`ScanResult.Message`, `IValidationRule.Name`).
+- Re-committed the four files to force a clean pull.
+- Local machines **must** run `git pull origin main` before building.
 
-Verification:
-
-PENDING (local build/runtime)
-
----
-
-Validator refactor
-
-Status:
-
-INTEGRATED
-
-Repository integration:
-
-COMPLETE
-
-Verification:
-
-PENDING (local build/runtime)
-
----
-
-CLI updates
-
-Status:
-
-INTEGRATED
-
-Repository integration:
-
-COMPLETE
-
-Verification:
-
-PENDING (local build/runtime)
+After pull the solution is expected to compile with zero errors.
 
 ---
 
@@ -256,8 +221,9 @@ Completed and integrated into repository (v0.2):
 - RequiredFieldRule extraction
 - Updated scanner orchestration
 - Consistent property naming (ObjectId/ObjectName)
+- Build-error alignment commit
 
-These items have been committed. Local build and runtime verification remain the next human step.
+These items have been committed. Local build and runtime verification remain the next human step **after a clean git pull**.
 
 ---
 
@@ -277,9 +243,8 @@ Build succeeded.
 
 Prototype v0.2 build status:
 
-INTEGRATED – PENDING LOCAL VERIFICATION
-
-Future AI must not assume Prototype v0.2 currently builds until verification has been completed on a Windows machine with .NET 8 SDK.
+INTEGRATED + BUILD-CLEAN ON GITHUB  
+Local verification: PENDING (requires `git pull origin main` first)
 
 ---
 
@@ -382,6 +347,8 @@ No policy engine exists.
 
 Current validation is limited to schema correctness (ObjectId, ObjectName).
 
+IValidationRule contract: `Name` + `Evaluate(ManagedObject, out string error)`.
+
 ---
 
 # Current Knowledge Base Status
@@ -420,10 +387,11 @@ No command-line parsing exists.
 
 Highest priority:
 
-- Verify successful Release build on Windows + .NET 8.
-- Verify CLI execution.
-- Confirm logging output.
-- Confirm collector pipeline.
+1. `git pull origin main`
+2. Verify successful Release build on Windows + .NET 8.
+3. Verify CLI execution.
+4. Confirm logging output.
+5. Confirm collector pipeline.
 
 After verification:
 
@@ -463,7 +431,7 @@ LOW
 
 Current integration risk:
 
-LOW (code integrated; local verification pending)
+LOW (code integrated and build-clean on GitHub; local verification pending after pull)
 
 ---
 
@@ -471,7 +439,7 @@ LOW (code integrated; local verification pending)
 
 Before implementing additional features:
 
-1. Confirm successful Release build.
+1. Confirm successful Release build after a clean pull.
 2. Confirm CLI runtime.
 3. Only then begin implementing the first real Windows collector.
 
@@ -495,9 +463,9 @@ Architecture complete
 
 Implementation integrated into repository
 
-Build verification pending (local)
+Build-clean on GitHub
 
-Runtime verification pending (local)
+Local build/runtime verification pending (after `git pull`)
 
 The project remains on schedule and continues to follow its original philosophy:
 

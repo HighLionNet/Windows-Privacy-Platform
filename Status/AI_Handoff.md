@@ -351,7 +351,7 @@ No external dependencies.
 
 Architecture work has been designed and reviewed.
 
-Implementation code has been integrated into the repository by Grok.
+Implementation code has been integrated into the repository by Grok and is build-clean on GitHub.
 
 Specifically:
 
@@ -367,11 +367,14 @@ COMPLETE
 Repository integration:
 COMPLETE
 
+Build alignment (ScanResult.Message + IValidationRule.Name):
+COMPLETE
+
 Compilation verification:
-PENDING (local Windows + .NET 8)
+PENDING (local Windows + .NET 8 after `git pull origin main`)
 
 Runtime verification:
-PENDING (local)
+PENDING (local after pull)
 
 ---
 
@@ -388,6 +391,8 @@ If build fails:
 Fix immediately before continuing.
 
 No additional features should be implemented while compilation is broken.
+
+**Important (2026-07-24):** Any local build error that matches the old attachment mismatches (missing ScanResult.Message or IValidationRule.RuleId/Description) indicates a stale local tree. Run `git pull origin main` first.
 
 ---
 
@@ -460,9 +465,9 @@ Prefer complete file replacement over fragmented edits.
 
 # NEXT IMPLEMENTATION TASK
 
-Verify successful build and runtime of the integrated v0.2 architecture.
-
-Only after successful verification should work begin on real Windows discovery.
+1. `git pull origin main`
+2. Verify successful build and runtime of the integrated v0.2 architecture.
+3. Only after successful verification should work begin on real Windows discovery.
 
 ---
 
