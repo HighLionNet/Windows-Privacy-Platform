@@ -1,6 +1,7 @@
 // Source/WindowsPrivacyPlatform.Validator/SchemaValidator.cs
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using WindowsPrivacyPlatform.KnowledgeBase;
 using WindowsPrivacyPlatform.Logging;
 using WindowsPrivacyPlatform.Models;
@@ -23,7 +24,8 @@ namespace WindowsPrivacyPlatform.Validator
                 new RequiredFieldRule("ObjectName", obj => !string.IsNullOrWhiteSpace(obj.ObjectName)),
                 new RequiredFieldRule("Description", obj => !string.IsNullOrWhiteSpace(obj.Description)),
                 new RequiredFieldRule("ObjectType", obj => !string.IsNullOrWhiteSpace(obj.ObjectType)),
-                new RequiredFieldRule("SchemaVersion", obj => !string.IsNullOrWhiteSpace(obj.SchemaVersion))
+                new RequiredFieldRule("SchemaVersion", obj => !string.IsNullOrWhiteSpace(obj.SchemaVersion)),
+                // ProductDomain is an enum; zero is ConsentStore which is valid, so we only check ObjectId uniqueness at batch level.
             };
         }
 
@@ -61,12 +63,31 @@ namespace WindowsPrivacyPlatform.Validator
                 return results;
             }
 
+            var list = entries.Where(e => e is not null).ToList();
             var passed = 0;
             var failed = 0;
 
-            foreach (var entry in entries)
+            // Duplicate ObjectId detection across the batch (catalog quality guard).
+            var idGroups = list
+                .Where(e => e.Object is not null && !string.IsNullOrWhiteSpace(e.Object.ObjectId))
+                .GroupBy(e => e.Object!.ObjectId, StringComparer.OrdinalIgnoreCase)
+                .Where(g => g.Count() > 1)
+                .ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
+
+            foreach (var entry in list)
             {
                 var result = Validate(entry);
+
+                if (entry.Object is not null &&
+                    !string.IsNullOrWhiteSpace(entry.Object.ObjectId) &&
+                    idGroups.ContainsKey(entry.Object.ObjectId))
+                {
+                    result.IsValid = false;
+                    result.Message = "Catalog quality validation failed.";
+                    result.Errors.Add($"Duplicate ObjectId '{entry.Object.ObjectId}' detected in catalog batch.");
+                    result.FailedRules.Add("UniqueObjectId");
+                }
+
                 results.Add(result);
                 if (result.IsValid)
                     passed++;
