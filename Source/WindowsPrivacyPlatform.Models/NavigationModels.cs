@@ -195,7 +195,10 @@ public static class NavigationBuilder
         return view;
     }
 
-    private static string HumanizeDomain(ProductDomain domain) => domain switch
+    /// <summary>
+    /// Human-readable domain title for navigation and page headers.
+    /// </summary>
+    public static string HumanizeDomain(ProductDomain domain) => domain switch
     {
         ProductDomain.ConsentStore => "Privacy — App permissions",
         ProductDomain.AppPrivacy => "Privacy — App policy overrides",
