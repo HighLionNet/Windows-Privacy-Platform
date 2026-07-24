@@ -70,8 +70,8 @@ public partial class HomeView : UserControl
             {
                 Content = label,
                 Style = (Style)FindResource("SecondaryButton"),
-                Margin = new Thickness(0, 0, 6, 6),
-                Padding = new Thickness(10, 5, 10, 5),
+                Margin = new Thickness(0, 0, 6, 4),
+                Padding = new Thickness(8, 3, 8, 3),
                 ToolTip = $"Open {label}"
             };
             btn.Click += (_, _) => navigateDomain(domain);
