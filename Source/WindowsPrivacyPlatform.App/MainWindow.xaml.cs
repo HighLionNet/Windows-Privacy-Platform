@@ -73,7 +73,7 @@ public partial class MainWindow : Window
         ContentHost.Content = new TextBlock
         {
             Text = "Windows Privacy Platform\n\nPress Scan (F5) to discover local configuration.\n\nInspect mode · read-only · no elevation.",
-            FontSize = 14,
+            FontSize = 13,
             Foreground = (Brush)FindResource("BrushTextSecondary"),
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(4)
@@ -386,7 +386,7 @@ public partial class MainWindow : Window
     private void ToggleSidebar_Click(object sender, RoutedEventArgs e)
     {
         _sidebarCollapsed = !_sidebarCollapsed;
-        SidebarColumn.Width = _sidebarCollapsed ? new GridLength(48) : new GridLength(252);
+        SidebarColumn.Width = _sidebarCollapsed ? new GridLength(48) : new GridLength(240);
         NavPanel.Visibility = _sidebarCollapsed ? Visibility.Collapsed : Visibility.Visible;
     }
 
