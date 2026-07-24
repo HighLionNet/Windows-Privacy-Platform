@@ -28,12 +28,12 @@ public partial class HomeView : UserControl
         TpmText.Text = $"TPM: {Disp(o.TpmPresent)} / {Disp(o.TpmVersion)}";
         BitLockerText.Text = $"BitLocker: {Disp(o.BitLockerProtectionStatus)}";
 
-        FirewallText.Text = $"Firewall service: {Disp(o.FirewallServiceState)} · Profiles: {Disp(o.FirewallProfilesSummary)}";
-        DefenderText.Text = $"Defender service: {Disp(o.DefenderServiceState)}";
+        FirewallText.Text = $"Firewall: {Disp(o.FirewallServiceState)} · {Disp(o.FirewallProfilesSummary)}";
+        DefenderText.Text = $"Defender: {Disp(o.DefenderServiceState)}";
         DomainText.Text = $"Domain: {Disp(o.DomainMembership)} · Entra: {Disp(o.AzureAdJoined)}";
 
         ScanMetaText.Text =
-            $"Last scan (UTC): {o.LastScanUtc:yyyy-MM-dd HH:mm:ss} · Catalog {o.CatalogVersion} · Knowledge {o.KnowledgeBaseVersion} · Identity confidence: {o.IdentityConfidence}";
+            $"{o.LastScanUtc:yyyy-MM-dd HH:mm:ss} UTC · Catalog {o.CatalogVersion} · Knowledge {o.KnowledgeBaseVersion} · Identity confidence: {o.IdentityConfidence}";
 
         IdentityNotesText.Text = string.IsNullOrWhiteSpace(o.IdentityCollectionNotes)
             ? "No additional identity collection notes."
@@ -43,9 +43,9 @@ public partial class HomeView : UserControl
         if (s is not null)
         {
             SummaryText.Text =
-                $"Catalog entries: {s.CatalogTotal} · Observed: {s.ObservedCount} · Not observed: {s.NotObservedCount}\n" +
+                $"Catalog: {s.CatalogTotal} · Observed: {s.ObservedCount} · Not observed: {s.NotObservedCount}\n" +
                 $"Policy configured: {s.ConfiguredPolicyCount} · Not configured: {s.NotConfiguredPolicyCount}\n" +
-                $"Impact tags (H/M/L): {s.HighRiskCount} / {s.MediumRiskCount} / {s.LowRiskCount} (significance tags, not a score)\n" +
+                $"Impact tags H/M/L: {s.HighRiskCount} / {s.MediumRiskCount} / {s.LowRiskCount}\n" +
                 $"Validation: passed={s.CatalogValidationPassed}, failed={s.CatalogValidationFailed}";
         }
         else
@@ -54,15 +54,11 @@ public partial class HomeView : UserControl
         }
 
         var conflictCount = scan.Query?.GetConflicts().Count() ?? 0;
-        if (conflictCount == 0)
+        if (conflictCount > 0)
         {
-            ConflictsText.Text = "No layer conflicts detected among known relationship pairs on this scan.";
-            ConflictsCard.Style = (Style)FindResource("Card");
-        }
-        else
-        {
-            ConflictsText.Text = $"{conflictCount} setting(s) report a layer conflict. Review the Conflicts page for educational cards.";
+            ConflictsCard.Visibility = Visibility.Visible;
             ConflictsCard.Style = (Style)FindResource("CardConflict");
+            ConflictsText.Text = $"{conflictCount} setting(s) report a layer conflict.";
             OpenConflictsBtn.Visibility = Visibility.Visible;
             if (openConflicts is not null)
                 OpenConflictsBtn.Click += (_, _) => openConflicts();
@@ -74,8 +70,8 @@ public partial class HomeView : UserControl
             {
                 Content = label,
                 Style = (Style)FindResource("SecondaryButton"),
-                Margin = new Thickness(0, 0, 8, 8),
-                Padding = new Thickness(12, 6, 12, 6),
+                Margin = new Thickness(0, 0, 6, 6),
+                Padding = new Thickness(10, 5, 10, 5),
                 ToolTip = $"Open {label}"
             };
             btn.Click += (_, _) => navigateDomain(domain);
@@ -88,6 +84,7 @@ public partial class HomeView : UserControl
         AddQuick("Microsoft Defender", ProductDomain.Defender);
         AddQuick("Windows Update", ProductDomain.WindowsUpdate);
         AddQuick("Location", ProductDomain.Location);
+        AddQuick("Activity History", ProductDomain.ActivityHistory);
     }
 
     private static string Disp(string? v) =>

@@ -3,85 +3,90 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <StackPanel>
     <TextBlock Text="Machine Overview" Style="{StaticResource SectionTitle}" />
-    <TextBlock Text="Device context only — not a security score. Unknown values stay Unknown."
-               Style="{StaticResource SectionSubtitle}" />
+    <TextBlock x:Name="SubtitleText" Style="{StaticResource SectionSubtitle}"
+               Text="Observed device context. Unknown values remain Unknown." />
 
-    <Border Style="{StaticResource Card}" Background="{StaticResource BrushAccentSoft}" BorderThickness="0" Padding="14,10">
-      <TextBlock TextWrapping="Wrap" FontSize="13"
-                 Text="Inspect mode · read-only discovery. No registry, service, task, policy, or firewall changes. Elevation was not requested." />
+    <!-- Attention first when relevant -->
+    <Border x:Name="ConflictsCard" Style="{StaticResource Card}" Margin="0,0,0,10" Visibility="Collapsed">
+      <DockPanel LastChildFill="True">
+        <StackPanel DockPanel.Dock="Left">
+          <TextBlock Text="Attention" FontWeight="SemiBold" FontSize="13" />
+          <TextBlock x:Name="ConflictsText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
+        </StackPanel>
+        <Button x:Name="OpenConflictsBtn" Content="Open Conflicts" Style="{StaticResource SecondaryButton}"
+                HorizontalAlignment="Right" VerticalAlignment="Center" Visibility="Collapsed" />
+      </DockPanel>
     </Border>
 
-    <!-- Primary identity cards -->
-    <UniformGrid Columns="2">
-      <Border Style="{StaticResource Card}" Margin="0,0,8,12">
+    <!-- Identity strip -->
+    <Grid Margin="0,0,0,8">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+      <Border Style="{StaticResource PropertyGroup}" Margin="0,0,4,0">
         <StackPanel>
           <TextBlock Text="Operating system" Style="{StaticResource LabelMuted}" />
-          <TextBlock x:Name="OsText" Style="{StaticResource PrimaryValue}" Margin="0,4,0,0" />
-          <TextBlock x:Name="ArchText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
+          <TextBlock x:Name="OsText" Style="{StaticResource PrimaryValue}" Margin="0,3,0,0" />
+          <TextBlock x:Name="ArchText" Style="{StaticResource MetaText}" Margin="0,3,0,0" />
         </StackPanel>
       </Border>
-      <Border Style="{StaticResource Card}" Margin="8,0,0,12">
+      <Border Grid.Column="1" Style="{StaticResource PropertyGroup}" Margin="4,0,0,0">
         <StackPanel>
           <TextBlock Text="Device" Style="{StaticResource LabelMuted}" />
-          <TextBlock x:Name="DeviceText" Style="{StaticResource PrimaryValue}" Margin="0,4,0,0" />
-          <TextBlock x:Name="CpuText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
-          <TextBlock x:Name="MemText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
+          <TextBlock x:Name="DeviceText" Style="{StaticResource PrimaryValue}" Margin="0,3,0,0" />
+          <TextBlock x:Name="CpuText" Style="{StaticResource MetaText}" Margin="0,3,0,0" />
+          <TextBlock x:Name="MemText" Style="{StaticResource MetaText}" Margin="0,2,0,0" />
         </StackPanel>
       </Border>
-      <Border Style="{StaticResource Card}" Margin="0,0,8,12">
+    </Grid>
+
+    <Grid Margin="0,0,0,8">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+      <Border Style="{StaticResource PropertyGroup}" Margin="0,0,4,0">
         <StackPanel>
           <TextBlock Text="Security posture (observed)" Style="{StaticResource LabelMuted}" />
           <TextBlock x:Name="SecureBootText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
-          <TextBlock x:Name="TpmText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
-          <TextBlock x:Name="BitLockerText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
+          <TextBlock x:Name="TpmText" Style="{StaticResource ValueText}" Margin="0,2,0,0" />
+          <TextBlock x:Name="BitLockerText" Style="{StaticResource ValueText}" Margin="0,2,0,0" />
         </StackPanel>
       </Border>
-      <Border Style="{StaticResource Card}" Margin="8,0,0,12">
+      <Border Grid.Column="1" Style="{StaticResource PropertyGroup}" Margin="4,0,0,0">
         <StackPanel>
           <TextBlock Text="Services and network" Style="{StaticResource LabelMuted}" />
           <TextBlock x:Name="FirewallText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
-          <TextBlock x:Name="DefenderText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
-          <TextBlock x:Name="DomainText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
+          <TextBlock x:Name="DefenderText" Style="{StaticResource ValueText}" Margin="0,2,0,0" />
+          <TextBlock x:Name="DomainText" Style="{StaticResource ValueText}" Margin="0,2,0,0" />
         </StackPanel>
       </Border>
-    </UniformGrid>
+    </Grid>
 
-    <!-- Attention row -->
-    <Border x:Name="ConflictsCard" Style="{StaticResource Card}" Margin="0,0,0,12">
+    <!-- Scan meta -->
+    <Border Style="{StaticResource PropertyGroup}">
       <StackPanel>
-        <DockPanel LastChildFill="True">
-          <TextBlock Text="Attention" Style="{StaticResource LabelMuted}" DockPanel.Dock="Left" />
-          <Button x:Name="OpenConflictsBtn" Content="Open Conflicts" Style="{StaticResource LinkButton}"
-                  HorizontalAlignment="Right" DockPanel.Dock="Right" Visibility="Collapsed" />
-        </DockPanel>
-        <TextBlock x:Name="ConflictsText" Style="{StaticResource ValueText}" Margin="0,6,0,0" />
+        <TextBlock Text="Scan" Style="{StaticResource LabelMuted}" />
+        <TextBlock x:Name="ScanMetaText" Style="{StaticResource ValueText}" Margin="0,3,0,0" />
       </StackPanel>
     </Border>
 
-    <!-- Scan meta (concise) -->
-    <Border Style="{StaticResource Card}">
-      <StackPanel>
-        <TextBlock Text="Scan and knowledge" Style="{StaticResource LabelMuted}" />
-        <TextBlock x:Name="ScanMetaText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
-      </StackPanel>
-    </Border>
-
-    <!-- Expandable technical evidence -->
-    <Expander Header="Identity collection notes" Style="{StaticResource DetailExpander}" IsExpanded="False">
-      <Border Style="{StaticResource Card}" Margin="0,6,0,0">
+    <!-- Technical evidence collapsed -->
+    <Expander Header="Identity collection notes" Style="{StaticResource DetailExpander}" IsExpanded="False" Margin="0,6,0,0">
+      <Border Style="{StaticResource PropertyGroup}" Margin="0,4,0,0">
         <TextBlock x:Name="IdentityNotesText" Style="{StaticResource ValueText}"
                    Foreground="{StaticResource BrushTextSecondary}" />
       </Border>
     </Expander>
 
     <Expander Header="Observation summary" Style="{StaticResource DetailExpander}" IsExpanded="False">
-      <Border Style="{StaticResource Card}" Margin="0,6,0,0">
+      <Border Style="{StaticResource PropertyGroup}" Margin="0,4,0,0">
         <TextBlock x:Name="SummaryText" Style="{StaticResource ValueText}" />
       </Border>
     </Expander>
 
-    <!-- Quick navigation -->
-    <TextBlock Text="Quick navigation" Style="{StaticResource LabelMuted}" Margin="0,12,0,8" />
+    <TextBlock Text="Quick navigation" Style="{StaticResource GroupHeader}" />
     <WrapPanel x:Name="QuickNavPanel" />
   </StackPanel>
 </UserControl>

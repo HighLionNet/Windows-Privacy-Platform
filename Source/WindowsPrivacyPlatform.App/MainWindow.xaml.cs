@@ -72,11 +72,11 @@ public partial class MainWindow : Window
     {
         ContentHost.Content = new TextBlock
         {
-            Text = "Windows Privacy Platform\n\nRead-only knowledge explorer.\nPress Scan (or F5) to discover local configuration.\n\nThis application never modifies Windows.\nNo elevation · No telemetry · Unknown stays Unknown.",
-            FontSize = 15,
+            Text = "Windows Privacy Platform\n\nPress Scan (F5) to discover local configuration.\n\nInspect mode · read-only · no elevation.",
+            FontSize = 14,
             Foreground = (Brush)FindResource("BrushTextSecondary"),
             TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(8)
+            Margin = new Thickness(4)
         };
         UpdateBreadcrumbs("Ready");
     }
@@ -108,8 +108,10 @@ public partial class MainWindow : Window
         if (_scan.Overview is not null)
         {
             ScanTimeLabel.Text = $"Scanned {_scan.Overview.LastScanUtc:yyyy-MM-dd HH:mm} UTC";
-            CatalogCountLabel.Text = $"Catalog: {_scan.Catalog.Count}";
-            ValidationLabel.Text = $"Validation: {_scan.ValidationPassed} ok / {_scan.ValidationFailed} fail";
+            CatalogCountLabel.Text = $"Objects: {_scan.Catalog.Count}";
+            ValidationLabel.Text = _scan.ValidationFailed == 0
+                ? $"Validation: {_scan.ValidationPassed} ok"
+                : $"Validation: {_scan.ValidationPassed} ok / {_scan.ValidationFailed} fail";
 
             var conflicts = _scan.Query?.GetConflicts().Count() ?? 0;
             ConflictCountLabel.Text = $"Conflicts: {conflicts}";
@@ -372,7 +374,7 @@ public partial class MainWindow : Window
         {
             MessageBox.Show(
                 "Modify mode is a future capability.\n\n" +
-                "It will require an explicit safety model, privilege requirements, and a separate architecture pass.\n\n" +
+                "It will require privilege elevation, restore points, validation, and a separate safety architecture.\n\n" +
                 "Version 1.0 is Inspect-only. No write functionality exists.",
                 "Modify mode (future)",
                 MessageBoxButton.OK,
@@ -384,7 +386,7 @@ public partial class MainWindow : Window
     private void ToggleSidebar_Click(object sender, RoutedEventArgs e)
     {
         _sidebarCollapsed = !_sidebarCollapsed;
-        SidebarColumn.Width = _sidebarCollapsed ? new GridLength(48) : new GridLength(248);
+        SidebarColumn.Width = _sidebarCollapsed ? new GridLength(48) : new GridLength(252);
         NavPanel.Visibility = _sidebarCollapsed ? Visibility.Collapsed : Visibility.Visible;
     }
 
