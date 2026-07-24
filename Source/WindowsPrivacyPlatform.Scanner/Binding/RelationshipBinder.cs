@@ -10,6 +10,7 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
     /// Post-bind relationship wiring and effective-state resolution.
     /// Delegates precedence decisions to PolicyPrecedenceResolver.
     /// Does not hide conflicts. Read-only.
+    /// v0.9.5: Full AppPrivacy–ConsentStore pairs + additional curated edges.
     /// </summary>
     public sealed class RelationshipBinder
     {
@@ -20,7 +21,17 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
             ("privacy.consentstore.location", "policy.appprivacy.location", "Location"),
             ("privacy.consentstore.webcam", "policy.appprivacy.camera", "Camera"),
             ("privacy.consentstore.microphone", "policy.appprivacy.microphone", "Microphone"),
-            ("privacy.consentstore.broadFileSystemAccess", "policy.appprivacy.filesystem", "File system")
+            ("privacy.consentstore.userAccountInformation", "policy.appprivacy.accountinfo", "Account information"),
+            ("privacy.consentstore.contacts", "policy.appprivacy.contacts", "Contacts"),
+            ("privacy.consentstore.appointments", "policy.appprivacy.calendar", "Calendar"),
+            ("privacy.consentstore.email", "policy.appprivacy.email", "Email"),
+            ("privacy.consentstore.phoneCallHistory", "policy.appprivacy.callhistory", "Call history"),
+            ("privacy.consentstore.radios", "policy.appprivacy.radios", "Radios"),
+            ("privacy.consentstore.documentsLibrary", "policy.appprivacy.documents", "Documents library"),
+            ("privacy.consentstore.picturesLibrary", "policy.appprivacy.pictures", "Pictures library"),
+            ("privacy.consentstore.videosLibrary", "policy.appprivacy.videos", "Videos library"),
+            ("privacy.consentstore.broadFileSystemAccess", "policy.appprivacy.filesystem", "File system"),
+            ("privacy.consentstore.appDiagnostics", "policy.appprivacy.appdiagnostics", "App diagnostics")
         };
 
         private static readonly (string PrimaryId, string AlternateId, string Feature)[] AlternatePathPairs =
@@ -45,6 +56,9 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
             ("policy.location.disablelocation", "policy.appprivacy.location",
                 RelationshipKind.Related,
                 "Both are machine-level location controls; DisableLocation targets the platform, AppPrivacy targets app access."),
+            ("policy.location.disablelocation", "policy.location.disablewindowslocationsupplier",
+                RelationshipKind.UsuallyConfiguredWith,
+                "Both policies reduce or remove Windows location provider capability."),
             ("policy.findmydevice.allow", "policy.location.disablelocation",
                 RelationshipKind.DependsOn,
                 "Find My Device relies on location services; disabling location reduces Find My Device usefulness."),
@@ -65,6 +79,9 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
             ("policy.telemetry.allowtelemetry", "policy.telemetry.allowtelemetry.currentversion",
                 RelationshipKind.AlternativeStorage,
                 "Two machine policy stores can hold AllowTelemetry; Group Policy path is preferred when both exist."),
+            ("privacy.tailoredexperiences", "policy.cloud.disabletailored.hkcu",
+                RelationshipKind.AlternativeStorage,
+                "User privacy toggle and user policy path can both affect tailored experiences."),
 
             // Activity history group
             ("policy.activity.enableactivityfeed", "policy.activity.publishuseractivities",
@@ -87,6 +104,40 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
             ("policy.search.allowcortana", "policy.search.disablewebsearch",
                 RelationshipKind.Related,
                 "Cortana/cloud assistant features and web search are related cloud search surfaces."),
+            ("policy.search.allowcloudsearch", "policy.search.connectedsearchuseweb",
+                RelationshipKind.UsuallyConfiguredWith,
+                "Cloud search and connected web search policies often move together in privacy baselines."),
+
+            // Defender group
+            ("policy.defender.disablerealtime", "policy.defender.disablebehaviormonitor",
+                RelationshipKind.UsuallyConfiguredWith,
+                "Real-time and behavior monitoring are complementary real-time protection layers."),
+            ("policy.defender.disablerealtime", "policy.defender.disableioav",
+                RelationshipKind.UsuallyConfiguredWith,
+                "IOAV scanning of downloaded content is part of the broader real-time protection posture."),
+            ("policy.defender.spynetreporting", "policy.defender.submitsamples",
+                RelationshipKind.UsuallyConfiguredWith,
+                "MAPS membership and sample submission together control cloud-delivered protection data sharing."),
+            ("policy.defender.disableantispyware", "policy.defender.disablerealtime",
+                RelationshipKind.Affects,
+                "Legacy DisableAntiSpyware can neutralize the Defender engine including real-time protection."),
+
+            // Update group
+            ("policy.update.noautoupdate", "policy.update.auoptions",
+                RelationshipKind.Overrides,
+                "NoAutoUpdate can force automatic updates off regardless of AUOptions mode."),
+            ("policy.update.auoptions", "policy.update.scheduledinstallday",
+                RelationshipKind.UsuallyConfiguredWith,
+                "Scheduled install day is meaningful when AUOptions selects scheduled installation."),
+            ("policy.update.auoptions", "policy.update.scheduledinstalltime",
+                RelationshipKind.UsuallyConfiguredWith,
+                "Scheduled install time is meaningful when AUOptions selects scheduled installation."),
+            ("policy.update.donotconnectinternet", "policy.update.disablewuaccess",
+                RelationshipKind.Related,
+                "Both policies reduce end-user and public Windows Update connectivity."),
+            ("policy.deliveryopt.downloadmode", "policy.update.noautoupdate",
+                RelationshipKind.Related,
+                "Delivery Optimization only applies when update content is being retrieved."),
 
             // Firewall profiles
             ("firewall.profile.domain.enabled", "firewall.service.mpssvc",
