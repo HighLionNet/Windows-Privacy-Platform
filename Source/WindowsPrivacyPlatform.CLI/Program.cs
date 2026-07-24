@@ -283,17 +283,7 @@ namespace WindowsPrivacyPlatform.CLI
                         Console.WriteLine($"    Risk        : {mo.RiskLevel} | Control: {mo.ControlLevel}");
                         Console.WriteLine($"    Current     : {mo.CurrentState ?? "(unbound)"}");
 
-                        var res = mo.Observation?.Resolution ?? mo.Observation?.Effective is { } eff
-                            ? new ConfigurationResolution
-                            {
-                                EffectiveValue = eff.EffectiveValue,
-                                EffectiveSource = eff.EffectiveSource,
-                                Confidence = eff.Confidence,
-                                ResolutionReason = eff.Explanation,
-                                HasConflict = eff.HasConflict
-                            }
-                            : null;
-
+                        var res = GetResolution(mo);
                         if (res is not null && (!string.IsNullOrWhiteSpace(res.EffectiveValue) || res.HasConflict))
                         {
                             Console.WriteLine($"    Effective   : {res.EffectiveValue ?? "(unknown)"} [{res.EffectiveSource}]");
@@ -309,6 +299,26 @@ namespace WindowsPrivacyPlatform.CLI
             }
 
             _ = query;
+        }
+
+        private static ConfigurationResolution? GetResolution(ManagedObject mo)
+        {
+            if (mo.Observation?.Resolution is not null)
+                return mo.Observation.Resolution;
+
+            var eff = mo.Observation?.Effective;
+            if (eff is null)
+                return null;
+
+            return new ConfigurationResolution
+            {
+                EffectiveValue = eff.EffectiveValue,
+                EffectiveSource = eff.EffectiveSource,
+                Confidence = eff.Confidence,
+                ResolutionReason = eff.Explanation,
+                HasConflict = eff.HasConflict,
+                RawObservations = eff.ContributingLayers ?? new List<ConfigurationObservation>()
+            };
         }
     }
 }
