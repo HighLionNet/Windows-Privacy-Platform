@@ -2,7 +2,7 @@
 ## AI Project Handoff Document
 
 **Document Status:** Authoritative Continuity Document  
-**Applies To:** Prototype v0.4 (Live Discovery Skeleton)  
+**Applies To:** Prototype v0.5 (Model + Policy Discovery + Categorized Report)  
 **Last Updated:** 2026-07-24
 
 ---
@@ -34,15 +34,20 @@ Philosophy: **Understand first. Change later.**
 
 # CURRENT STATE (2026-07-24)
 
-Prototype v0.4 verified:
+## v0.4 finalized (hardware verified)
 
-- All six collectors implemented
+- Six collectors: Identity, Capability, Package, Service, ScheduledTask, Privacy
 - Release build: 0 errors, 0 warnings
-- Runtime on Windows 11 Pro 25H2: Identity correct, Packages 165, Services 303, Tasks 247, Privacy 17, Capabilities 0
-- Safety confirmation present
-- No elevation, no writes
+- Runtime Windows 11 Pro 25H2: Identity correct, Packages 165, Services 303, Tasks 247, Privacy 17, Capabilities 0
+- Safety confirmation present; no elevation, no writes
 
-Capabilities returning 0 is a known gap to investigate (DISM output format / availability).
+## v0.5 implemented (hardware verify pending)
+
+- **PolicyCollector** added: read-only probes of telemetry, Windows Update, Delivery Optimization, Defender, Search, Activity History, Cloud Content, Advertising, Location, AppPrivacy, Edge, Biometrics, Find My Device
+- **ManagedObjectCatalog** expanded (privacy + policy) with Description, RiskLevel, Rationale, SubCategory
+- **Categorized console report** joins catalog explanations to observed inventory values
+- InventorySnapshot.PolicySettings; CLI banner v0.5
+- Still strictly read-only
 
 ---
 
@@ -88,28 +93,25 @@ Future controlled changes (when authorised) must:
 
 # WHERE WE ARE RELATIVE TO THE END VISION
 
-| Layer                              | Status        |
-|------------------------------------|---------------|
-| Discover (inventory)               | Largely done  |
-| Model (explained ManagedObjects)   | Not started   |
-| Validate (beyond structural)       | Minimal       |
-| Report (categorized, human view)   | Not started   |
-| Relationships                      | Not started   |
-| Controlled change + elevation      | Deferred      |
-| Terminal / GUI                     | Deferred      |
-
-We are still early. The discovery skeleton is real and useful as a foundation. Jumping to GUI or write paths now would violate the project charter.
+| Layer                              | Status                |
+|------------------------------------|-----------------------|
+| Discover (inventory)               | Strong (v0.4–v0.5)    |
+| Model (explained ManagedObjects)   | Started (v0.5 catalog)|
+| Validate (beyond structural)       | Minimal               |
+| Report (categorized, human view)   | Started (v0.5 console)|
+| Relationships                      | Not started           |
+| Controlled change + elevation      | Deferred              |
+| Terminal / GUI                     | Deferred              |
 
 ---
 
 # NEXT IMPLEMENTATION PRIORITIES
 
-1. Investigate CapabilityCollector returning 0 on 25H2.
-2. Begin defining ManagedObjects for high-value privacy / policy settings with clear Name, Description, Category, RiskLevel, Rationale.
-3. Simple categorized console report of inventory.
-4. Expand PrivacyCollector carefully.
-5. Design (not implement) the future controlled-change contract (elevation-on-demand, warnings, reversibility).
-6. Terminal UI only after the model + report layer can explain what the user is looking at.
+1. Hardware-verify v0.5 (build green, policy probe counts, categorized report readable).
+2. CapabilityCollector follow-up if still 0.
+3. Expand catalog/probes for gaps found at runtime.
+4. Design (not implement) controlled-change contract after report layer is solid.
+5. Terminal UI only after model + report can explain what the user is looking at.
 
 ---
 
@@ -120,7 +122,7 @@ dotnet build -c Release
 dotnet run --project Source\WindowsPrivacyPlatform.CLI -c Release
 ```
 
-Confirm inventory counts, validation, and safety confirmation after every meaningful change.
+Confirm inventory counts, policy probe counts, catalog KB load, categorized report, validation, and safety confirmation after every meaningful change.
 
 ---
 
