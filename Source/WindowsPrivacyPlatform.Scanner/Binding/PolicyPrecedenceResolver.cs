@@ -9,6 +9,7 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
     /// <summary>
     /// Central place for configuration-layer precedence and effective-value reasoning.
     /// Read-only pure logic — no registry access, no writes, no elevation.
+    /// Semantic meaning of raw codes comes only from catalog ValueSemantics (via ValueSemanticsInterpreter).
     /// Never silently guesses: unknown inputs yield Unknown confidence and clear reasons.
     /// </summary>
     public static class PolicyPrecedenceResolver
@@ -36,14 +37,8 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
                    !raw.Contains("Error reading", StringComparison.OrdinalIgnoreCase);
         }
 
-        public static string ExtractRawPolicyValue(string? state)
-        {
-            if (string.IsNullOrWhiteSpace(state))
-                return string.Empty;
-            var s = state.Trim();
-            var idx = s.IndexOf(" (", StringComparison.Ordinal);
-            return idx > 0 ? s[..idx].Trim() : s;
-        }
+        public static string ExtractRawPolicyValue(string? state) =>
+            ValueSemanticsInterpreter.Normalize(state);
 
         public static string NormalizePrivacyToken(string? state)
         {
@@ -58,11 +53,12 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
 
         /// <summary>
         /// Resolve user ConsentStore vs machine AppPrivacy LetApps* policy.
-        /// AppPrivacy codes: 0 = user control, 1 = force allow, 2 = force deny.
+        /// Meaning of AppPrivacy codes (0/1/2) is taken from the policy catalog entry's ValueSemantics only.
         /// </summary>
         public static ConfigurationResolution ResolveConsentVsAppPrivacy(
             ConfigurationObservation? userLayer,
             ConfigurationObservation? policyLayer,
+            ManagedObject? policyDefinition,
             string featureName)
         {
             var observations = new List<ConfigurationObservation>();
@@ -82,12 +78,41 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
                     EffectiveSource = ConfigurationLayer.UserPreference,
                     Confidence = string.IsNullOrEmpty(userVal) ? EffectiveConfidence.Low : EffectiveConfidence.High,
                     ResolutionReason =
-                        $"{featureName}: no machine AppPrivacy force policy is configured, so the user preference applies.",
+                        $"{featureName}: no machine AppPrivacy force policy is configured at the probed path. " +
+                        "Windows therefore evaluates the per-user ConsentStore preference for this capability.",
+                    ConfidenceReason =
+                        string.IsNullOrEmpty(userVal)
+                            ? "User preference not observed; confidence low."
+                            : "Policy absent; user preference observed directly from ConsentStore.",
                     HasConflict = false
                 };
             }
 
-            if (policyRaw == "0")
+            var meaning = ValueSemanticsInterpreter.Interpret(policyDefinition, policyRaw);
+            var canonical = meaning?.Canonical ?? string.Empty;
+            var display = meaning?.DisplayLabel ?? policyRaw;
+
+            // Knowledge-driven interpretation of force codes. If map missing, stay Unknown — never invent.
+            if (meaning is null)
+            {
+                return new ConfigurationResolution
+                {
+                    RawObservations = observations,
+                    EffectiveValue = null,
+                    EffectiveSource = ConfigurationLayer.Unknown,
+                    Confidence = EffectiveConfidence.Low,
+                    ResolutionReason =
+                        $"{featureName}: machine AppPrivacy value '{policyRaw}' has no semantic mapping in the knowledge catalog. " +
+                        "Effective access cannot be stated without inventing meaning.",
+                    ConfidenceReason = "Raw policy value present but no ValueSemantics entry for this ObjectId/raw pair.",
+                    SemanticValue = null,
+                    SemanticDisplay = null,
+                    HasConflict = true
+                };
+            }
+
+            if (string.Equals(canonical, "UserControlled", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(canonical, "User", StringComparison.OrdinalIgnoreCase))
             {
                 return new ConfigurationResolution
                 {
@@ -96,12 +121,17 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
                     EffectiveSource = ConfigurationLayer.UserPreference,
                     Confidence = EffectiveConfidence.High,
                     ResolutionReason =
-                        $"{featureName}: machine AppPrivacy is set to user-controlled (0). The ConsentStore value is effective.",
+                        $"{featureName}: machine AppPrivacy is set to {display} ({policyRaw}). " +
+                        "This code means the user ConsentStore value remains effective; Windows does not force allow or deny.",
+                    ConfidenceReason = "Known AppPrivacy code from catalog ValueSemantics; user preference observed.",
+                    SemanticValue = string.IsNullOrEmpty(userVal) ? null : NormalizePrivacyToken(userVal),
+                    SemanticDisplay = string.IsNullOrEmpty(userVal) ? null : userVal,
                     HasConflict = false
                 };
             }
 
-            if (policyRaw == "1")
+            if (string.Equals(canonical, "ForceAllow", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(canonical, "Allow", StringComparison.OrdinalIgnoreCase))
             {
                 var conflict = !string.Equals(userVal, "Allow", StringComparison.OrdinalIgnoreCase) &&
                                IsConfiguredValue(userVal);
@@ -112,12 +142,17 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
                     EffectiveSource = ConfigurationLayer.MachinePolicy,
                     Confidence = EffectiveConfidence.High,
                     ResolutionReason =
-                        $"{featureName}: machine policy forces Allow (AppPrivacy=1) and takes precedence over user preference ({userVal}).",
+                        $"{featureName}: machine AppPrivacy forces Allow ({display} / raw {policyRaw}). " +
+                        "Machine policy is evaluated before per-user ConsentStore for capability access, so the user preference ({userVal}) is ignored while this policy remains.",
+                    ConfidenceReason = "Known ForceAllow mapping from catalog; machine layer rank exceeds user preference.",
+                    SemanticValue = "Allow",
+                    SemanticDisplay = meaning.DisplayLabel,
                     HasConflict = conflict
                 };
             }
 
-            if (policyRaw == "2")
+            if (string.Equals(canonical, "ForceDeny", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(canonical, "Deny", StringComparison.OrdinalIgnoreCase))
             {
                 var conflict = !string.Equals(userVal, "Deny", StringComparison.OrdinalIgnoreCase) &&
                                IsConfiguredValue(userVal);
@@ -128,7 +163,11 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
                     EffectiveSource = ConfigurationLayer.MachinePolicy,
                     Confidence = EffectiveConfidence.High,
                     ResolutionReason =
-                        $"{featureName}: machine policy forces Deny (AppPrivacy=2) and takes precedence over user preference ({userVal}).",
+                        $"{featureName}: machine AppPrivacy forces Deny ({display} / raw {policyRaw}). " +
+                        "Machine policy is evaluated before per-user ConsentStore for capability access, so the user preference ({userVal}) is ignored while this policy remains.",
+                    ConfidenceReason = "Known ForceDeny mapping from catalog; machine layer rank exceeds user preference.",
+                    SemanticValue = "Deny",
+                    SemanticDisplay = meaning.DisplayLabel,
                     HasConflict = conflict
                 };
             }
@@ -140,18 +179,22 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
                 EffectiveSource = ConfigurationLayer.Unknown,
                 Confidence = EffectiveConfidence.Low,
                 ResolutionReason =
-                    $"{featureName}: machine AppPrivacy value '{policyRaw}' is not a known force code (expected 0, 1, or 2). Effective state is unknown.",
+                    $"{featureName}: machine AppPrivacy value '{policyRaw}' maps to '{canonical}' but is not a recognized force mode (UserControlled / ForceAllow / ForceDeny). Effective state is unknown.",
+                ConfidenceReason = "Catalog map present but canonical form is not one of the three AppPrivacy force modes used by Windows.",
+                SemanticValue = canonical,
+                SemanticDisplay = display,
                 HasConflict = true
             };
         }
 
         /// <summary>
         /// Resolve the same semantic setting stored in two machine policy paths.
-        /// Prefers SOFTWARE\Policies (MachinePolicy) over CurrentVersion\Policies when both differ.
+        /// Prefers SOFTWARE\\Policies (MachinePolicy) over CurrentVersion\\Policies when both differ.
         /// </summary>
         public static ConfigurationResolution ResolveAlternateMachinePolicyPaths(
             ConfigurationObservation? primaryPoliciesPath,
             ConfigurationObservation? alternateCurrentVersionPath,
+            ManagedObject? primaryDefinition,
             string featureName)
         {
             var observations = new List<ConfigurationObservation>();
@@ -163,6 +206,12 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
             var primaryOk = IsConfiguredValue(primaryRaw);
             var alternateOk = IsConfiguredValue(alternateRaw);
 
+            ValueMeaning? meaning = null;
+            if (primaryOk)
+                meaning = ValueSemanticsInterpreter.Interpret(primaryDefinition, primaryRaw);
+            else if (alternateOk)
+                meaning = ValueSemanticsInterpreter.Interpret(primaryDefinition, alternateRaw);
+
             if (primaryOk && alternateOk)
             {
                 var conflict = !string.Equals(primaryRaw, alternateRaw, StringComparison.OrdinalIgnoreCase);
@@ -173,8 +222,16 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
                     EffectiveSource = ConfigurationLayer.MachinePolicy,
                     Confidence = conflict ? EffectiveConfidence.Medium : EffectiveConfidence.High,
                     ResolutionReason = conflict
-                        ? $"{featureName}: both machine policy stores are configured with different values (Group Policy store={primaryRaw}, CurrentVersion store={alternateRaw}). Preferring the Group Policy store; treat as a conflict until MDM/baseline rules exist."
+                        ? $"{featureName}: both machine policy stores are configured with different values " +
+                          $"(Group Policy store={primaryRaw}, CurrentVersion store={alternateRaw}). " +
+                          "Windows typically honors the SOFTWARE\\Policies path for administrative templates; " +
+                          "treat the disagreement as a conflict until MDM or security baseline layers are collected."
                         : $"{featureName}: both machine policy stores agree on value {primaryRaw}.",
+                    ConfidenceReason = conflict
+                        ? "Two configured stores disagree; preferring Group Policy store by documented path precedence."
+                        : "Both stores agree; high confidence.",
+                    SemanticValue = meaning?.Canonical,
+                    SemanticDisplay = meaning?.DisplayLabel,
                     HasConflict = conflict
                 };
             }
@@ -188,7 +245,11 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
                     EffectiveSource = ConfigurationLayer.MachinePolicy,
                     Confidence = EffectiveConfidence.High,
                     ResolutionReason =
-                        $"{featureName}: only the Group Policy store is configured ({primaryRaw}).",
+                        $"{featureName}: only the Group Policy store (SOFTWARE\\Policies) is configured ({primaryRaw}). " +
+                        "That path is the primary administrative template store for this setting.",
+                    ConfidenceReason = "Single configured store at MachinePolicy rank; map applied when present.",
+                    SemanticValue = meaning?.Canonical,
+                    SemanticDisplay = meaning?.DisplayLabel,
                     HasConflict = false
                 };
             }
@@ -202,7 +263,11 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
                     EffectiveSource = ConfigurationLayer.AlternatePolicyStore,
                     Confidence = EffectiveConfidence.Medium,
                     ResolutionReason =
-                        $"{featureName}: only the CurrentVersion policy store is configured ({alternateRaw}).",
+                        $"{featureName}: only the CurrentVersion policy store is configured ({alternateRaw}). " +
+                        "This alternate path can be effective on some images when the Group Policy store is empty.",
+                    ConfidenceReason = "Alternate store only; medium confidence until primary path is also known.",
+                    SemanticValue = meaning?.Canonical,
+                    SemanticDisplay = meaning?.DisplayLabel,
                     HasConflict = false
                 };
             }
@@ -214,6 +279,7 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
                 EffectiveSource = ConfigurationLayer.Unknown,
                 Confidence = EffectiveConfidence.Low,
                 ResolutionReason = $"{featureName}: neither machine policy store is configured.",
+                ConfidenceReason = "No configured value at either probed path.",
                 HasConflict = false
             };
         }
@@ -224,6 +290,7 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
         /// </summary>
         public static ConfigurationResolution ResolveByLayerRank(
             IEnumerable<ConfigurationObservation> layers,
+            ManagedObject? definition,
             string featureName)
         {
             var list = layers?.Where(l => l is not null && IsConfiguredValue(l.RawValue)).ToList()
@@ -238,6 +305,7 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
                     EffectiveSource = ConfigurationLayer.Unknown,
                     Confidence = EffectiveConfidence.Low,
                     ResolutionReason = $"{featureName}: no configured layers to compare.",
+                    ConfidenceReason = "No configured observations.",
                     HasConflict = false
                 };
             }
@@ -261,7 +329,10 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
                     EffectiveSource = ConfigurationLayer.Unknown,
                     Confidence = EffectiveConfidence.Low,
                     ResolutionReason =
-                        $"{featureName}: multiple configured values at the same precedence rank; winner cannot be determined safely.",
+                        $"{featureName}: multiple configured values at the same precedence rank; " +
+                        "a winner cannot be determined without inventing priority. Possible causes include " +
+                        "overlapping local Group Policy, domain GPO, MDM, or third-party hardening writing the same rank.",
+                    ConfidenceReason = "Same-rank conflict; refused to pick a winner.",
                     HasConflict = true
                 };
             }
@@ -272,15 +343,24 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
                     ExtractRawPolicyValue(winner.RawValue),
                     StringComparison.OrdinalIgnoreCase));
 
+            var winnerRaw = ExtractRawPolicyValue(winner.RawValue);
+            var meaning = ValueSemanticsInterpreter.Interpret(definition, winnerRaw);
+
             return new ConfigurationResolution
             {
                 RawObservations = list,
-                EffectiveValue = ExtractRawPolicyValue(winner.RawValue),
+                EffectiveValue = winnerRaw,
                 EffectiveSource = winner.Layer,
                 Confidence = conflict ? EffectiveConfidence.Medium : EffectiveConfidence.High,
                 ResolutionReason = conflict
-                    ? $"{featureName}: {winner.Layer} wins by precedence rank over lower layers with different values."
-                    : $"{featureName}: {winner.Layer} is the highest configured layer.",
+                    ? $"{featureName}: {winner.Layer} wins by documented precedence rank over lower layers that carry different values. " +
+                      "Windows applies higher-ranking administrative configuration before user or application preferences."
+                    : $"{featureName}: {winner.Layer} is the highest configured layer for this setting.",
+                ConfidenceReason = conflict
+                    ? "Higher layer wins; lower layers disagree so confidence is medium."
+                    : "Single clear winner by layer rank; value map applied when present.",
+                SemanticValue = meaning?.Canonical,
+                SemanticDisplay = meaning?.DisplayLabel,
                 HasConflict = conflict
             };
         }
