@@ -4,7 +4,8 @@
         Title="Windows Privacy Platform"
         Height="780" Width="1180"
         MinHeight="560" MinWidth="900"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        PreviewKeyDown="Window_PreviewKeyDown">
   <DockPanel>
 
     <!-- Top title bar -->
@@ -19,26 +20,31 @@
 
         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
           <TextBlock Text="Windows Privacy Platform" FontSize="16" FontWeight="SemiBold"
-                     Foreground="{StaticResource BrushTextPrimary}" VerticalAlignment="Center" />
-          <Border Style="{StaticResource Badge}" Margin="12,0,0,0" VerticalAlignment="Center">
+                     Foreground="{StaticResource BrushTextPrimary}" VerticalAlignment="Center"
+                     ToolTip="Local read-only knowledge explorer" />
+          <Border Style="{StaticResource Badge}" Margin="12,0,0,0" VerticalAlignment="Center"
+                  ToolTip="This application never writes to Windows configuration">
             <TextBlock Text="READ-ONLY" FontSize="11" FontWeight="SemiBold"
                        Foreground="{StaticResource BrushAccent}" />
           </Border>
           <TextBlock x:Name="VersionLabel" Text="v1.0" Margin="12,0,0,0"
-                     Foreground="{StaticResource BrushTextMuted}" VerticalAlignment="Center" FontSize="12" />
+                     Foreground="{StaticResource BrushTextMuted}" VerticalAlignment="Center" FontSize="12"
+                     ToolTip="Application version" />
           <TextBlock x:Name="ScanTimeLabel" Text="" Margin="16,0,0,0"
-                     Foreground="{StaticResource BrushTextMuted}" VerticalAlignment="Center" FontSize="12" />
+                     Foreground="{StaticResource BrushTextMuted}" VerticalAlignment="Center" FontSize="12"
+                     ToolTip="Last successful scan time (UTC)" />
         </StackPanel>
 
-        <TextBox x:Name="SearchBox" Grid.Column="1" Width="240" Height="32"
+        <TextBox x:Name="SearchBox" Grid.Column="1" Width="260" Height="32"
                  VerticalContentAlignment="Center" Padding="8,0"
                  Margin="0,0,12,0"
-                 ToolTip="Search settings by name, ObjectId, or keyword"
+                 ToolTip="Search by name, ObjectId, description, or domain (Enter). Ctrl+F focuses this box."
                  KeyDown="SearchBox_KeyDown" />
 
         <Button x:Name="ScanButton" Grid.Column="2" Content="Scan"
                 Style="{StaticResource PrimaryButton}" Click="ScanButton_Click"
-                MinWidth="88" />
+                MinWidth="88"
+                ToolTip="Run a read-only discovery scan (F5 or Ctrl+R)" />
       </Grid>
     </Border>
 
@@ -52,14 +58,21 @@
         </Grid.ColumnDefinitions>
         <TextBlock x:Name="StatusText" Text="Ready — press Scan to discover local configuration (read-only)."
                    Foreground="{StaticResource BrushTextSecondary}" FontSize="12"
-                   TextTrimming="CharacterEllipsis" />
+                   TextTrimming="CharacterEllipsis"
+                   ToolTip="Live scan status" />
         <StackPanel Grid.Column="1" Orientation="Horizontal">
-          <TextBlock x:Name="CatalogCountLabel" Text="Catalog: —" Margin="16,0,0,0"
-                     Foreground="{StaticResource BrushTextMuted}" FontSize="12" />
-          <TextBlock x:Name="ValidationLabel" Text="Validation: —" Margin="16,0,0,0"
-                     Foreground="{StaticResource BrushTextMuted}" FontSize="12" />
-          <TextBlock Text="Never modifies Windows" Margin="16,0,0,0"
-                     Foreground="{StaticResource BrushAccent}" FontSize="12" FontWeight="SemiBold" />
+          <TextBlock x:Name="CatalogCountLabel" Text="Catalog: —" Margin="12,0,0,0"
+                     Foreground="{StaticResource BrushTextMuted}" FontSize="12"
+                     ToolTip="Curated knowledge catalog size" />
+          <TextBlock x:Name="ConflictCountLabel" Text="Conflicts: —" Margin="12,0,0,0"
+                     Foreground="{StaticResource BrushTextMuted}" FontSize="12"
+                     ToolTip="Settings with observed layer disagreements" />
+          <TextBlock x:Name="ValidationLabel" Text="Validation: —" Margin="12,0,0,0"
+                     Foreground="{StaticResource BrushTextMuted}" FontSize="12"
+                     ToolTip="Catalog structural validation results" />
+          <TextBlock Text="Never modifies Windows" Margin="12,0,0,0"
+                     Foreground="{StaticResource BrushAccent}" FontSize="12" FontWeight="SemiBold"
+                     ToolTip="No registry, service, task, policy, or firewall writes" />
         </StackPanel>
       </Grid>
     </Border>
@@ -67,7 +80,7 @@
     <!-- Body: sidebar + content -->
     <Grid>
       <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="220" MinWidth="180" />
+        <ColumnDefinition Width="240" MinWidth="180" />
         <ColumnDefinition Width="*" />
       </Grid.ColumnDefinitions>
 
@@ -78,11 +91,14 @@
           <StackPanel Margin="8,12,8,12">
             <TextBlock Text="EXPLORE" Style="{StaticResource LabelMuted}" Margin="12,0,0,6" />
             <Button x:Name="NavHome" Content="Machine Overview" Style="{StaticResource SidebarButtonSelected}"
-                    Click="Nav_Click" Tag="home" />
+                    Click="Nav_Click" Tag="home"
+                    ToolTip="Device context and observation summary" />
             <Button x:Name="NavConflicts" Content="Conflicts" Style="{StaticResource SidebarButton}"
-                    Click="Nav_Click" Tag="conflicts" />
+                    Click="Nav_Click" Tag="conflicts"
+                    ToolTip="Settings where configuration layers disagree" />
             <Button x:Name="NavKnowledge" Content="Knowledge Explorer" Style="{StaticResource SidebarButton}"
-                    Click="Nav_Click" Tag="knowledge" />
+                    Click="Nav_Click" Tag="knowledge"
+                    ToolTip="Browse the curated catalog independent of live values" />
 
             <TextBlock Text="DOMAINS" Style="{StaticResource LabelMuted}" Margin="12,16,0,6" />
             <Button Content="App permissions" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:ConsentStore" />
@@ -102,7 +118,8 @@
             <Button Content="Device" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Device" />
 
             <TextBlock Text="ABOUT" Style="{StaticResource LabelMuted}" Margin="12,16,0,6" />
-            <Button Content="About" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="about" />
+            <Button Content="About" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="about"
+                    ToolTip="Philosophy, architecture, and safety model" />
           </StackPanel>
         </ScrollViewer>
       </Border>
