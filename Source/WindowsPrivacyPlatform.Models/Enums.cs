@@ -53,6 +53,45 @@ public enum ProductDomain
     Other
 }
 
+/// <summary>
+/// Windows configuration layer that produced an observed value.
+/// Used for effective-state resolution (User vs MachinePolicy vs alternate stores).
+/// </summary>
+public enum ConfigurationLayer
+{
+    Unknown = 0,
+    UserPreference,
+    MachinePolicy,
+    AlternatePolicyStore,
+    MDM,
+    SecurityBaseline
+}
+
+/// <summary>
+/// Confidence that an EffectiveState was determined correctly.
+/// </summary>
+public enum EffectiveConfidence
+{
+    Unknown = 0,
+    Low,
+    Medium,
+    High
+}
+
+/// <summary>
+/// Kind of relationship between two managed settings.
+/// </summary>
+public enum RelationshipKind
+{
+    Related = 0,
+    Overrides,
+    OverriddenBy,
+    ConflictsWith,
+    Requires,
+    DependsOn,
+    SameFeatureAlternatePath
+}
+
 public enum RiskLevel
 {
     Low,
