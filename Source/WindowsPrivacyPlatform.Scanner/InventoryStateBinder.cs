@@ -68,23 +68,24 @@ namespace WindowsPrivacyPlatform.Scanner
                     case RiskLevel.High:
                         summary.HighRiskCount++;
                         if (observed && !IsNotConfigured(state))
-                        {
                             summary.HighRiskItems.Add(ToItem(mo, state));
-                        }
                         break;
                     case RiskLevel.Medium:
                         summary.MediumRiskCount++;
                         if (observed && !IsNotConfigured(state))
-                        {
                             summary.MediumRiskItems.Add(ToItem(mo, state));
-                        }
                         break;
                     default:
                         summary.LowRiskCount++;
                         break;
                 }
 
-                TallyPrivacyValue(state, summary);
+                // Only ConsentStore / privacy preference values use Allow|Deny|Prompt semantics.
+                if (mo.FeatureCategory == FeatureCategory.PrivacyPermission ||
+                    string.Equals(mo.ObjectType, "PrivacySetting", StringComparison.OrdinalIgnoreCase))
+                {
+                    TallyPrivacyValue(state, summary);
+                }
             }
 
             foreach (var p in snapshot.PolicySettings)
@@ -103,7 +104,6 @@ namespace WindowsPrivacyPlatform.Scanner
             if (snapshot is null || mo is null)
                 return "Not observed in this scan";
 
-            // Policy probes use ObjectId as PolicySettingInfo.Name
             var policy = snapshot.PolicySettings.FirstOrDefault(p =>
                 string.Equals(p.Name, mo.ObjectId, StringComparison.OrdinalIgnoreCase));
             if (policy is not null)
@@ -118,7 +118,6 @@ namespace WindowsPrivacyPlatform.Scanner
             if (privacy is not null)
                 return privacy.Value;
 
-            // Related keys use dotted display names (e.g. AdvertisingId.Enabled)
             privacy = snapshot.PrivacySettings.FirstOrDefault(p =>
                 NamesLooselyMatch(mo.ObjectId, p.Name) ||
                 NamesLooselyMatch(shortName, p.Name));
@@ -171,13 +170,23 @@ namespace WindowsPrivacyPlatform.Scanner
             if (string.IsNullOrWhiteSpace(state))
                 return;
 
-            // ConsentStore values are typically Allow / Deny / Prompt
-            if (state.Contains("Allow", StringComparison.OrdinalIgnoreCase))
+            // Exact-ish ConsentStore tokens; avoid matching unrelated strings.
+            var token = state.Trim();
+            if (token.Equals("Allow", StringComparison.OrdinalIgnoreCase) ||
+                token.StartsWith("Allow ", StringComparison.OrdinalIgnoreCase))
+            {
                 summary.PrivacyAllowCount++;
-            else if (state.Contains("Deny", StringComparison.OrdinalIgnoreCase))
+            }
+            else if (token.Equals("Deny", StringComparison.OrdinalIgnoreCase) ||
+                     token.StartsWith("Deny ", StringComparison.OrdinalIgnoreCase))
+            {
                 summary.PrivacyDenyCount++;
-            else if (state.Contains("Prompt", StringComparison.OrdinalIgnoreCase))
+            }
+            else if (token.Equals("Prompt", StringComparison.OrdinalIgnoreCase) ||
+                     token.StartsWith("Prompt ", StringComparison.OrdinalIgnoreCase))
+            {
                 summary.PrivacyPromptCount++;
+            }
         }
 
         private static ObservedItem ToItem(ManagedObject mo, string state) =>
