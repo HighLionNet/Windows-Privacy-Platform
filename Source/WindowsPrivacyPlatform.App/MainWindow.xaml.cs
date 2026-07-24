@@ -210,8 +210,7 @@ public partial class MainWindow : Window
                 ContentHost.Content = new DomainView(_scan, domain, OpenSetting);
                 UpdateBreadcrumbs(
                     NavigationBuilder.HumanizeDomain(domain),
-                    group: DomainGroup(domain),
-                    domainTag: tag);
+                    group: DomainGroup(domain));
                 return;
             }
         }
@@ -247,12 +246,11 @@ public partial class MainWindow : Window
             return;
 
         ContentHost.Content = new SettingDetailPage(detail, OpenSetting);
-        var domainTag = $"domain:{mo.ProductDomain}";
         UpdateBreadcrumbs(
             detail.Title,
             group: DomainGroup(mo.ProductDomain),
             domainName: NavigationBuilder.HumanizeDomain(mo.ProductDomain),
-            domainTag: domainTag);
+            domainTag: $"domain:{mo.ProductDomain}");
     }
 
     private static string DomainGroup(ProductDomain d) => d switch
@@ -274,83 +272,71 @@ public partial class MainWindow : Window
     {
         BreadcrumbPanel.Children.Clear();
 
-        void AddLink(string text, string? tag)
-        {
-            if (tag is null)
-            {
-                BreadcrumbPanel.Children.Add(new TextBlock
-                {
-                    Text = text,
-                    Style = (Style)FindResource("BreadcrumbText"),
-                    FontWeight = FontWeights.SemiBold,
-                    Foreground = (Brush)FindResource("BrushTextPrimary")
-                });
-                return;
-            }
+        AddBreadcrumbLink("Home", "home");
 
-            var btn = new Button
-            {
-                Content = text,
-                Style = (Style)FindResource("BreadcrumbLink"),
-                Tag = tag,
-                Cursor = Cursors.Hand
-            };
-            btn.Click += (_, _) =>
-            {
-                _currentNav = tag;
-                var match = _navButtons.FirstOrDefault(b => b.Tag as string == tag);
-                if (match is not null)
-                    HighlightNav(match);
-                Navigate(tag);
-            };
-            BreadcrumbPanel.Children.Add(btn);
+        if (!string.IsNullOrEmpty(group))
+        {
+            AddBreadcrumbSep();
+            AddBreadcrumbText(group);
         }
 
-        void AddSep()
+        if (!string.IsNullOrEmpty(domainName) && !string.IsNullOrEmpty(domainTag))
         {
-            BreadcrumbPanel.Children.Add(new TextBlock
-            {
-                Text = " › ",
-                Style = (Style)FindResource("BreadcrumbText"),
-                Margin = new Thickness(2, 0, 2, 0)
-            });
+            AddBreadcrumbSep();
+            AddBreadcrumbLink(domainName, domainTag);
         }
 
-        AddLink("Home", "home");
+        var isRoot = string.Equals(current, "Machine Overview", StringComparison.Ordinal)
+                     || string.Equals(current, "Ready", StringComparison.Ordinal);
+        var domainAlreadyLinked = !string.IsNullOrEmpty(domainName)
+                                  && string.Equals(current, domainName, StringComparison.Ordinal);
 
-        if (group is not null)
+        if (!isRoot && !domainAlreadyLinked)
         {
-            AddSep();
-            BreadcrumbPanel.Children.Add(new TextBlock
-            {
-                Text = group,
-                Style = (Style)FindResource("BreadcrumbText")
-            });
+            AddBreadcrumbSep();
+            AddBreadcrumbText(current);
         }
+    }
 
-        if (domainName is not null && domainTag is not null)
+    private void AddBreadcrumbSep()
+    {
+        BreadcrumbPanel.Children.Add(new TextBlock
         {
-            AddSep();
-            AddLink(domainName, domainTag);
-        }
-        else if (domainTag is not null && current is not null)
-        {
-            // Domain list page: current is the domain title; make it non-link terminal
-        }
+            Text = " › ",
+            Style = (Style)FindResource("BreadcrumbText"),
+            Margin = new Thickness(2, 0, 2, 0)
+        });
+    }
 
-        if (!string.Equals(current, "Machine Overview", StringComparison.Ordinal) &&
-            !string.Equals(current, "Ready", StringComparison.Ordinal))
+    private void AddBreadcrumbText(string text)
+    {
+        BreadcrumbPanel.Children.Add(new TextBlock
         {
-            // If we already linked the domain name and current is the setting title, show current.
-            // If current IS the domain page title and domainTag was set without domainName, show current as terminal.
-            var alreadyLinkedDomain = domainName is not null &&
-                string.Equals(current, domainName, StringComparison.Ordinal);
-            if (!alreadyLinkedDomain)
-            {
-                AddSep();
-                AddLink(current, null);
-            }
-        }
+            Text = text,
+            Style = (Style)FindResource("BreadcrumbText"),
+            FontWeight = FontWeights.SemiBold,
+            Foreground = (Brush)FindResource("BrushTextPrimary")
+        });
+    }
+
+    private void AddBreadcrumbLink(string text, string tag)
+    {
+        var btn = new Button
+        {
+            Content = text,
+            Style = (Style)FindResource("BreadcrumbLink"),
+            Tag = tag,
+            Cursor = Cursors.Hand
+        };
+        btn.Click += (_, _) =>
+        {
+            _currentNav = tag;
+            var match = _navButtons.FirstOrDefault(b => b.Tag as string == tag);
+            if (match is not null)
+                HighlightNav(match);
+            Navigate(tag);
+        };
+        BreadcrumbPanel.Children.Add(btn);
     }
 
     private void SearchBox_KeyDown(object sender, KeyEventArgs e)
