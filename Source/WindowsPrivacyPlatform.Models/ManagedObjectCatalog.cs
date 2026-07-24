@@ -6,22 +6,158 @@ namespace WindowsPrivacyPlatform.Models;
 
 /// <summary>
 /// Static catalog of predefined ManagedObjects for high-value privacy and security settings.
-/// Pure data only — no business logic. Used by report layer to explain inventory.
+/// Pure data only — no business logic. Knowledge owner of ValueSemantics maps.
 /// ObjectId values align with PolicyCollector probe ids and PrivacyCollector names.
 /// Every entry has exactly one primary ProductDomain for navigation/report grouping.
-/// v0.8: Firewall domain entries added (curated, read-only understanding only).
+/// v0.9: ValueSemantics maps, edition/version metadata, WhenIgnored, CommonMisconception.
 /// </summary>
 public static class ManagedObjectCatalog
 {
-    public static IReadOnlyList<ManagedObject> PrivacySettings { get; } = CreatePrivacyBatch();
+    public static IReadOnlyList<ManagedObject> PrivacySettings { get; } = AttachSemantics(CreatePrivacyBatch());
 
-    public static IReadOnlyList<ManagedObject> PolicySettings { get; } = CreatePolicyBatch();
+    public static IReadOnlyList<ManagedObject> PolicySettings { get; } = AttachSemantics(CreatePolicyBatch());
 
-    public static IReadOnlyList<ManagedObject> FirewallSettings { get; } = CreateFirewallBatch();
+    public static IReadOnlyList<ManagedObject> FirewallSettings { get; } = AttachSemantics(CreateFirewallBatch());
 
     /// <summary>Combined catalog (privacy + policy + firewall).</summary>
     public static IReadOnlyList<ManagedObject> All { get; } =
         PrivacySettings.Concat(PolicySettings).Concat(FirewallSettings).ToList().AsReadOnly();
+
+    private static IReadOnlyList<ManagedObject> AttachSemantics(IReadOnlyList<ManagedObject> batch)
+    {
+        foreach (var mo in batch)
+        {
+            if (mo is null) continue;
+            mo.SchemaVersion = "0.9";
+            mo.ConfidenceSource = "Catalog-v0.9";
+            ApplyKnownSemantics(mo);
+        }
+        return batch;
+    }
+
+    private static void ApplyKnownSemantics(ManagedObject mo)
+    {
+        // ConsentStore: Allow / Deny / Prompt
+        if (mo.ObjectId.StartsWith("privacy.consentstore.", StringComparison.OrdinalIgnoreCase))
+        {
+            mo.ValueSemantics =
+            [
+                V("Allow", "Allow", "Allow", "Applications may use this capability when they request it (subject to higher policy)."),
+                V("Deny", "Deny", "Deny", "Applications are blocked from this capability under the current user."),
+                V("Prompt", "Prompt", "Prompt", "Windows prompts the user when an application requests this capability.")
+            ];
+            mo.WhenIgnored = "Machine AppPrivacy (LetApps*) policy can force allow or force deny and override this ConsentStore value.";
+            mo.CommonMisconception = "A ConsentStore Deny is not always the whole story; machine AppPrivacy policy can still force access.";
+            mo.SupportedWindowsVersions = ["Windows 10", "Windows 11"];
+            return;
+        }
+
+        // Advertising ID user toggle (0/1)
+        if (mo.ObjectId.Equals("privacy.advertisingid.enabled", StringComparison.OrdinalIgnoreCase))
+        {
+            mo.ValueSemantics =
+            [
+                V("0", "Disabled", "Disabled", "Windows does not provide an Advertising ID to applications for this user."),
+                V("1", "Enabled", "Enabled", "Windows may provide an Advertising ID to applications for cross-app advertising correlation.")
+            ];
+            mo.WhenIgnored = "Group Policy DisabledByGroupPolicy forces Advertising ID off regardless of this user toggle.";
+            mo.CommonMisconception = "Turning off the Advertising ID does not disable Windows diagnostic data or in-app tracking.";
+            mo.SupportedWindowsVersions = ["Windows 10", "Windows 11"];
+            return;
+        }
+
+        // AllowTelemetry (both paths)
+        if (mo.ObjectId.Contains("allowtelemetry", StringComparison.OrdinalIgnoreCase))
+        {
+            mo.ValueSemantics =
+            [
+                new ValueMeaning
+                {
+                    RawValue = "0", Canonical = "Security", DisplayLabel = "Security",
+                    Description = "Minimum supported diagnostic data level (Security). Intended for Enterprise/Education.",
+                    SupportedEditions = ["Enterprise", "Education"], SupportedVersions = ["Windows 10", "Windows 11"],
+                    Confidence = EffectiveConfidence.High,
+                    Notes = "On Home/Pro, Windows may not honor Security level the same way; treat as enterprise-oriented."
+                },
+                V("1", "Basic", "Basic", "Basic diagnostic data level."),
+                V("2", "Enhanced", "Enhanced", "Enhanced diagnostic data level (legacy naming on some builds)."),
+                V("3", "Full", "Full", "Full diagnostic data level.")
+            ];
+            mo.WhenIgnored = "If neither policy store is configured, the effective diagnostic level may come from Setup or default behavior not collected here.";
+            mo.CommonMisconception = "A low diagnostic level does not stop Windows Update, Store, or licensing traffic.";
+            mo.TypicalEnterpriseUse = "Enterprises often set AllowTelemetry to 0 or 1 via Group Policy or MDM.";
+            mo.SupportedEditions = ["Enterprise", "Education", "Pro", "Home"];
+            mo.SupportedWindowsVersions = ["Windows 10", "Windows 11"];
+            return;
+        }
+
+        // AppPrivacy LetApps* force codes
+        if (mo.ObjectId.StartsWith("policy.appprivacy.", StringComparison.OrdinalIgnoreCase))
+        {
+            mo.ValueSemantics =
+            [
+                V("0", "UserControlled", "User controlled", "Machine policy leaves capability control to the per-user ConsentStore value."),
+                V("1", "ForceAllow", "Force allow", "Machine policy forces the capability allowed for apps; user ConsentStore is ignored."),
+                V("2", "ForceDeny", "Force deny", "Machine policy forces the capability denied for apps; user ConsentStore is ignored.")
+            ];
+            mo.WhenIgnored = "Not configured means Windows falls back to user ConsentStore (or other platform defaults)."
+            ;
+            mo.CommonMisconception = "AppPrivacy 0 is not the same as Force Deny; 0 means user control.";
+            mo.SupportedWindowsVersions = ["Windows 10", "Windows 11"];
+            return;
+        }
+
+        // Firewall profile enable (0/1)
+        if (mo.ObjectId.Contains(".enabled", StringComparison.OrdinalIgnoreCase) &&
+            mo.ProductDomain == ProductDomain.Firewall)
+        {
+            mo.ValueSemantics =
+            [
+                V("0", "Disabled", "Disabled", "This firewall profile is disabled."),
+                V("1", "Enabled", "Enabled", "This firewall profile is enabled."),
+                V("Disabled", "Disabled", "Disabled", "This firewall profile is disabled."),
+                V("Enabled", "Enabled", "Enabled", "This firewall profile is enabled.")
+            ];
+            mo.WhenIgnored = "Profile flags are not enforced if the Windows Firewall service (MpsSvc) is stopped.";
+            mo.SupportedWindowsVersions = ["Windows 10", "Windows 11", "Server"];
+            return;
+        }
+
+        // Firewall inbound defaults (0 Block / 1 Allow common)
+        if (mo.ObjectId.Contains(".inbound", StringComparison.OrdinalIgnoreCase) &&
+            mo.ProductDomain == ProductDomain.Firewall)
+        {
+            mo.ValueSemantics =
+            [
+                V("0", "Block", "Block", "Default inbound action is Block (unsolicited inbound dropped unless allowed by rule)."),
+                V("1", "Allow", "Allow", "Default inbound action is Allow (uncommon for secure defaults)."),
+                V("Block", "Block", "Block", "Default inbound action is Block."),
+                V("Allow", "Allow", "Allow", "Default inbound action is Allow.")
+            ];
+            return;
+        }
+
+        // Binary enable-style policies (0/1)
+        if (mo.ObjectId is "policy.advertising.disabledbygpo" or "policy.location.disablelocation"
+            or "policy.defender.disablerealtime" or "policy.defender.disableantispyware"
+            or "policy.update.noautoupdate" or "policy.activity.uploaduseractivities")
+        {
+            mo.ValueSemantics =
+            [
+                V("0", "Disabled", "Not forced / Off", "Policy value 0 (feature not forced by this policy, or disabled depending on the policy polarity)."),
+                V("1", "Enabled", "Forced / On", "Policy value 1 (feature forced or enabled depending on the policy polarity).")
+            ];
+        }
+    }
+
+    private static ValueMeaning V(string raw, string canonical, string label, string description) => new()
+    {
+        RawValue = raw,
+        Canonical = canonical,
+        DisplayLabel = label,
+        Description = description,
+        Confidence = EffectiveConfidence.High
+    };
 
     private static IReadOnlyList<ManagedObject> CreatePrivacyBatch()
     {
@@ -113,8 +249,8 @@ public static class ManagedObjectCatalog
     {
         var list = new List<ManagedObject>
         {
-            Pol("policy.telemetry.allowtelemetry", "Allow Telemetry (GPO)", "Sets the diagnostic data level via Group Policy (0=Security, 1=Basic, 2=Enhanced, 3=Full).",
-                "This is the primary enterprise control for how much diagnostic data leaves the device. Lower values reduce data sent to Microsoft; some enterprise features require higher levels.",
+            Pol("policy.telemetry.allowtelemetry", "Allow Telemetry (GPO)", "Sets the diagnostic data level via Group Policy.",
+                "Primary enterprise control for how much diagnostic data leaves the device. Meaning of 0/1/2/3 is defined only in ValueSemantics.",
                 RiskLevel.High, FeatureCategory.RegistryPolicy, ComponentOwner.Telemetry, ControlLevel.AdministratorControlled,
                 ProductDomain.Telemetry, "Telemetry",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\DataCollection\\AllowTelemetry"),
@@ -130,12 +266,12 @@ public static class ManagedObjectCatalog
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\DataCollection\\DoNotShowFeedbackNotifications"),
 
             Pol("policy.update.noautoupdate", "No Auto Update", "When set, disables automatic Windows Update checking/install behavior controlled by AU policy.",
-                "Stopping automatic updates increases security risk from unpatched systems. Use only with a deliberate alternative patch process.",
+                "Stopping automatic updates increases exposure to unpatched systems unless another servicing channel is intentional.",
                 RiskLevel.High, FeatureCategory.RegistryPolicy, ComponentOwner.WindowsUpdate, ControlLevel.AdministratorControlled,
                 ProductDomain.WindowsUpdate, "WindowsUpdate",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU\\NoAutoUpdate"),
             Pol("policy.update.auoptions", "AU Options", "Configures automatic update mode (notify, download, scheduled install, etc.).",
-                "AUOptions controls how aggressively updates are downloaded and installed. Scheduled install enables predictable maintenance windows.",
+                "AUOptions controls how aggressively updates are downloaded and installed.",
                 RiskLevel.Medium, FeatureCategory.RegistryPolicy, ComponentOwner.WindowsUpdate, ControlLevel.AdministratorControlled,
                 ProductDomain.WindowsUpdate, "WindowsUpdate",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU\\AUOptions"),
@@ -164,14 +300,14 @@ public static class ManagedObjectCatalog
                 RiskLevel.Low, FeatureCategory.RegistryPolicy, ComponentOwner.WindowsUpdate, ControlLevel.AdministratorControlled,
                 ProductDomain.WindowsUpdate, "WindowsUpdate",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\ExcludeWUDriversInQualityUpdate"),
-            Pol("policy.deliveryopt.downloadmode", "Delivery Optimization Download Mode", "Controls peer-to-peer and cloud delivery of updates (0=HTTP only, 1=LAN, 2=Group, 3=Internet, etc.).",
+            Pol("policy.deliveryopt.downloadmode", "Delivery Optimization Download Mode", "Controls peer-to-peer and cloud delivery of updates.",
                 "Restricting to HTTP-only reduces LAN/Internet sharing of update content; may increase bandwidth from Microsoft or WSUS.",
                 RiskLevel.Medium, FeatureCategory.NetworkSetting, ComponentOwner.WindowsUpdate, ControlLevel.AdministratorControlled,
                 ProductDomain.WindowsUpdate, "WindowsUpdate",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\DeliveryOptimization\\DODownloadMode"),
 
             Pol("policy.defender.disableantispyware", "Disable AntiSpyware (legacy)", "Legacy policy that can disable Microsoft Defender Antivirus.",
-                "Setting this is a severe security risk on systems relying on Defender. Prefer leaving Defender enabled unless a third-party AV is active.",
+                "Severe security impact on systems relying on Defender. Prefer leaving Defender enabled unless a third-party AV is active.",
                 RiskLevel.High, FeatureCategory.DefenderSetting, ComponentOwner.Defender, ControlLevel.AdministratorControlled,
                 ProductDomain.Defender, "Defender",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\DisableAntiSpyware"),
@@ -181,44 +317,44 @@ public static class ManagedObjectCatalog
                 ProductDomain.Defender, "Defender",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\Real-Time Protection\\DisableRealtimeMonitoring"),
             Pol("policy.defender.spynetreporting", "MAPS / Spynet Reporting", "Controls cloud-delivered protection / Microsoft Active Protection Service reporting level.",
-                "Cloud reporting improves detection but sends sample metadata to Microsoft. Balance threat intel benefit vs data sharing.",
+                "Cloud reporting improves detection but sends sample metadata to Microsoft.",
                 RiskLevel.Medium, FeatureCategory.DefenderSetting, ComponentOwner.Defender, ControlLevel.AdministratorControlled,
                 ProductDomain.Defender, "Defender",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\Spynet\\SpynetReporting"),
             Pol("policy.defender.submitsamples", "Submit Samples Consent", "Controls automatic sample submission to Microsoft.",
-                "Sample submission can include suspicious files. Restrict in high-sensitivity environments; may reduce cloud detection quality.",
+                "Sample submission can include suspicious files. Restrict in high-sensitivity environments.",
                 RiskLevel.Medium, FeatureCategory.DefenderSetting, ComponentOwner.Defender, ControlLevel.AdministratorControlled,
                 ProductDomain.Defender, "Defender",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\Spynet\\SubmitSamplesConsent"),
             Pol("policy.defender.puaprotection", "PUA Protection", "Enables blocking of potentially unwanted applications.",
-                "PUA protection reduces adware/bundleware. Low privacy impact; recommended for most users.",
+                "PUA protection reduces adware/bundleware. Low privacy impact.",
                 RiskLevel.Low, FeatureCategory.DefenderSetting, ComponentOwner.Defender, ControlLevel.AdministratorControlled,
                 ProductDomain.Defender, "Defender",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows Defender\\PUAProtection"),
 
             Pol("policy.search.allowcortana", "Allow Cortana", "Enables or disables Cortana via policy.",
-                "Cortana/cloud assistant features increase cloud interaction. Disable on systems that do not need the assistant.",
+                "Cortana/cloud assistant features increase cloud interaction.",
                 RiskLevel.Medium, FeatureCategory.RegistryPolicy, ComponentOwner.WindowsSearch, ControlLevel.AdministratorControlled,
                 ProductDomain.Search, "Search",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search\\AllowCortana"),
             Pol("policy.search.disablewebsearch", "Disable Web Search", "Prevents search from querying the web.",
-                "Keeps Start/search queries local. Reduces query leakage to Microsoft; removes web result convenience.",
+                "Keeps Start/search queries local.",
                 RiskLevel.Medium, FeatureCategory.RegistryPolicy, ComponentOwner.WindowsSearch, ControlLevel.AdministratorControlled,
                 ProductDomain.Search, "Search",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search\\DisableWebSearch"),
             Pol("policy.search.connectedsearchuseweb", "Connected Search Use Web", "Controls whether search uses the web.",
-                "Related to cloud search. Disable alongside DisableWebSearch for local-only search behavior.",
+                "Related to cloud search.",
                 RiskLevel.Medium, FeatureCategory.RegistryPolicy, ComponentOwner.WindowsSearch, ControlLevel.AdministratorControlled,
                 ProductDomain.Search, "Search",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search\\ConnectedSearchUseWeb"),
             Pol("policy.search.allowsearchlocation", "Allow Search To Use Location", "Allows Windows Search to use location.",
-                "Search + location can refine local results but adds another location consumer. Prefer off if location is restricted.",
+                "Search + location can refine local results but adds another location consumer.",
                 RiskLevel.Medium, FeatureCategory.RegistryPolicy, ComponentOwner.WindowsSearch, ControlLevel.AdministratorControlled,
                 ProductDomain.Search, "Search",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search\\AllowSearchToUseLocation"),
 
             Pol("policy.activity.enableactivityfeed", "Enable Activity Feed", "Enables the Timeline / activity feed feature.",
-                "Activity feed stores recent activity for resume scenarios. Disable if Timeline is unused to reduce local activity retention.",
+                "Activity feed stores recent activity for resume scenarios.",
                 RiskLevel.Medium, FeatureCategory.RegistryPolicy, ComponentOwner.Telemetry, ControlLevel.AdministratorControlled,
                 ProductDomain.ActivityHistory, "ActivityHistory",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\System\\EnableActivityFeed"),
@@ -228,29 +364,29 @@ public static class ManagedObjectCatalog
                 ProductDomain.ActivityHistory, "ActivityHistory",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\System\\PublishUserActivities"),
             Pol("policy.activity.uploaduseractivities", "Upload User Activities", "Allows activities to be uploaded to the cloud for roaming Timeline.",
-                "Cloud upload of activities is higher privacy impact than local-only. Prefer disabled unless cross-device Timeline is required.",
+                "Cloud upload of activities is higher privacy impact than local-only.",
                 RiskLevel.High, FeatureCategory.RegistryPolicy, ComponentOwner.Telemetry, ControlLevel.AdministratorControlled,
                 ProductDomain.ActivityHistory, "ActivityHistory",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\System\\UploadUserActivities"),
 
             Pol("policy.cloud.disableconsumerfeatures", "Disable Windows Consumer Features", "Turns off consumer experiences (suggested apps, etc.) via policy.",
-                "Reduces Store suggestions and consumer upsell surfaces. Common hardening setting for managed PCs.",
+                "Reduces Store suggestions and consumer upsell surfaces.",
                 RiskLevel.Low, FeatureCategory.CloudComponent, ComponentOwner.Store, ControlLevel.AdministratorControlled,
                 ProductDomain.CloudContent, "CloudContent",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent\\DisableWindowsConsumerFeatures"),
             Pol("policy.cloud.disablesoftlanding", "Disable Soft Landing", "Disables post-update soft landing tips and experiences.",
-                "Quietens first-run/post-update experiences. Low functional impact.",
+                "Quietens first-run/post-update experiences.",
                 RiskLevel.Low, FeatureCategory.CloudComponent, ComponentOwner.Other, ControlLevel.AdministratorControlled,
                 ProductDomain.CloudContent, "CloudContent",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent\\DisableSoftLanding"),
             Pol("policy.cloud.disablewindowsspotlight.hkcu", "Disable Windows Spotlight (User)", "Disables Spotlight lock screen and related consumer content for the user.",
-                "Spotlight fetches online imagery and suggestions. Disable for a static lock screen and less cloud content.",
+                "Spotlight fetches online imagery and suggestions.",
                 RiskLevel.Low, FeatureCategory.CloudComponent, ComponentOwner.Other, ControlLevel.UserControlled,
                 ProductDomain.CloudContent, "CloudContent",
                 "HKCU\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent\\DisableWindowsSpotlightFeatures"),
 
             Pol("policy.advertising.disabledbygpo", "Advertising ID Disabled by Group Policy", "Forces advertising ID off via GPO.",
-                "Stronger than the per-user AdvertisingInfo toggle. Use in managed environments to prevent re-enablement.",
+                "Stronger than the per-user AdvertisingInfo toggle.",
                 RiskLevel.Medium, FeatureCategory.RegistryPolicy, ComponentOwner.Other, ControlLevel.AdministratorControlled,
                 ProductDomain.Advertising, "Advertising",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\AdvertisingInfo\\DisabledByGroupPolicy"),
@@ -262,12 +398,12 @@ public static class ManagedObjectCatalog
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\LocationAndSensors\\DisableLocation"),
 
             Pol("policy.appprivacy.location", "Let Apps Access Location (GPO)", "Force-allows, force-denies, or user-controls app location access.",
-                "GPO override for ConsentStore location. Value semantics: 0=User, 1=Force allow, 2=Force deny (typical).",
+                "GPO override for ConsentStore location. Codes defined only in ValueSemantics.",
                 RiskLevel.High, FeatureCategory.RegistryPolicy, ComponentOwner.Other, ControlLevel.AdministratorControlled,
                 ProductDomain.AppPrivacy, "AppPrivacy",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\AppPrivacy\\LetAppsAccessLocation"),
             Pol("policy.appprivacy.camera", "Let Apps Access Camera (GPO)", "Force policy for app camera access.",
-                "Machine policy override for webcam ConsentStore. Prefer force-deny on kiosks and high-security hosts.",
+                "Machine policy override for webcam ConsentStore.",
                 RiskLevel.High, FeatureCategory.RegistryPolicy, ComponentOwner.Other, ControlLevel.AdministratorControlled,
                 ProductDomain.AppPrivacy, "AppPrivacy",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\AppPrivacy\\LetAppsAccessCamera"),
@@ -277,7 +413,7 @@ public static class ManagedObjectCatalog
                 ProductDomain.AppPrivacy, "AppPrivacy",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\AppPrivacy\\LetAppsAccessMicrophone"),
             Pol("policy.appprivacy.filesystem", "Let Apps Access File System (GPO)", "Force policy for broad filesystem access by apps.",
-                "High-impact capability. Force-deny unless line-of-business apps require it.",
+                "High-impact capability.",
                 RiskLevel.High, FeatureCategory.RegistryPolicy, ComponentOwner.Other, ControlLevel.AdministratorControlled,
                 ProductDomain.AppPrivacy, "AppPrivacy",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\AppPrivacy\\LetAppsAccessFileSystem"),
@@ -293,29 +429,29 @@ public static class ManagedObjectCatalog
                 ProductDomain.Edge, "Edge",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Edge\\MetricsReportingEnabled"),
             Pol("policy.edge.personalizationreporting", "Edge Personalization Reporting", "Controls Edge personalization data reporting.",
-                "Related to personalized experiences in Edge. Disable to limit behavioral data sharing.",
+                "Related to personalized experiences in Edge.",
                 RiskLevel.Medium, FeatureCategory.EdgePolicy, ComponentOwner.MicrosoftEdge, ControlLevel.AdministratorControlled,
                 ProductDomain.Edge, "Edge",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Edge\\PersonalizationReportingEnabled"),
             Pol("policy.edge.searchsuggest", "Edge Search Suggestions", "Enables or disables search suggestions in Edge.",
-                "Search suggestions send partial queries to the suggestion service. Disable for less query leakage.",
+                "Search suggestions send partial queries to the suggestion service.",
                 RiskLevel.Medium, FeatureCategory.EdgePolicy, ComponentOwner.MicrosoftEdge, ControlLevel.AdministratorControlled,
                 ProductDomain.Edge, "Edge",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Edge\\SearchSuggestEnabled"),
             Pol("policy.edge.passwordmanager", "Edge Password Manager", "Enables or disables the built-in Edge password manager.",
-                "Security/privacy trade-off: convenient storage vs reliance on browser vault. Pair with OS-level credential hygiene.",
+                "Security/privacy trade-off: convenient storage vs reliance on browser vault.",
                 RiskLevel.Medium, FeatureCategory.EdgePolicy, ComponentOwner.MicrosoftEdge, ControlLevel.AdministratorControlled,
                 ProductDomain.Edge, "Edge",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Edge\\PasswordManagerEnabled"),
 
             Pol("policy.biometrics.enabled", "Biometrics Enabled", "Enables or disables Windows biometric framework via policy.",
-                "Disabling biometrics removes Windows Hello face/fingerprint unlock. Security vs convenience trade-off.",
+                "Disabling biometrics removes Windows Hello face/fingerprint unlock.",
                 RiskLevel.Medium, FeatureCategory.RegistryPolicy, ComponentOwner.Other, ControlLevel.AdministratorControlled,
                 ProductDomain.Biometrics, "Biometrics",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\Biometrics\\Enabled"),
 
             Pol("policy.findmydevice.allow", "Allow Find My Device", "Allows the Find My Device feature.",
-                "Find My Device uses location and device registration with Microsoft account services. Disable on air-gapped or high-privacy hosts.",
+                "Find My Device uses location and device registration with Microsoft account services.",
                 RiskLevel.Medium, FeatureCategory.RegistryPolicy, ComponentOwner.Other, ControlLevel.AdministratorControlled,
                 ProductDomain.Device, "Device",
                 "HKLM\\SOFTWARE\\Policies\\Microsoft\\FindMyDevice\\AllowFindMyDevice")
@@ -329,49 +465,49 @@ public static class ManagedObjectCatalog
         {
             Fw("firewall.profile.domain.enabled", "Domain Profile Enabled",
                 "Indicates whether the Windows Firewall Domain profile is enabled.",
-                "The Domain profile applies when the computer is connected to a network that is authenticated to a domain controller. Enabling it applies the domain network firewall policy; disabling it leaves that network segment without this host firewall profile.",
+                "The Domain profile applies when the computer is connected to a network authenticated to a domain controller.",
                 RiskLevel.High, "Profiles",
                 "HKLM\\SYSTEM\\CurrentControlSet\\Services\\SharedAccess\\Parameters\\FirewallPolicy\\DomainProfile\\EnableFirewall"),
 
             Fw("firewall.profile.private.enabled", "Private Profile Enabled",
                 "Indicates whether the Windows Firewall Private profile is enabled.",
-                "The Private profile is used on networks the user or administrator has marked as private (home or work). It typically allows more inbound connectivity than the Public profile while still filtering unsolicited traffic.",
+                "The Private profile is used on networks marked as private (home or work).",
                 RiskLevel.High, "Profiles",
                 "HKLM\\SYSTEM\\CurrentControlSet\\Services\\SharedAccess\\Parameters\\FirewallPolicy\\StandardProfile\\EnableFirewall"),
 
             Fw("firewall.profile.public.enabled", "Public Profile Enabled",
                 "Indicates whether the Windows Firewall Public profile is enabled.",
-                "The Public profile is the most restrictive default profile and is used on networks not identified as domain or private. It is intended to reduce exposure on untrusted networks such as cafes and airports.",
+                "The Public profile is the most restrictive default profile for untrusted networks.",
                 RiskLevel.High, "Profiles",
                 "HKLM\\SYSTEM\\CurrentControlSet\\Services\\SharedAccess\\Parameters\\FirewallPolicy\\PublicProfile\\EnableFirewall"),
 
             Fw("firewall.profile.domain.inbound", "Domain Profile Default Inbound Action",
                 "Default action for inbound connections that do not match an allow rule on the Domain profile.",
-                "When set to Block, unsolicited inbound traffic is dropped unless an explicit allow rule exists. Allow is uncommon for inbound defaults and increases exposure of local services.",
+                "Block drops unsolicited inbound traffic unless an explicit allow rule exists.",
                 RiskLevel.High, "Defaults",
                 "HKLM\\SYSTEM\\CurrentControlSet\\Services\\SharedAccess\\Parameters\\FirewallPolicy\\DomainProfile\\DefaultInboundAction"),
 
             Fw("firewall.profile.private.inbound", "Private Profile Default Inbound Action",
                 "Default action for inbound connections that do not match an allow rule on the Private profile.",
-                "Controls the baseline inbound posture on private networks. Block is the typical secure default; Allow widens the attack surface for local services.",
+                "Controls baseline inbound posture on private networks.",
                 RiskLevel.High, "Defaults",
                 "HKLM\\SYSTEM\\CurrentControlSet\\Services\\SharedAccess\\Parameters\\FirewallPolicy\\StandardProfile\\DefaultInboundAction"),
 
             Fw("firewall.profile.public.inbound", "Public Profile Default Inbound Action",
                 "Default action for inbound connections that do not match an allow rule on the Public profile.",
-                "Public networks are treated as untrusted. A Block default is the expected posture; an Allow default on Public is a significant exposure signal.",
+                "Public networks are treated as untrusted; Block is the expected default.",
                 RiskLevel.High, "Defaults",
                 "HKLM\\SYSTEM\\CurrentControlSet\\Services\\SharedAccess\\Parameters\\FirewallPolicy\\PublicProfile\\DefaultInboundAction"),
 
             Fw("firewall.service.mpssvc", "Windows Firewall Service (MpsSvc)",
                 "Runtime state of the Windows Defender Firewall service (MpsSvc).",
-                "If the firewall service is stopped, profile enable flags may not be enforced. The service state is observed via ServiceController and does not by itself describe individual rules.",
+                "If the firewall service is stopped, profile enable flags may not be enforced.",
                 RiskLevel.High, "Service",
                 "ServiceController:MpsSvc"),
 
             Fw("firewall.logging.summary", "Firewall Logging Configuration",
                 "Summarizes whether firewall logging paths and dropped/successful connection logging are configured for profiles.",
-                "Logging supports forensic and operational review of blocked or allowed traffic. Presence of a log path does not imply continuous high-volume capture; configuration varies by profile and policy.",
+                "Logging supports forensic and operational review of blocked or allowed traffic.",
                 RiskLevel.Medium, "Logging",
                 "HKLM\\SYSTEM\\CurrentControlSet\\Services\\SharedAccess\\Parameters\\FirewallPolicy\\*\\Logging")
         };
@@ -449,11 +585,11 @@ public static class ManagedObjectCatalog
             PriorityLevel = PriorityLevel.Recommended,
             Reversibility = Reversibility.Reversible,
             RebootRequirement = RebootRequirement.None,
-            SchemaVersion = "0.8",
+            SchemaVersion = "0.9",
             CreatedBy = "ManagedObjectCatalog",
             CreatedTimestamp = DateTime.UtcNow,
             ConfidenceScore = 80,
-            ConfidenceSource = "Catalog-v0.8"
+            ConfidenceSource = "Catalog-v0.9"
         };
     }
 }
