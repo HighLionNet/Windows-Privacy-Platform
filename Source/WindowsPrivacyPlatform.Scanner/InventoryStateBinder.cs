@@ -10,6 +10,7 @@ namespace WindowsPrivacyPlatform.Scanner
     /// <summary>
     /// Read-only bind orchestrator. Delegates to domain binders; does not contain domain logic itself.
     /// Does not write to the system. Does not elevate.
+    /// v0.8: maps FirewallCollector snapshot into Firewall catalog entries.
     /// </summary>
     public static class InventoryStateBinder
     {
@@ -32,6 +33,12 @@ namespace WindowsPrivacyPlatform.Scanner
 
             foreach (var mo in list)
             {
+                if (mo.ProductDomain == ProductDomain.Firewall)
+                {
+                    BindFirewall(snapshot, mo);
+                    continue;
+                }
+
                 var binder = Binders.FirstOrDefault(b => b.CanBind(mo));
                 if (binder is not null)
                 {
@@ -39,7 +46,6 @@ namespace WindowsPrivacyPlatform.Scanner
                 }
                 else
                 {
-                    // Fallback: preserve prior behavior for unknown types
                     mo.CurrentState = "Not observed in this scan";
                     mo.LastVerified = DateTime.UtcNow;
                     mo.Observation ??= new SettingObservation();
@@ -48,8 +54,84 @@ namespace WindowsPrivacyPlatform.Scanner
                 }
             }
 
-            // Relationships + effective-state foundation (after all raw binds)
             Relationships.Apply(list);
+        }
+
+        private static void BindFirewall(InventorySnapshot snapshot, ManagedObject mo)
+        {
+            mo.Observation ??= new SettingObservation();
+            mo.LastVerified = DateTime.UtcNow;
+
+            string value = "Not observed in this scan";
+            string source = string.Empty;
+            string notes = snapshot.Networking.FirewallCollectionNotes ?? string.Empty;
+
+            if (mo.ObjectId.Equals("firewall.service.mpssvc", StringComparison.OrdinalIgnoreCase))
+            {
+                value = string.IsNullOrWhiteSpace(snapshot.Networking.FirewallServiceState)
+                    ? "Unknown"
+                    : snapshot.Networking.FirewallServiceState;
+                source = "ServiceController:MpsSvc";
+            }
+            else if (mo.ObjectId.Equals("firewall.logging.summary", StringComparison.OrdinalIgnoreCase))
+            {
+                var logs = snapshot.Networking.FirewallProfiles
+                    .Where(p => !string.IsNullOrWhiteSpace(p.LoggingEnabled) &&
+                                !p.LoggingEnabled.Equals("Unknown", StringComparison.OrdinalIgnoreCase))
+                    .Select(p => $"{p.ProfileName}:{p.LoggingEnabled}")
+                    .ToList();
+                value = logs.Count > 0 ? string.Join("; ", logs) : "Unknown";
+                source = "FirewallPolicy/*/Logging";
+            }
+            else
+            {
+                var profileName = mo.ObjectId.Contains(".domain.", StringComparison.OrdinalIgnoreCase) ? "Domain"
+                    : mo.ObjectId.Contains(".private.", StringComparison.OrdinalIgnoreCase) ? "Private"
+                    : mo.ObjectId.Contains(".public.", StringComparison.OrdinalIgnoreCase) ? "Public"
+                    : null;
+
+                var profile = profileName is null
+                    ? null
+                    : snapshot.Networking.FirewallProfiles.FirstOrDefault(p =>
+                        p.ProfileName.Equals(profileName, StringComparison.OrdinalIgnoreCase));
+
+                if (profile is not null)
+                {
+                    source = profile.SourcePath;
+                    if (mo.ObjectId.EndsWith(".enabled", StringComparison.OrdinalIgnoreCase))
+                        value = profile.Enabled;
+                    else if (mo.ObjectId.EndsWith(".inbound", StringComparison.OrdinalIgnoreCase))
+                        value = profile.DefaultInboundAction;
+                    else if (mo.ObjectId.EndsWith(".outbound", StringComparison.OrdinalIgnoreCase))
+                        value = profile.DefaultOutboundAction;
+                    else
+                        value = "Unknown";
+                    notes = profile.CollectionNotes;
+                }
+            }
+
+            mo.CurrentState = value;
+            mo.Observation.CurrentValue = value;
+            mo.Observation.ObservedAt = mo.LastVerified;
+            mo.Observation.SourceSummary = source;
+            mo.Observation.Layers =
+            [
+                new ConfigurationObservation
+                {
+                    ObjectId = mo.ObjectId,
+                    Layer = ConfigurationLayer.MachinePolicy,
+                    RawValue = value,
+                    SourcePath = source,
+                    ObservedAt = DateTime.UtcNow,
+                    ConfidenceScore = value is "Unknown" or "Not observed in this scan" ? 40 : 85,
+                    CollectorName = "FirewallCollector",
+                    EvidenceSource = string.IsNullOrWhiteSpace(source) ? "FirewallCollector" : source,
+                    CollectionNotes = notes,
+                    EffectiveConfidence = value is "Unknown" or "Not observed in this scan"
+                        ? EffectiveConfidence.Low
+                        : EffectiveConfidence.High
+                }
+            ];
         }
 
         public static ObservationSummary BuildSummary(
@@ -119,9 +201,6 @@ namespace WindowsPrivacyPlatform.Scanner
             return summary;
         }
 
-        /// <summary>
-        /// Compatibility helper used by older call sites; prefers already-bound CurrentState.
-        /// </summary>
         public static string ResolveCurrentValue(InventorySnapshot snapshot, ManagedObject mo)
         {
             if (mo?.CurrentState is not null)
@@ -130,7 +209,6 @@ namespace WindowsPrivacyPlatform.Scanner
             if (snapshot is null || mo is null)
                 return "Not observed in this scan";
 
-            // Transient bind for a single object if needed
             var binder = Binders.FirstOrDefault(b => b.CanBind(mo));
             binder?.Bind(snapshot, mo);
             return mo.CurrentState ?? "Not observed in this scan";
