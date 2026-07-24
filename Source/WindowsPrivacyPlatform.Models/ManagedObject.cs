@@ -10,6 +10,8 @@ public class ManagedObject
 
     // Classification
     public FeatureCategory FeatureCategory { get; set; }
+    /// <summary>Primary product domain for navigation and report grouping.</summary>
+    public ProductDomain ProductDomain { get; set; }
     public string? SubCategory { get; set; }
     public RiskLevel RiskLevel { get; set; }
     public ImpactLevel ImpactLevel { get; set; }
