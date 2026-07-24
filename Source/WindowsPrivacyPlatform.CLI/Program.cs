@@ -13,8 +13,8 @@ namespace WindowsPrivacyPlatform.CLI
     {
         private static void Main(string[] args)
         {
-            Console.WriteLine("Windows Privacy Platform - Prototype v0.2");
-            Console.WriteLine("Read-only architecture verification pipeline");
+            Console.WriteLine("Windows Privacy Platform - Prototype v0.4");
+            Console.WriteLine("Read-only discovery pipeline");
             Console.WriteLine();
 
             var logger = new AuditLogger();
@@ -22,7 +22,6 @@ namespace WindowsPrivacyPlatform.CLI
 
             var knowledgeBase = new InMemoryKnowledgeBaseRepository();
 
-            // Collectors are now injected – easy to extend later
             IEnumerable<IInventoryCollector> collectors = new IInventoryCollector[]
             {
                 new WindowsIdentityCollector(),
@@ -40,9 +39,13 @@ namespace WindowsPrivacyPlatform.CLI
             var scanResult = scanner.Scan();
             if (scanResult.Success && scanResult.Snapshot is not null)
             {
+                var s = scanResult.Snapshot;
                 Console.WriteLine(
-                    $"Scanner result: WindowsVersion={scanResult.Snapshot.WindowsVersion}, " +
-                    $"Edition={scanResult.Snapshot.Edition}, BuildNumber={scanResult.Snapshot.BuildNumber}");
+                    $"Identity : {s.WindowsVersion} | {s.Edition} | Build {s.BuildNumber}");
+                Console.WriteLine(
+                    $"Capabilities : {s.InstalledCapabilities.Count} | Packages : {s.InstalledPackages.Count} | " +
+                    $"Services : {s.Services.Count} | Tasks : {s.ScheduledTasks.Count} | " +
+                    $"Privacy settings : {s.PrivacySettings.Count}");
             }
             else
             {

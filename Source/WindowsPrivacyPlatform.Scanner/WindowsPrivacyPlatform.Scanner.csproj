@@ -12,4 +12,8 @@
     <ProjectReference Include="..\WindowsPrivacyPlatform.Logging\WindowsPrivacyPlatform.Logging.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="8.0.1" />
+  </ItemGroup>
+
 </Project>
