@@ -117,8 +117,8 @@ public class MachineOverview
     public string DefenderServiceState { get; set; } = "Unknown";
 
     public DateTime LastScanUtc { get; set; }
-    public string CatalogVersion { get; set; } = "0.8";
-    public string KnowledgeBaseVersion { get; set; } = "0.8";
+    public string CatalogVersion { get; set; } = "1.0";
+    public string KnowledgeBaseVersion { get; set; } = "1.0";
 
     public string IdentityCollectionNotes { get; set; } = string.Empty;
     public EffectiveConfidence IdentityConfidence { get; set; } = EffectiveConfidence.Unknown;
@@ -160,8 +160,8 @@ public class MachineOverview
             FirewallProfilesSummary = fwSummary,
             DefenderServiceState = snapshot.Security.DefenderServiceState,
             LastScanUtc = snapshot.CaptureTimestamp == default ? DateTime.UtcNow : snapshot.CaptureTimestamp,
-            CatalogVersion = "0.8",
-            KnowledgeBaseVersion = "0.8",
+            CatalogVersion = "1.0",
+            KnowledgeBaseVersion = "1.0",
             IdentityCollectionNotes = id.IdentityCollectionNotes,
             IdentityConfidence = id.IdentityConfidence
         };
