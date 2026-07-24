@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using WindowsPrivacyPlatform.App.Services;
 using WindowsPrivacyPlatform.Models;
 
@@ -12,33 +13,87 @@ public partial class DomainView : UserControl
     public DomainView(ScanService scan, ProductDomain domain, Action<string> openSetting)
     {
         InitializeComponent();
-        TitleText.Text = domain.ToString();
+        TitleText.Text = NavigationBuilder.HumanizeDomain(domain);
+
         var items = scan.Catalog.Where(m => m.ProductDomain == domain)
             .OrderBy(m => m.SubCategory)
             .ThenBy(m => m.ObjectName)
             .ToList();
 
-        SubtitleText.Text = $"{items.Count} settings in this domain. Click a card to open the full explanation.";
+        if (items.Count == 0)
+        {
+            SubtitleText.Text = "This domain has no managed settings in the current catalog.";
+            SettingsList.Items.Add(new TextBlock
+            {
+                Text = "No curated entries for this domain yet.",
+                Foreground = (Brush)FindResource("BrushTextMuted"),
+                Margin = new Thickness(0, 8, 0, 0)
+            });
+            return;
+        }
+
+        var conflicts = items.Count(m =>
+            m.Observation?.Resolution?.HasConflict == true ||
+            m.Observation?.Effective?.HasConflict == true);
+
+        SubtitleText.Text = conflicts > 0
+            ? $"{items.Count} settings · {conflicts} with layer conflict. Click a card for the full explanation."
+            : $"{items.Count} settings in this domain. Click a card to open the full explanation.";
 
         foreach (var mo in items)
         {
             var border = new Border { Style = (Style)FindResource("Card"), Cursor = System.Windows.Input.Cursors.Hand };
             var panel = new StackPanel();
-            panel.Children.Add(new TextBlock
+
+            var header = new DockPanel { LastChildFill = true };
+            var title = new TextBlock
             {
                 Text = mo.ObjectName,
                 FontWeight = FontWeights.SemiBold,
-                FontSize = 14
-            });
+                FontSize = 14,
+                TextWrapping = TextWrapping.Wrap
+            };
+            DockPanel.SetDock(title, Dock.Left);
+            header.Children.Add(title);
+
+            var hasConflict = mo.Observation?.Resolution?.HasConflict == true ||
+                              mo.Observation?.Effective?.HasConflict == true;
+            var observed = mo.CurrentState ?? "Not observed";
+            var isUnknown = string.IsNullOrWhiteSpace(mo.CurrentState) ||
+                            observed.Contains("Not observed", StringComparison.OrdinalIgnoreCase) ||
+                            observed.Contains("Unknown", StringComparison.OrdinalIgnoreCase) ||
+                            observed.Contains("Not configured", StringComparison.OrdinalIgnoreCase);
+
+            if (hasConflict || isUnknown)
+            {
+                var badge = new Border
+                {
+                    Style = (Style)FindResource(hasConflict ? "BadgeConflict" : "BadgeUnknown"),
+                    Margin = new Thickness(12, 0, 0, 0),
+                    VerticalAlignment = VerticalAlignment.Top,
+                    HorizontalAlignment = HorizontalAlignment.Right
+                };
+                badge.Child = new TextBlock
+                {
+                    Text = hasConflict ? "Conflict" : "Unknown",
+                    FontSize = 11,
+                    FontWeight = FontWeights.SemiBold,
+                    Foreground = (Brush)FindResource(hasConflict ? "BrushConflict" : "BrushUnknown")
+                };
+                DockPanel.SetDock(badge, Dock.Right);
+                header.Children.Add(badge);
+            }
+
+            panel.Children.Add(header);
+
             panel.Children.Add(new TextBlock
             {
                 Text = mo.ObjectId,
-                Foreground = (System.Windows.Media.Brush)FindResource("BrushTextMuted"),
+                Foreground = (Brush)FindResource("BrushTextMuted"),
                 FontSize = 11,
                 Margin = new Thickness(0, 2, 0, 0)
             });
 
-            var observed = mo.CurrentState ?? "Not observed";
             var effective = mo.Observation?.Resolution?.EffectiveValue
                             ?? mo.Observation?.Effective?.EffectiveValue;
             var line = effective is not null
@@ -52,13 +107,13 @@ public partial class DomainView : UserControl
                 TextWrapping = TextWrapping.Wrap
             });
 
-            if (mo.Observation?.Resolution?.HasConflict == true || mo.Observation?.Effective?.HasConflict == true)
+            if (!string.IsNullOrWhiteSpace(mo.SubCategory))
             {
                 panel.Children.Add(new TextBlock
                 {
-                    Text = "Layer conflict detected",
-                    Foreground = (System.Windows.Media.Brush)FindResource("BrushConflict"),
-                    FontWeight = FontWeights.SemiBold,
+                    Text = mo.SubCategory,
+                    FontSize = 11,
+                    Foreground = (Brush)FindResource("BrushTextMuted"),
                     Margin = new Thickness(0, 4, 0, 0)
                 });
             }
@@ -66,6 +121,7 @@ public partial class DomainView : UserControl
             border.Child = panel;
             var id = mo.ObjectId;
             border.MouseLeftButtonUp += (_, _) => openSetting(id);
+            border.ToolTip = "Open full knowledge card";
             SettingsList.Items.Add(border);
         }
     }
