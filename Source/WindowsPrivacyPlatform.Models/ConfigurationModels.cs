@@ -16,8 +16,32 @@ public class ConfigurationObservation
 }
 
 /// <summary>
-/// Best-effort effective configuration for a setting after considering layers.
-/// Conflicts are explicit — never hidden.
+/// Result of effective-configuration reasoning.
+/// Always includes a reason; conflicts are explicit.
+/// </summary>
+public class ConfigurationResolution
+{
+    public List<ConfigurationObservation> RawObservations { get; set; } = new();
+    public string? EffectiveValue { get; set; }
+    public ConfigurationLayer EffectiveSource { get; set; } = ConfigurationLayer.Unknown;
+    public EffectiveConfidence Confidence { get; set; } = EffectiveConfidence.Unknown;
+    public string ResolutionReason { get; set; } = string.Empty;
+    public bool HasConflict { get; set; }
+
+    /// <summary>Compatibility projection used by existing Observation.Effective consumers.</summary>
+    public EffectiveState ToEffectiveState() => new()
+    {
+        EffectiveValue = EffectiveValue,
+        EffectiveSource = EffectiveSource,
+        Confidence = Confidence,
+        Explanation = ResolutionReason,
+        HasConflict = HasConflict,
+        ContributingLayers = RawObservations
+    };
+}
+
+/// <summary>
+/// Best-effort effective configuration (legacy shape; prefer ConfigurationResolution).
 /// </summary>
 public class EffectiveState
 {
@@ -29,9 +53,6 @@ public class EffectiveState
     public List<ConfigurationObservation> ContributingLayers { get; set; } = new();
 }
 
-/// <summary>
-/// Optional baseline / desired-state comparison data (compare-only; no enforcement).
-/// </summary>
 public class DesiredStateInfo
 {
     public string? DesiredValue { get; set; }
@@ -40,8 +61,8 @@ public class DesiredStateInfo
 }
 
 /// <summary>
-/// Structured relationship between two catalog settings.
-/// Replaces ad-hoc string lists for navigation and effective-layer work.
+/// Structured relationship edge between two catalog settings.
+/// Supports later graph traversal (no UI yet).
 /// </summary>
 public class SettingRelationship
 {
@@ -52,8 +73,7 @@ public class SettingRelationship
 }
 
 /// <summary>
-/// Runtime observation envelope attached to a ManagedObject after binding.
-/// Separates live discovered data from static catalog definition fields.
+/// Runtime observation envelope after binding.
 /// </summary>
 public class SettingObservation
 {
@@ -63,4 +83,5 @@ public class SettingObservation
     public int ConfidenceScore { get; set; }
     public List<ConfigurationObservation> Layers { get; set; } = new();
     public EffectiveState? Effective { get; set; }
+    public ConfigurationResolution? Resolution { get; set; }
 }

@@ -1,14 +1,11 @@
 namespace WindowsPrivacyPlatform.Models;
 
 /// <summary>
-/// Navigation / presentation models for a future terminal UI (and optional GUI).
+/// Navigation / presentation models for future TUI (and optional GUI).
 /// Pure data — no input handling, no rendering, no system calls.
 /// Trusted catalog metadata is kept separate from untrusted discovered values.
 /// </summary>
 
-/// <summary>
-/// One node in a domain → feature → setting navigation tree.
-/// </summary>
 public class NavigationNode
 {
     public string Id { get; set; } = string.Empty;
@@ -16,34 +13,35 @@ public class NavigationNode
     public string? Subtitle { get; set; }
     public ProductDomain? Domain { get; set; }
     public string? ObjectId { get; set; }
+    public RiskLevel? RiskLevel { get; set; }
+    public bool HasConflict { get; set; }
+    public int ChildCount { get; set; }
+    public int ConflictCount { get; set; }
+    public int HighRiskCount { get; set; }
     public List<NavigationNode> Children { get; set; } = new();
 }
 
 /// <summary>
-/// Detail view model for a single setting. Safe for display only.
-/// Discovered values are treated as untrusted display text — never executed or interpreted as code.
+/// Full decision-support card for one setting (UI-independent).
 /// </summary>
 public class SettingDetailView
 {
-    // Trusted catalog metadata
     public string ObjectId { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
-    public string? Rationale { get; set; }
-    public ProductDomain Domain { get; set; }
-    public string? SubCategory { get; set; }
+    public string DomainPath { get; set; } = string.Empty;
     public RiskLevel RiskLevel { get; set; }
     public ControlLevel ControlLevel { get; set; }
 
-    // Untrusted / discovered (display only)
+    public SettingExplanation Explanation { get; set; } = new();
+
+    // Untrusted / discovered (display only — never execute)
     public string? CurrentStateDisplay { get; set; }
     public string? EffectiveValueDisplay { get; set; }
     public string? EffectiveSourceDisplay { get; set; }
-    public string? EffectiveExplanation { get; set; }
+    public string? ResolutionReason { get; set; }
+    public EffectiveConfidence Confidence { get; set; }
     public bool HasConflict { get; set; }
     public List<LayerDisplay> Layers { get; set; } = new();
-
-    // Relationships (ids + names from trusted catalog)
     public List<RelatedSettingDisplay> Related { get; set; } = new();
 }
 
@@ -59,11 +57,12 @@ public class RelatedSettingDisplay
     public string ObjectId { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string Relationship { get; set; } = string.Empty;
+    public string? Explanation { get; set; }
 }
 
 /// <summary>
-/// Builds navigation trees and detail views from a bound catalog.
-/// No UI framework dependency. TUI/GUI hosts consume these models.
+/// Builds navigation trees and detail cards from a bound catalog + SettingsQuery.
+/// No UI framework dependency.
 /// </summary>
 public static class NavigationBuilder
 {
@@ -76,8 +75,11 @@ public static class NavigationBuilder
             var domainNode = new NavigationNode
             {
                 Id = $"domain:{domainGroup.Key}",
-                Title = domainGroup.Key.ToString(),
-                Domain = domainGroup.Key
+                Title = HumanizeDomain(domainGroup.Key),
+                Domain = domainGroup.Key,
+                ChildCount = domainGroup.Count(),
+                ConflictCount = domainGroup.Count(m => m.Observation?.Effective?.HasConflict == true),
+                HighRiskCount = domainGroup.Count(m => m.RiskLevel == RiskLevel.High)
             };
 
             foreach (var subGroup in domainGroup
@@ -88,7 +90,10 @@ public static class NavigationBuilder
                 {
                     Id = $"feature:{domainGroup.Key}:{subGroup.Key}",
                     Title = subGroup.Key,
-                    Domain = domainGroup.Key
+                    Domain = domainGroup.Key,
+                    ChildCount = subGroup.Count(),
+                    ConflictCount = subGroup.Count(m => m.Observation?.Effective?.HasConflict == true),
+                    HighRiskCount = subGroup.Count(m => m.RiskLevel == RiskLevel.High)
                 };
 
                 foreach (var mo in subGroup.OrderBy(m => m.ObjectName, StringComparer.OrdinalIgnoreCase))
@@ -97,9 +102,11 @@ public static class NavigationBuilder
                     {
                         Id = $"setting:{mo.ObjectId}",
                         Title = mo.ObjectName,
-                        Subtitle = mo.CurrentState,
+                        Subtitle = mo.Observation?.Effective?.EffectiveValue ?? mo.CurrentState,
                         Domain = mo.ProductDomain,
-                        ObjectId = mo.ObjectId
+                        ObjectId = mo.ObjectId,
+                        RiskLevel = mo.RiskLevel,
+                        HasConflict = mo.Observation?.Effective?.HasConflict == true
                     });
                 }
 
@@ -109,6 +116,9 @@ public static class NavigationBuilder
             root.Children.Add(domainNode);
         }
 
+        root.ChildCount = root.Children.Count;
+        root.ConflictCount = root.Children.Sum(c => c.ConflictCount);
+        root.HighRiskCount = root.Children.Sum(c => c.HighRiskCount);
         return root;
     }
 
@@ -117,49 +127,98 @@ public static class NavigationBuilder
         if (mo is null)
             return null;
 
+        var explanation = SettingExplanationFactory.FromDefinition(mo);
+        var resolution = mo.Observation?.Resolution;
+        var effective = mo.Observation?.Effective;
+
         var view = new SettingDetailView
         {
             ObjectId = mo.ObjectId,
             Title = mo.ObjectName,
-            Description = mo.Description,
-            Rationale = mo.Rationale,
-            Domain = mo.ProductDomain,
-            SubCategory = mo.SubCategory,
+            DomainPath = explanation.DomainPath,
             RiskLevel = mo.RiskLevel,
             ControlLevel = mo.ControlLevel,
+            Explanation = explanation,
             CurrentStateDisplay = mo.CurrentState,
-            EffectiveValueDisplay = mo.Observation?.Effective?.EffectiveValue,
-            EffectiveSourceDisplay = mo.Observation?.Effective?.EffectiveSource.ToString(),
-            EffectiveExplanation = mo.Observation?.Effective?.Explanation,
-            HasConflict = mo.Observation?.Effective?.HasConflict == true
+            EffectiveValueDisplay = resolution?.EffectiveValue ?? effective?.EffectiveValue,
+            EffectiveSourceDisplay = (resolution?.EffectiveSource ?? effective?.EffectiveSource)?.ToString(),
+            ResolutionReason = resolution?.ResolutionReason ?? effective?.Explanation,
+            Confidence = resolution?.Confidence ?? effective?.Confidence ?? EffectiveConfidence.Unknown,
+            HasConflict = resolution?.HasConflict == true || effective?.HasConflict == true
         };
 
-        if (mo.Observation?.Layers is not null)
+        var layers = resolution?.RawObservations ?? mo.Observation?.Layers;
+        if (layers is not null)
         {
-            foreach (var layer in mo.Observation.Layers)
+            foreach (var layer in layers)
             {
                 view.Layers.Add(new LayerDisplay
                 {
                     LayerName = layer.Layer.ToString(),
-                    ValueDisplay = layer.RawValue,
-                    SourcePathDisplay = layer.SourcePath
+                    // Display-only: treat as opaque text, never execute
+                    ValueDisplay = SanitizeDisplay(layer.RawValue),
+                    SourcePathDisplay = SanitizeDisplay(layer.SourcePath)
                 });
             }
         }
 
         if (query is not null)
         {
-            foreach (var related in query.RelatedTo(mo.ObjectId))
+            var edges = query.GetRelationshipEdges(mo.ObjectId)
+                .GroupBy(e => e.ToObjectId + "|" + e.FromObjectId + "|" + e.Kind)
+                .Select(g => g.First());
+
+            foreach (var edge in edges)
             {
+                var otherId = edge.FromObjectId.Equals(mo.ObjectId, StringComparison.OrdinalIgnoreCase)
+                    ? edge.ToObjectId
+                    : edge.FromObjectId;
+                var other = query.GetById(otherId);
+                if (other is null)
+                    continue;
+
                 view.Related.Add(new RelatedSettingDisplay
                 {
-                    ObjectId = related.ObjectId,
-                    Title = related.ObjectName,
-                    Relationship = "Related"
+                    ObjectId = other.ObjectId,
+                    Title = other.ObjectName,
+                    Relationship = edge.Kind.ToString(),
+                    Explanation = edge.Explanation
                 });
             }
         }
 
         return view;
+    }
+
+    private static string HumanizeDomain(ProductDomain domain) => domain switch
+    {
+        ProductDomain.ConsentStore => "Privacy — App permissions",
+        ProductDomain.AppPrivacy => "Privacy — App policy overrides",
+        ProductDomain.WindowsUpdate => "Windows Update",
+        ProductDomain.ActivityHistory => "Activity History",
+        ProductDomain.CloudContent => "Cloud content",
+        _ => domain.ToString()
+    };
+
+    /// <summary>
+    /// Strip control characters from discovered strings before UI display.
+    /// Does not interpret content as code.
+    /// </summary>
+    private static string SanitizeDisplay(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return string.Empty;
+
+        Span<char> buffer = value.Length <= 512 ? stackalloc char[value.Length] : new char[value.Length];
+        var n = 0;
+        foreach (var c in value)
+        {
+            if (char.IsControl(c) && c != '\t')
+                continue;
+            buffer[n++] = c;
+            if (n >= 512)
+                break;
+        }
+        return new string(buffer[..n]);
     }
 }

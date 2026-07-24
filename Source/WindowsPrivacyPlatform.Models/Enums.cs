@@ -28,13 +28,10 @@ public enum FeatureCategory
 /// <summary>
 /// Primary product/feature domain for navigation and report grouping.
 /// Every catalog entry is assigned exactly one primary domain.
-/// SubCategory remains available for finer classification within a domain.
 /// </summary>
 public enum ProductDomain
 {
-    /// <summary>Per-user ConsentStore app capability permissions.</summary>
     ConsentStore,
-    /// <summary>Machine AppPrivacy GPO overrides for app capabilities.</summary>
     AppPrivacy,
     Telemetry,
     WindowsUpdate,
@@ -48,28 +45,26 @@ public enum ProductDomain
     Biometrics,
     Device,
     Speech,
-    /// <summary>Reserved for future firewall collector and catalog entries.</summary>
     Firewall,
     Other
 }
 
 /// <summary>
 /// Windows configuration layer that produced an observed value.
-/// Used for effective-state resolution (User vs MachinePolicy vs alternate stores).
+/// Ordered conceptually from weakest (user) to strongest (baseline) for documentation;
+/// actual resolution lives in PolicyPrecedenceResolver (Scanner).
 /// </summary>
 public enum ConfigurationLayer
 {
     Unknown = 0,
     UserPreference,
-    MachinePolicy,
+    ApplicationPreference,
     AlternatePolicyStore,
-    MDM,
+    MachinePolicy,
+    MDMPolicy,
     SecurityBaseline
 }
 
-/// <summary>
-/// Confidence that an EffectiveState was determined correctly.
-/// </summary>
 public enum EffectiveConfidence
 {
     Unknown = 0,
@@ -79,7 +74,7 @@ public enum EffectiveConfidence
 }
 
 /// <summary>
-/// Kind of relationship between two managed settings.
+/// Kind of relationship between two managed settings (graph edge type).
 /// </summary>
 public enum RelationshipKind
 {
@@ -87,8 +82,9 @@ public enum RelationshipKind
     Overrides,
     OverriddenBy,
     ConflictsWith,
-    Requires,
     DependsOn,
+    Requires,
+    Affects,
     SameFeatureAlternatePath
 }
 

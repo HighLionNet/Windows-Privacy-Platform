@@ -2,68 +2,44 @@ namespace WindowsPrivacyPlatform.Models;
 
 /// <summary>
 /// Read-only query surface over a bound catalog.
-/// Future TUI/GUI consumes this instead of reaching into collectors or snapshot lists.
+/// Future TUI/GUI/API consume this instead of collectors or snapshot lists.
 /// No mutation. No system interaction.
 /// </summary>
 public sealed class SettingsQuery
 {
     private readonly IReadOnlyList<ManagedObject> _catalog;
+    private readonly Dictionary<string, ManagedObject> _byId;
 
     public SettingsQuery(IReadOnlyList<ManagedObject> catalog)
     {
         _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
+        _byId = _catalog
+            .Where(m => m is not null && !string.IsNullOrWhiteSpace(m.ObjectId))
+            .GroupBy(m => m.ObjectId, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
     }
 
     public IReadOnlyList<ManagedObject> All() => _catalog;
 
-    public IEnumerable<ManagedObject> ByDomain(ProductDomain domain) =>
+    public IEnumerable<ManagedObject> GetByDomain(ProductDomain domain) =>
         _catalog.Where(m => m.ProductDomain == domain);
 
-    public IEnumerable<ManagedObject> ByRisk(RiskLevel risk) =>
-        _catalog.Where(m => m.RiskLevel == risk);
+    /// <summary>Alias for GetByDomain.</summary>
+    public IEnumerable<ManagedObject> ByDomain(ProductDomain domain) => GetByDomain(domain);
 
-    public IEnumerable<ManagedObject> HighImpactConfigured() =>
-        _catalog.Where(m =>
-            m.RiskLevel == RiskLevel.High &&
-            !string.IsNullOrWhiteSpace(m.CurrentState) &&
-            !m.CurrentState.Contains("Not configured", StringComparison.OrdinalIgnoreCase) &&
-            !m.CurrentState.Contains("Not observed", StringComparison.OrdinalIgnoreCase));
-
-    public IEnumerable<ManagedObject> Conflicts() =>
-        _catalog.Where(m => m.Observation?.Effective?.HasConflict == true);
-
-    public IEnumerable<ManagedObject> MachineEnforced() =>
-        _catalog.Where(m =>
-            m.Observation?.Effective?.EffectiveSource == ConfigurationLayer.MachinePolicy ||
-            m.ControlLevel == ControlLevel.AdministratorControlled);
-
-    public IEnumerable<ManagedObject> Unconfigured() =>
-        _catalog.Where(m =>
-            string.IsNullOrWhiteSpace(m.CurrentState) ||
-            m.CurrentState.Contains("Not configured", StringComparison.OrdinalIgnoreCase) ||
-            m.CurrentState.Contains("Not observed", StringComparison.OrdinalIgnoreCase));
-
-    public IEnumerable<ManagedObject> Search(string? term)
+    public ManagedObject? GetById(string objectId)
     {
-        if (string.IsNullOrWhiteSpace(term))
-            return _catalog;
-
-        var t = term.Trim();
-        return _catalog.Where(m =>
-            (m.ObjectName?.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false) ||
-            (m.ObjectId?.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false) ||
-            (m.Description?.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false) ||
-            (m.SubCategory?.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false) ||
-            m.ProductDomain.ToString().Contains(t, StringComparison.OrdinalIgnoreCase));
+        if (string.IsNullOrWhiteSpace(objectId))
+            return null;
+        return _byId.TryGetValue(objectId.Trim(), out var mo) ? mo : null;
     }
 
-    public ManagedObject? ById(string objectId) =>
-        _catalog.FirstOrDefault(m =>
-            string.Equals(m.ObjectId, objectId, StringComparison.OrdinalIgnoreCase));
+    /// <summary>Alias for GetById.</summary>
+    public ManagedObject? ById(string objectId) => GetById(objectId);
 
-    public IEnumerable<ManagedObject> RelatedTo(string objectId)
+    public IEnumerable<ManagedObject> GetRelatedSettings(string objectId)
     {
-        var mo = ById(objectId);
+        var mo = GetById(objectId);
         if (mo is null)
             yield break;
 
@@ -72,19 +48,135 @@ public sealed class SettingsQuery
         if (mo.RelatedFeature is not null)
         {
             foreach (var id in mo.RelatedFeature)
-                ids.Add(id);
+                if (!string.IsNullOrWhiteSpace(id))
+                    ids.Add(id);
         }
 
-        foreach (var rel in mo.StructuredRelationships)
-            ids.Add(rel.ToObjectId);
+        foreach (var rel in mo.StructuredRelationships ?? Enumerable.Empty<SettingRelationship>())
+        {
+            if (!string.IsNullOrWhiteSpace(rel.ToObjectId))
+                ids.Add(rel.ToObjectId);
+        }
+
+        // Incoming edges: other objects that point at this id
+        foreach (var other in _catalog)
+        {
+            if (other.ObjectId.Equals(objectId, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (other.RelatedFeature?.Any(id => id.Equals(objectId, StringComparison.OrdinalIgnoreCase)) == true)
+                ids.Add(other.ObjectId);
+
+            if (other.StructuredRelationships?.Any(r =>
+                    r.ToObjectId.Equals(objectId, StringComparison.OrdinalIgnoreCase)) == true)
+                ids.Add(other.ObjectId);
+        }
+
+        foreach (var id in ids)
+        {
+            if (_byId.TryGetValue(id, out var related))
+                yield return related;
+        }
+    }
+
+    /// <summary>Alias for GetRelatedSettings.</summary>
+    public IEnumerable<ManagedObject> RelatedTo(string objectId) => GetRelatedSettings(objectId);
+
+    public IEnumerable<SettingRelationship> GetRelationshipEdges(string objectId)
+    {
+        var mo = GetById(objectId);
+        if (mo?.StructuredRelationships is null)
+            yield break;
+
+        foreach (var edge in mo.StructuredRelationships)
+            yield return edge;
 
         foreach (var other in _catalog)
         {
-            if (ids.Contains(other.ObjectId))
-                yield return other;
+            if (other.StructuredRelationships is null)
+                continue;
+            foreach (var edge in other.StructuredRelationships)
+            {
+                if (edge.ToObjectId.Equals(objectId, StringComparison.OrdinalIgnoreCase))
+                    yield return edge;
+            }
         }
+    }
+
+    public IEnumerable<ManagedObject> GetConflicts() =>
+        _catalog.Where(m =>
+            m.Observation?.Effective?.HasConflict == true ||
+            m.Observation?.Resolution?.HasConflict == true);
+
+    /// <summary>Alias for GetConflicts.</summary>
+    public IEnumerable<ManagedObject> Conflicts() => GetConflicts();
+
+    public IEnumerable<ManagedObject> GetMachineControlledSettings() =>
+        _catalog.Where(m =>
+            m.Observation?.Effective?.EffectiveSource is ConfigurationLayer.MachinePolicy
+                or ConfigurationLayer.MDMPolicy
+                or ConfigurationLayer.SecurityBaseline ||
+            m.Observation?.Resolution?.EffectiveSource is ConfigurationLayer.MachinePolicy
+                or ConfigurationLayer.MDMPolicy
+                or ConfigurationLayer.SecurityBaseline ||
+            m.ControlLevel == ControlLevel.AdministratorControlled);
+
+    /// <summary>Alias for GetMachineControlledSettings.</summary>
+    public IEnumerable<ManagedObject> MachineEnforced() => GetMachineControlledSettings();
+
+    public IEnumerable<ManagedObject> GetSettingsNeedingReview() =>
+        _catalog.Where(m =>
+            m.RiskLevel == RiskLevel.High &&
+            IsConfigured(m.CurrentState) ||
+            m.Observation?.Effective?.HasConflict == true ||
+            m.Observation?.Resolution?.HasConflict == true);
+
+    public IEnumerable<ManagedObject> ByRisk(RiskLevel risk) =>
+        _catalog.Where(m => m.RiskLevel == risk);
+
+    public IEnumerable<ManagedObject> HighImpactConfigured() =>
+        _catalog.Where(m => m.RiskLevel == RiskLevel.High && IsConfigured(m.CurrentState));
+
+    public IEnumerable<ManagedObject> Unconfigured() =>
+        _catalog.Where(m => !IsConfigured(m.CurrentState));
+
+    public IEnumerable<ManagedObject> Search(string? term)
+    {
+        if (string.IsNullOrWhiteSpace(term))
+            return _catalog;
+
+        // Treat search text as plain display filter only — never as code/script.
+        var t = term.Trim();
+        if (t.Length > 200)
+            t = t[..200];
+
+        return _catalog.Where(m =>
+            (m.ObjectName?.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (m.ObjectId?.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (m.Description?.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (m.SubCategory?.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            m.ProductDomain.ToString().Contains(t, StringComparison.OrdinalIgnoreCase));
     }
 
     public IEnumerable<ProductDomain> DomainsPresent() =>
         _catalog.Select(m => m.ProductDomain).Distinct().OrderBy(d => d);
+
+    public SettingExplanation GetExplanation(string objectId)
+    {
+        var mo = GetById(objectId)
+            ?? throw new KeyNotFoundException($"Unknown setting id: {objectId}");
+        return SettingExplanationFactory.FromDefinition(mo);
+    }
+
+    public SettingExplanation? TryGetExplanation(string objectId)
+    {
+        var mo = GetById(objectId);
+        return mo is null ? null : SettingExplanationFactory.FromDefinition(mo);
+    }
+
+    private static bool IsConfigured(string? state) =>
+        !string.IsNullOrWhiteSpace(state) &&
+        !state.Contains("Not configured", StringComparison.OrdinalIgnoreCase) &&
+        !state.Contains("Not observed", StringComparison.OrdinalIgnoreCase) &&
+        !state.Contains("Error reading", StringComparison.OrdinalIgnoreCase);
 }
