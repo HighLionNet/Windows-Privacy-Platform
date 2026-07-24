@@ -35,7 +35,7 @@
 
     <Border Style="{StaticResource Card}">
       <StackPanel>
-        <TextBlock Text="Impact & guidance" FontWeight="SemiBold" Margin="0,0,0,6" />
+        <TextBlock Text="Impact and guidance" FontWeight="SemiBold" Margin="0,0,0,6" />
         <TextBlock x:Name="ImpactText" Style="{StaticResource ValueText}" />
         <TextBlock x:Name="UserImpactText" Style="{StaticResource ValueText}" Margin="0,8,0,0" />
         <TextBlock x:Name="EnterpriseText" Style="{StaticResource ValueText}" Margin="0,8,0,0" />

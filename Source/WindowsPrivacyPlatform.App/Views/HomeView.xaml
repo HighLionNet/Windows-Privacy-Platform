@@ -37,7 +37,7 @@
       </Border>
       <Border Style="{StaticResource Card}" Margin="8,0,0,12">
         <StackPanel>
-          <TextBlock Text="Services & network" Style="{StaticResource LabelMuted}" />
+          <TextBlock Text="Services and network" Style="{StaticResource LabelMuted}" />
           <TextBlock x:Name="FirewallText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
           <TextBlock x:Name="DefenderText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
           <TextBlock x:Name="DomainText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
@@ -47,7 +47,7 @@
 
     <Border Style="{StaticResource Card}">
       <StackPanel>
-        <TextBlock Text="Scan & knowledge" Style="{StaticResource LabelMuted}" />
+        <TextBlock Text="Scan and knowledge" Style="{StaticResource LabelMuted}" />
         <TextBlock x:Name="ScanMetaText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
         <TextBlock x:Name="IdentityNotesText" Style="{StaticResource ValueText}" Margin="0,8,0,0"
                    Foreground="{StaticResource BrushTextSecondary}" />
