@@ -2,6 +2,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 using WindowsPrivacyPlatform.Models;
 
@@ -118,7 +119,6 @@ namespace WindowsPrivacyPlatform.Scanner
                 if (!File.Exists(dismPath))
                     dismPath = "dism.exe";
 
-                // /English keeps labels stable; no elevation requested.
                 foreach (var args in new[]
                          {
                              "/online /get-capabilities /English",
@@ -162,7 +162,6 @@ namespace WindowsPrivacyPlatform.Scanner
             {
                 var trimmed = line.Trim();
 
-                // Classic: Capability Identity : Name~~~~0.0.1.0
                 if (trimmed.StartsWith("Capability Identity", StringComparison.OrdinalIgnoreCase))
                 {
                     var parts = trimmed.Split(':', 2);
@@ -176,7 +175,6 @@ namespace WindowsPrivacyPlatform.Scanner
                     continue;
                 }
 
-                // Table format: capability name often contains ~~~~
                 if (trimmed.Contains("~~~~", StringComparison.Ordinal) &&
                     !trimmed.StartsWith("Capability", StringComparison.OrdinalIgnoreCase))
                 {
