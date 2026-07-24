@@ -177,10 +177,11 @@ namespace WindowsPrivacyPlatform.CLI
             }
 
             foreach (var item in summary.HighRiskItems
-                         .OrderBy(i => i.SubCategory, StringComparer.OrdinalIgnoreCase)
+                         .OrderBy(i => i.ProductDomain)
+                         .ThenBy(i => i.SubCategory, StringComparer.OrdinalIgnoreCase)
                          .ThenBy(i => i.ObjectName, StringComparer.OrdinalIgnoreCase))
             {
-                Console.WriteLine($"  [{item.SubCategory}] {item.ObjectName}");
+                Console.WriteLine($"  [{item.ProductDomain}/{item.SubCategory}] {item.ObjectName}");
                 Console.WriteLine($"    Id      : {item.ObjectId}");
                 Console.WriteLine($"    Current : {item.CurrentState}");
                 Console.WriteLine();
@@ -192,24 +193,34 @@ namespace WindowsPrivacyPlatform.CLI
             Console.WriteLine("=== Full Categorized Privacy & Policy Report ===");
             Console.WriteLine();
 
-            var byCategory = catalog
-                .GroupBy(m => m.SubCategory ?? m.FeatureCategory.ToString())
-                .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase);
+            var byDomain = catalog
+                .GroupBy(m => m.ProductDomain)
+                .OrderBy(g => g.Key);
 
-            foreach (var group in byCategory)
+            foreach (var domainGroup in byDomain)
             {
-                Console.WriteLine($"[{group.Key}]");
+                Console.WriteLine($"## Domain: {domainGroup.Key}");
+                Console.WriteLine();
 
-                foreach (var mo in group.OrderBy(m => m.ObjectName, StringComparer.OrdinalIgnoreCase))
+                var bySub = domainGroup
+                    .GroupBy(m => m.SubCategory ?? domainGroup.Key.ToString())
+                    .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase);
+
+                foreach (var subGroup in bySub)
                 {
-                    Console.WriteLine($"  {mo.ObjectName}");
-                    Console.WriteLine($"    Id          : {mo.ObjectId}");
-                    Console.WriteLine($"    Risk        : {mo.RiskLevel} | Control: {mo.ControlLevel}");
-                    Console.WriteLine($"    Current     : {mo.CurrentState ?? "(unbound)"}");
-                    Console.WriteLine($"    Description : {mo.Description}");
-                    if (!string.IsNullOrWhiteSpace(mo.Rationale))
-                        Console.WriteLine($"    Rationale   : {mo.Rationale}");
-                    Console.WriteLine();
+                    Console.WriteLine($"[{subGroup.Key}]");
+
+                    foreach (var mo in subGroup.OrderBy(m => m.ObjectName, StringComparer.OrdinalIgnoreCase))
+                    {
+                        Console.WriteLine($"  {mo.ObjectName}");
+                        Console.WriteLine($"    Id          : {mo.ObjectId}");
+                        Console.WriteLine($"    Risk        : {mo.RiskLevel} | Control: {mo.ControlLevel}");
+                        Console.WriteLine($"    Current     : {mo.CurrentState ?? "(unbound)"}");
+                        Console.WriteLine($"    Description : {mo.Description}");
+                        if (!string.IsNullOrWhiteSpace(mo.Rationale))
+                            Console.WriteLine($"    Rationale   : {mo.Rationale}");
+                        Console.WriteLine();
+                    }
                 }
             }
         }
