@@ -2,8 +2,8 @@
 ## Current Status
 
 **Project Name:** Windows Privacy Platform  
-**Current Development Version:** Prototype v0.4 (Live Discovery Skeleton)  
-**Previous Versions:** v0.3 (Identity) → v0.2 (Architecture) → v0.1 (Archived)  
+**Current Development Version:** Prototype v0.5 (Model + Policy Discovery + Categorized Report)  
+**Previous Versions:** v0.4 (Live Discovery) → v0.3 (Identity) → v0.2 (Architecture) → v0.1 (Archived)  
 **Document Status:** Authoritative Current State  
 **Last Updated:** 2026-07-24
 
@@ -19,46 +19,45 @@ Future AI sessions must treat this document as the authoritative description of 
 
 # Current Development Phase
 
-Prototype v0.4 — Live discovery skeleton.
+Prototype v0.5 — Discover + Model + first Report layer.
 
-All six collectors are implemented and verified on a real Windows 11 Pro 25H2 machine:
+## v0.4 (finalized, verified on Windows 11 Pro 25H2)
 
 | Collector                  | Result on test machine |
 |----------------------------|------------------------|
 | WindowsIdentityCollector   | Windows 11 Pro / 25H2 / 26200 |
-| CapabilityCollector        | 0 (DISM parse / availability gap) |
+| CapabilityCollector        | 0 (improved paths; may still return 0 without elevation on some builds) |
 | PackageCollector           | 165 packages |
 | ServiceCollector           | 303 services |
 | ScheduledTaskCollector     | 247 tasks |
 | PrivacyCollector           | 17 privacy settings |
 
-Build: 0 errors, 0 warnings.  
-Runtime: verified. Safety confirmation present. No elevation, no writes.
+Build: 0 errors, 0 warnings. Runtime verified. Safety confirmation present.
 
----
+## v0.5 (implemented; local runtime verification pending)
 
-# Verified Runtime Output (2026-07-24)
+Added:
 
-```
-Identity : Windows 11 Pro | 25H2 | Build 26200
-Capabilities : 0 | Packages : 165 | Services : 303 | Tasks : 247 | Privacy settings : 17
-KnowledgeBase: stored entry, count=1
-Validator result: IsValid=True
-SAFETY CONFIRMATION: ... Prototype remains strictly read-only.
-```
+- **PolicyCollector** — table-driven read-only probes of high-value GPO/policy/preference registry values (telemetry, Windows Update AU/schedule, Delivery Optimization, Defender, Search/Cortana, Activity History, Cloud Content, Advertising, Location, AppPrivacy LetApps*, Edge privacy policies, Biometrics, Find My Device). Missing values recorded as `Not configured`.
+- **InventorySnapshot.PolicySettings** + `PolicySettingInfo`
+- **ManagedObjectCatalog** expansion — privacy batch + policy batch; `All` combined list with Name, Description, Category/SubCategory, RiskLevel, Rationale, ControlLevel
+- **Categorized console report** in CLI — groups catalog by SubCategory, shows current observed value when matched
+- CLI loads full catalog into KnowledgeBase; version banner v0.5
+
+Still strictly read-only. No elevation. No writes. No remediation.
 
 ---
 
 # Current Objective
 
-Stay inside the Discover → Model → Validate sequence.
+Stay inside Discover → Model → Validate → Report.
 
-Immediate priorities:
+Immediate priorities after v0.5 local verify:
 
-1. Improve CapabilityCollector reliability (currently returns 0 on this build).
-2. Begin turning raw inventory into explained ManagedObjects (name, description, category, risk).
-3. Add a simple reporting / categorization view of what was discovered.
-4. Do **not** introduce write paths, elevation, or GUI until the model layer is useful.
+1. Confirm PolicyCollector counts and categorized report on real 25H2 hardware.
+2. Continue expanding catalog + probes for remaining high-value surfaces as gaps appear.
+3. Improve CapabilityCollector if still 0.
+4. Do **not** introduce write paths, elevation, or GUI until report layer is validated.
 
 ---
 
@@ -75,21 +74,21 @@ Seven projects under Source/. Scanner + CLI target `net8.0-windows`.
 
 # Implementation Status Summary
 
-| Area                         | Status                          |
-|------------------------------|---------------------------------|
-| Architecture (7 projects)    | Complete + verified             |
-| Logging                      | Complete + verified             |
-| KnowledgeBase (memory)       | Complete + verified             |
-| Validator (structural)       | Complete + verified             |
-| Identity collector           | Live + verified                 |
-| Services / Packages / Tasks  | Live + verified                 |
-| Privacy (ConsentStore)       | Live + verified (limited set)   |
-| Capabilities                 | Live but returns 0 on test box  |
-| ManagedObject explanations   | Not started                     |
-| Reporting / categories       | Not started                     |
-| Write / remediation paths    | Explicitly deferred             |
-| Elevation handling           | Explicitly deferred             |
-| Terminal / GUI               | Explicitly deferred             |
+| Area                         | Status                                      |
+|------------------------------|---------------------------------------------|
+| Architecture (7 projects)    | Complete + verified                         |
+| Logging                      | Complete + verified                         |
+| KnowledgeBase (memory)       | Complete + verified                         |
+| Validator (structural)       | Complete + verified                         |
+| Identity / Services / Packages / Tasks | Live + verified                    |
+| Privacy (ConsentStore + related) | Live + verified                         |
+| Policy / GPO surface probes  | Live (v0.5) — verify on hardware            |
+| Capabilities                 | Live; may return 0 on some builds           |
+| ManagedObject catalog        | Live (v0.5 privacy + policy batches)        |
+| Categorized console report   | Live (v0.5)                                 |
+| Write / remediation paths    | Explicitly deferred                         |
+| Elevation handling           | Explicitly deferred                         |
+| Terminal / GUI               | Explicitly deferred                         |
 
 ---
 
@@ -101,18 +100,17 @@ Strictly read-only. No registry writes, no service/task/package/policy changes, 
 
 # Pending Work (ordered)
 
-1. Fix or improve CapabilityCollector (investigate DISM output format on 25H2).
-2. Start modeling discovered items as ManagedObjects with human-readable descriptions and categories.
-3. Simple console report that groups findings by category.
-4. Expand PrivacyCollector coverage carefully.
-5. Only after the above: design controlled change model (elevation-on-demand, warnings, reversibility).
-6. Terminal UI (preferred) or GUI after the model is solid.
+1. Local build + runtime verification of v0.5 on Windows 11.
+2. CapabilityCollector follow-up if still 0.
+3. Expand probes/catalog for any missing high-value surfaces identified at runtime.
+4. Design (not implement) controlled-change contract only after report layer is solid.
+5. Terminal UI preferred over full GUI after model/report is useful.
 
 ---
 
 # Explicitly Deferred
 
-Remediation, GPO writes, registry writes, elevation helpers, rollback, recovery, GUI frameworks, network features, telemetry.
+Remediation, GPO/registry writes, elevation helpers, rollback, recovery, GUI frameworks, network features, outbound telemetry.
 
 ---
 
@@ -120,8 +118,9 @@ Remediation, GPO writes, registry writes, elevation helpers, rollback, recovery,
 
 Architectural: LOW  
 Safety: LOW  
-Discovery quality (Capabilities=0): MEDIUM — investigate next  
-Scope creep toward UI/writes too early: MEDIUM — resist until model layer exists
+Discovery quality (Capabilities=0): MEDIUM  
+Policy surface completeness: MEDIUM — probes cover major areas; not every GPO in existence  
+Scope creep toward UI/writes too early: MEDIUM — resist
 
 ---
 
@@ -130,6 +129,7 @@ Scope creep toward UI/writes too early: MEDIUM — resist until model layer exis
 v0.1 archived.  
 v0.2 architecture complete.  
 v0.3 identity working.  
-v0.4 live discovery working (5 of 6 collectors returning real data).
+v0.4 live discovery working (verified).  
+v0.5 model + policy discovery + categorized report implemented (pending hardware verify).
 
 Philosophy remains mandatory: **Understand first. Change later.**
