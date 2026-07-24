@@ -12,7 +12,7 @@ public class InMemoryKnowledgeBaseRepository : IKnowledgeBaseRepository
         _version = new KnowledgeBaseVersion
         {
             SchemaVersion = "0.2",
-            KnowledgeBaseVersion = "0.1-prototype",
+            Version = "0.1-prototype",
             CreatedTimestamp = DateTime.UtcNow,
             ObjectCount = 0
         };
