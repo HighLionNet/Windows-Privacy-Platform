@@ -12,28 +12,33 @@ namespace WindowsPrivacyPlatform.CLI
 {
     /// <summary>
     /// Presentation-only host. Discovery, binding, and reasoning live elsewhere.
-    /// Non-interactive; read-only; no elevation.
+    /// Non-interactive by default; optional --tui for read-only keyboard navigation.
+    /// No elevation. No writes.
     /// </summary>
     internal static class Program
     {
         private static void Main(string[] args)
         {
             var fullReport = HasFlag(args, "--full");
+            var tuiMode = HasFlag(args, "--tui");
             if (HasFlag(args, "--help") || HasFlag(args, "-h"))
             {
                 WriteHelp();
                 return;
             }
 
-            Console.WriteLine("Windows Privacy Platform - Prototype v0.6.5");
-            Console.WriteLine("Read-only discovery + bind + validate + explanation");
-            Console.WriteLine(fullReport
-                ? "Report mode: full categorized detail"
-                : "Report mode: summary + high-risk + conflicts with decision cards");
-            Console.WriteLine();
+            if (!tuiMode)
+            {
+                Console.WriteLine("Windows Privacy Platform - Prototype v0.7");
+                Console.WriteLine("Read-only discovery + bind + validate + explanation");
+                Console.WriteLine(fullReport
+                    ? "Report mode: full categorized detail"
+                    : "Report mode: summary + high-risk + conflicts with decision cards");
+                Console.WriteLine();
+            }
 
             var logger = new AuditLogger();
-            logger.Info("CLI", "Pipeline start");
+            logger.Info("CLI", tuiMode ? "TUI pipeline start" : "Pipeline start");
 
             var knowledgeBase = new InMemoryKnowledgeBaseRepository();
 
@@ -56,19 +61,22 @@ namespace WindowsPrivacyPlatform.CLI
             if (scanResult.Success && scanResult.Snapshot is not null)
             {
                 snapshot = scanResult.Snapshot;
-                var configuredPolicies = snapshot.PolicySettings.Count(p =>
-                    !string.Equals(p.Value, "Not configured", StringComparison.OrdinalIgnoreCase) &&
-                    !string.Equals(p.Value, "Error reading", StringComparison.OrdinalIgnoreCase));
+                if (!tuiMode)
+                {
+                    var configuredPolicies = snapshot.PolicySettings.Count(p =>
+                        !string.Equals(p.Value, "Not configured", StringComparison.OrdinalIgnoreCase) &&
+                        !string.Equals(p.Value, "Error reading", StringComparison.OrdinalIgnoreCase));
 
-                Console.WriteLine(
-                    $"Identity : {snapshot.WindowsVersion} | {snapshot.Edition} | Build {snapshot.BuildNumber}");
-                Console.WriteLine(
-                    $"Capabilities : {snapshot.InstalledCapabilities.Count} | Packages : {snapshot.InstalledPackages.Count} | " +
-                    $"Services : {snapshot.Services.Count} | Tasks : {snapshot.ScheduledTasks.Count} | " +
-                    $"Privacy settings : {snapshot.PrivacySettings.Count} | Policy probes : {snapshot.PolicySettings.Count} " +
-                    $"(configured: {configuredPolicies})");
+                    Console.WriteLine(
+                        $"Identity : {snapshot.WindowsVersion} | {snapshot.Edition} | Build {snapshot.BuildNumber}");
+                    Console.WriteLine(
+                        $"Capabilities : {snapshot.InstalledCapabilities.Count} | Packages : {snapshot.InstalledPackages.Count} | " +
+                        $"Services : {snapshot.Services.Count} | Tasks : {snapshot.ScheduledTasks.Count} | " +
+                        $"Privacy settings : {snapshot.PrivacySettings.Count} | Policy probes : {snapshot.PolicySettings.Count} " +
+                        $"(configured: {configuredPolicies})");
+                }
             }
-            else
+            else if (!tuiMode)
             {
                 Console.WriteLine($"Scanner failed: {scanResult.Message}");
             }
@@ -91,19 +99,22 @@ namespace WindowsPrivacyPlatform.CLI
                 });
             }
 
-            Console.WriteLine(
-                $"KnowledgeBase: stored {catalog.Count} catalog entries, count={knowledgeBase.Count}");
-
             var validationResults = validator.ValidateAll(knowledgeBase.GetAll());
             var passed = validationResults.Count(r => r.IsValid);
             var failed = validationResults.Count(r => !r.IsValid);
-            Console.WriteLine($"Validator batch: passed={passed}, failed={failed}, total={validationResults.Count}");
-            if (failed > 0)
+
+            if (!tuiMode)
             {
-                foreach (var bad in validationResults.Where(r => !r.IsValid).Take(10))
-                    Console.WriteLine($"  FAIL {bad.ObjectId}: {string.Join("; ", bad.Errors)}");
-                if (failed > 10)
-                    Console.WriteLine($"  ... and {failed - 10} more");
+                Console.WriteLine(
+                    $"KnowledgeBase: stored {catalog.Count} catalog entries, count={knowledgeBase.Count}");
+                Console.WriteLine($"Validator batch: passed={passed}, failed={failed}, total={validationResults.Count}");
+                if (failed > 0)
+                {
+                    foreach (var bad in validationResults.Where(r => !r.IsValid).Take(10))
+                        Console.WriteLine($"  FAIL {bad.ObjectId}: {string.Join("; ", bad.Errors)}");
+                    if (failed > 10)
+                        Console.WriteLine($"  ... and {failed - 10} more");
+                }
             }
 
             if (snapshot is not null)
@@ -112,28 +123,44 @@ namespace WindowsPrivacyPlatform.CLI
                 var query = new SettingsQuery(catalog);
                 var nav = NavigationBuilder.BuildDomainTree(catalog);
 
-                WriteRiskSummary(summary, query, nav);
-
-                if (fullReport)
-                    WriteFullCategorizedReport(catalog, query);
+                if (tuiMode)
+                {
+                    TuiHost.Run(catalog, query);
+                }
                 else
                 {
-                    WriteHighRiskDetail(summary);
-                    WriteConflictCards(query);
+                    WriteRiskSummary(summary, query, nav);
+
+                    if (fullReport)
+                        WriteFullCategorizedReport(catalog, query);
+                    else
+                    {
+                        WriteHighRiskDetail(summary);
+                        WriteConflictCards(query);
+                    }
                 }
             }
+            else if (tuiMode)
+            {
+                // Still allow browsing catalog definitions without a live snapshot.
+                var query = new SettingsQuery(catalog);
+                TuiHost.Run(catalog, query);
+            }
 
-            logger.Info("CLI", "Pipeline complete");
+            logger.Info("CLI", tuiMode ? "TUI session complete" : "Pipeline complete");
 
-            Console.WriteLine();
-            Console.WriteLine("SAFETY CONFIRMATION: No Windows registry, services, tasks, packages, or policies were modified.");
-            Console.WriteLine("No elevation or UAC prompt occurred.");
-            Console.WriteLine("Prototype remains strictly read-only.");
+            if (!tuiMode)
+            {
+                Console.WriteLine();
+                Console.WriteLine("SAFETY CONFIRMATION: No Windows registry, services, tasks, packages, or policies were modified.");
+                Console.WriteLine("No elevation or UAC prompt occurred.");
+                Console.WriteLine("Prototype remains strictly read-only.");
+            }
         }
 
         private static void WriteHelp()
         {
-            Console.WriteLine("Windows Privacy Platform - Prototype v0.6.5");
+            Console.WriteLine("Windows Privacy Platform - Prototype v0.7");
             Console.WriteLine();
             Console.WriteLine("Usage:");
             Console.WriteLine("  dotnet run -c Release -- [options]");
@@ -141,7 +168,10 @@ namespace WindowsPrivacyPlatform.CLI
             Console.WriteLine("Options:");
             Console.WriteLine("  (default)   Summary + high-risk + conflict decision cards");
             Console.WriteLine("  --full      Full categorized catalog report");
+            Console.WriteLine("  --tui       Interactive read-only terminal explorer");
             Console.WriteLine("  --help, -h  Show this help");
+            Console.WriteLine();
+            Console.WriteLine("TUI keys: ↑↓ navigate · Enter open · Esc/Back return · / search · Q quit");
             Console.WriteLine();
             Console.WriteLine("Always read-only. No elevation. No system changes.");
         }
