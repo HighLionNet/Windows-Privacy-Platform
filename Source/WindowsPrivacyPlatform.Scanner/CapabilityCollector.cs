@@ -9,9 +9,11 @@ namespace WindowsPrivacyPlatform.Scanner
 {
     /// <summary>
     /// Read-only collector for Windows capabilities.
-    /// Primary: PowerShell Get-WindowsCapability -Online (structured, locale-independent).
-    /// Fallback: DISM /online /get-capabilities /English via System32 path.
+    /// Primary: PowerShell Get-WindowsCapability -Online.
+    /// Fallback: pwsh, then DISM /online /get-capabilities /English.
     /// Query only. Never elevates. Never writes. Fail-soft.
+    /// On many non-elevated Win11 hosts the APIs return empty; callers should
+    /// treat zero results as Unknown availability, not proven absence.
     /// </summary>
     public sealed class CapabilityCollector : IInventoryCollector
     {
@@ -24,12 +26,13 @@ namespace WindowsPrivacyPlatform.Scanner
 
             try
             {
-                // Prefer installed capabilities first (most useful, often works without elevation).
-                if (TryCollectViaPowerShell(snapshot, installedOnly: true))
+                if (TryCollectViaShell("powershell.exe", snapshot, installedOnly: true))
                     return;
-
-                // Broader query if installed-only returned nothing.
-                if (TryCollectViaPowerShell(snapshot, installedOnly: false))
+                if (TryCollectViaShell("powershell.exe", snapshot, installedOnly: false))
+                    return;
+                if (TryCollectViaShell("pwsh.exe", snapshot, installedOnly: true))
+                    return;
+                if (TryCollectViaShell("pwsh.exe", snapshot, installedOnly: false))
                     return;
 
                 TryCollectViaDism(snapshot);
@@ -40,23 +43,18 @@ namespace WindowsPrivacyPlatform.Scanner
             }
         }
 
-        /// <summary>
-        /// Preferred path. Get-WindowsCapability returns structured Name values
-        /// without depending on localized DISM labels.
-        /// </summary>
-        private static bool TryCollectViaPowerShell(InventorySnapshot snapshot, bool installedOnly)
+        private static bool TryCollectViaShell(string shell, InventorySnapshot snapshot, bool installedOnly)
         {
             try
             {
                 // Fixed argument strings only — no user-controlled injection.
-                // -ErrorAction SilentlyContinue avoids terminating errors on restricted hosts.
                 var filter = installedOnly
                     ? "Get-WindowsCapability -Online -ErrorAction SilentlyContinue | Where-Object { $_.State -eq 'Installed' } | Select-Object -ExpandProperty Name"
                     : "Get-WindowsCapability -Online -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name";
 
                 var psi = new ProcessStartInfo
                 {
-                    FileName = "powershell.exe",
+                    FileName = shell,
                     Arguments =
                         "-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command " +
                         $"\"{filter}\"",
@@ -72,7 +70,6 @@ namespace WindowsPrivacyPlatform.Scanner
                     return false;
 
                 var output = process.StandardOutput.ReadToEnd();
-                // Drain stderr so the process can exit cleanly; do not surface as data.
                 _ = process.StandardError.ReadToEnd();
                 process.WaitForExit(45000);
 
@@ -83,20 +80,10 @@ namespace WindowsPrivacyPlatform.Scanner
                 foreach (var line in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
                 {
                     var name = line.Trim();
-                    if (string.IsNullOrWhiteSpace(name))
+                    if (string.IsNullOrWhiteSpace(name) || name.Length < 3)
                         continue;
 
-                    // Skip PowerShell error/noise lines.
-                    if (name.StartsWith("Get-WindowsCapability", StringComparison.OrdinalIgnoreCase) ||
-                        name.StartsWith("At line", StringComparison.OrdinalIgnoreCase) ||
-                        name.StartsWith("+", StringComparison.Ordinal) ||
-                        name.StartsWith("CategoryInfo", StringComparison.OrdinalIgnoreCase) ||
-                        name.StartsWith("FullyQualifiedErrorId", StringComparison.OrdinalIgnoreCase) ||
-                        name.StartsWith("Where-Object", StringComparison.OrdinalIgnoreCase))
-                        continue;
-
-                    // Capability names are typically Identity~~~~version
-                    if (name.Length < 3)
+                    if (IsPowerShellNoise(name))
                         continue;
 
                     if (!snapshot.InstalledCapabilities.Contains(name, StringComparer.OrdinalIgnoreCase))
@@ -114,10 +101,15 @@ namespace WindowsPrivacyPlatform.Scanner
             }
         }
 
-        /// <summary>
-        /// Fallback when PowerShell path yields nothing.
-        /// Forces English output and uses the System32 DISM binary.
-        /// </summary>
+        private static bool IsPowerShellNoise(string name) =>
+            name.StartsWith("Get-WindowsCapability", StringComparison.OrdinalIgnoreCase) ||
+            name.StartsWith("At line", StringComparison.OrdinalIgnoreCase) ||
+            name.StartsWith("+", StringComparison.Ordinal) ||
+            name.StartsWith("CategoryInfo", StringComparison.OrdinalIgnoreCase) ||
+            name.StartsWith("FullyQualifiedErrorId", StringComparison.OrdinalIgnoreCase) ||
+            name.StartsWith("Where-Object", StringComparison.OrdinalIgnoreCase) ||
+            name.StartsWith("Select-Object", StringComparison.OrdinalIgnoreCase);
+
         private static void TryCollectViaDism(InventorySnapshot snapshot)
         {
             try
@@ -126,48 +118,74 @@ namespace WindowsPrivacyPlatform.Scanner
                 if (!File.Exists(dismPath))
                     dismPath = "dism.exe";
 
-                var psi = new ProcessStartInfo
+                // /English keeps labels stable; no elevation requested.
+                foreach (var args in new[]
+                         {
+                             "/online /get-capabilities /English",
+                             "/online /get-capabilities /format:table /English"
+                         })
                 {
-                    FileName = dismPath,
-                    Arguments = "/online /get-capabilities /English",
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    // DISM frequently emits OEM code page; default encoding is safer with /English.
-                    StandardOutputEncoding = Encoding.Default
-                };
+                    var psi = new ProcessStartInfo
+                    {
+                        FileName = dismPath,
+                        Arguments = args,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true,
+                        StandardOutputEncoding = Encoding.Default
+                    };
 
-                using var process = Process.Start(psi);
-                if (process is null)
-                    return;
-
-                var output = process.StandardOutput.ReadToEnd();
-                _ = process.StandardError.ReadToEnd();
-                process.WaitForExit(45000);
-
-                // Parse lines of the form:  Capability Identity : Name~~~~0.0.1.0
-                foreach (var line in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
-                {
-                    var trimmed = line.Trim();
-                    if (!trimmed.StartsWith("Capability Identity", StringComparison.OrdinalIgnoreCase))
+                    using var process = Process.Start(psi);
+                    if (process is null)
                         continue;
 
-                    var parts = trimmed.Split(':', 2);
-                    if (parts.Length != 2)
-                        continue;
+                    var output = process.StandardOutput.ReadToEnd();
+                    _ = process.StandardError.ReadToEnd();
+                    process.WaitForExit(45000);
 
-                    var identity = parts[1].Trim();
-                    if (string.IsNullOrWhiteSpace(identity))
-                        continue;
-
-                    if (!snapshot.InstalledCapabilities.Contains(identity, StringComparer.OrdinalIgnoreCase))
-                        snapshot.InstalledCapabilities.Add(identity);
+                    var before = snapshot.InstalledCapabilities.Count;
+                    ParseDismOutput(snapshot, output);
+                    if (snapshot.InstalledCapabilities.Count > before)
+                        return;
                 }
             }
             catch
             {
                 // Leave list empty on DISM failure.
+            }
+        }
+
+        private static void ParseDismOutput(InventorySnapshot snapshot, string output)
+        {
+            foreach (var line in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var trimmed = line.Trim();
+
+                // Classic: Capability Identity : Name~~~~0.0.1.0
+                if (trimmed.StartsWith("Capability Identity", StringComparison.OrdinalIgnoreCase))
+                {
+                    var parts = trimmed.Split(':', 2);
+                    if (parts.Length == 2)
+                    {
+                        var identity = parts[1].Trim();
+                        if (!string.IsNullOrWhiteSpace(identity) &&
+                            !snapshot.InstalledCapabilities.Contains(identity, StringComparer.OrdinalIgnoreCase))
+                            snapshot.InstalledCapabilities.Add(identity);
+                    }
+                    continue;
+                }
+
+                // Table format: capability name often contains ~~~~
+                if (trimmed.Contains("~~~~", StringComparison.Ordinal) &&
+                    !trimmed.StartsWith("Capability", StringComparison.OrdinalIgnoreCase))
+                {
+                    var token = trimmed.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+                    if (!string.IsNullOrWhiteSpace(token) &&
+                        token.Contains("~~~~", StringComparison.Ordinal) &&
+                        !snapshot.InstalledCapabilities.Contains(token, StringComparer.OrdinalIgnoreCase))
+                        snapshot.InstalledCapabilities.Add(token);
+                }
             }
         }
     }
