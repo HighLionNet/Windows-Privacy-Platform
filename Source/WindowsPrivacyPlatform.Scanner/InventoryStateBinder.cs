@@ -3,15 +3,24 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using WindowsPrivacyPlatform.Models;
+using WindowsPrivacyPlatform.Scanner.Binding;
 
 namespace WindowsPrivacyPlatform.Scanner
 {
     /// <summary>
-    /// Read-only binder: maps InventorySnapshot values onto ManagedObject.CurrentState.
+    /// Read-only bind orchestrator. Delegates to domain binders; does not contain domain logic itself.
     /// Does not write to the system. Does not elevate.
     /// </summary>
     public static class InventoryStateBinder
     {
+        private static readonly IStateBinder[] Binders =
+        {
+            new PrivacyBinder(),
+            new PolicyBinder()
+        };
+
+        private static readonly RelationshipBinder Relationships = new();
+
         public static void Bind(InventorySnapshot snapshot, IEnumerable<ManagedObject> catalog)
         {
             if (snapshot is null)
@@ -19,16 +28,28 @@ namespace WindowsPrivacyPlatform.Scanner
             if (catalog is null)
                 throw new ArgumentNullException(nameof(catalog));
 
-            var now = DateTime.UtcNow;
+            var list = catalog.Where(m => m is not null).ToList();
 
-            foreach (var mo in catalog)
+            foreach (var mo in list)
             {
-                if (mo is null)
-                    continue;
-
-                mo.CurrentState = ResolveCurrentValue(snapshot, mo);
-                mo.LastVerified = now;
+                var binder = Binders.FirstOrDefault(b => b.CanBind(mo));
+                if (binder is not null)
+                {
+                    binder.Bind(snapshot, mo);
+                }
+                else
+                {
+                    // Fallback: preserve prior behavior for unknown types
+                    mo.CurrentState = "Not observed in this scan";
+                    mo.LastVerified = DateTime.UtcNow;
+                    mo.Observation ??= new SettingObservation();
+                    mo.Observation.CurrentValue = mo.CurrentState;
+                    mo.Observation.ObservedAt = mo.LastVerified;
+                }
             }
+
+            // Relationships + effective-state foundation (after all raw binds)
+            Relationships.Apply(list);
         }
 
         public static ObservationSummary BuildSummary(
@@ -55,8 +76,8 @@ namespace WindowsPrivacyPlatform.Scanner
                 if (mo is null)
                     continue;
 
-                var state = mo.CurrentState ?? ResolveCurrentValue(snapshot, mo);
-                var observed = IsObserved(state);
+                var state = mo.CurrentState ?? "Not observed in this scan";
+                var observed = BinderHelpers.IsObserved(state);
 
                 if (observed)
                     summary.ObservedCount++;
@@ -67,12 +88,12 @@ namespace WindowsPrivacyPlatform.Scanner
                 {
                     case RiskLevel.High:
                         summary.HighRiskCount++;
-                        if (observed && !IsNotConfigured(state))
+                        if (observed && !BinderHelpers.IsNotConfigured(state))
                             summary.HighRiskItems.Add(ToItem(mo, state));
                         break;
                     case RiskLevel.Medium:
                         summary.MediumRiskCount++;
-                        if (observed && !IsNotConfigured(state))
+                        if (observed && !BinderHelpers.IsNotConfigured(state))
                             summary.MediumRiskItems.Add(ToItem(mo, state));
                         break;
                     default:
@@ -80,7 +101,6 @@ namespace WindowsPrivacyPlatform.Scanner
                         break;
                 }
 
-                // Only ConsentStore / privacy preference values use Allow|Deny|Prompt semantics.
                 if (mo.FeatureCategory == FeatureCategory.PrivacyPermission ||
                     string.Equals(mo.ObjectType, "PrivacySetting", StringComparison.OrdinalIgnoreCase))
                 {
@@ -90,7 +110,7 @@ namespace WindowsPrivacyPlatform.Scanner
 
             foreach (var p in snapshot.PolicySettings)
             {
-                if (IsNotConfigured(p.Value) || IsError(p.Value))
+                if (BinderHelpers.IsNotConfigured(p.Value) || BinderHelpers.IsError(p.Value))
                     summary.NotConfiguredPolicyCount++;
                 else
                     summary.ConfiguredPolicyCount++;
@@ -99,78 +119,28 @@ namespace WindowsPrivacyPlatform.Scanner
             return summary;
         }
 
+        /// <summary>
+        /// Compatibility helper used by older call sites; prefers already-bound CurrentState.
+        /// </summary>
         public static string ResolveCurrentValue(InventorySnapshot snapshot, ManagedObject mo)
         {
+            if (mo?.CurrentState is not null)
+                return mo.CurrentState;
+
             if (snapshot is null || mo is null)
                 return "Not observed in this scan";
 
-            var policy = snapshot.PolicySettings.FirstOrDefault(p =>
-                string.Equals(p.Name, mo.ObjectId, StringComparison.OrdinalIgnoreCase));
-            if (policy is not null)
-                return $"{policy.Value} ({policy.Hive})";
-
-            var shortName = ExtractShortName(mo.ObjectId);
-
-            var privacy = snapshot.PrivacySettings.FirstOrDefault(p =>
-                string.Equals(p.Name, shortName, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(p.Name, mo.ObjectId, StringComparison.OrdinalIgnoreCase));
-
-            if (privacy is not null)
-                return privacy.Value;
-
-            privacy = snapshot.PrivacySettings.FirstOrDefault(p =>
-                NamesLooselyMatch(mo.ObjectId, p.Name) ||
-                NamesLooselyMatch(shortName, p.Name));
-
-            return privacy?.Value ?? "Not observed in this scan";
+            // Transient bind for a single object if needed
+            var binder = Binders.FirstOrDefault(b => b.CanBind(mo));
+            binder?.Bind(snapshot, mo);
+            return mo.CurrentState ?? "Not observed in this scan";
         }
-
-        private static string ExtractShortName(string objectId)
-        {
-            if (string.IsNullOrWhiteSpace(objectId))
-                return string.Empty;
-
-            var idx = objectId.LastIndexOf('.');
-            return idx >= 0 && idx < objectId.Length - 1
-                ? objectId[(idx + 1)..]
-                : objectId;
-        }
-
-        private static bool NamesLooselyMatch(string a, string b)
-        {
-            if (string.IsNullOrWhiteSpace(a) || string.IsNullOrWhiteSpace(b))
-                return false;
-
-            static string Norm(string s) =>
-                s.Replace(".", "", StringComparison.Ordinal)
-                 .Replace("-", "", StringComparison.Ordinal)
-                 .Replace("_", "", StringComparison.Ordinal)
-                 .ToLowerInvariant();
-
-            var na = Norm(a);
-            var nb = Norm(b);
-            return na.Contains(nb, StringComparison.Ordinal) ||
-                   nb.Contains(na, StringComparison.Ordinal);
-        }
-
-        private static bool IsObserved(string? state) =>
-            !string.IsNullOrWhiteSpace(state) &&
-            !string.Equals(state, "Not observed in this scan", StringComparison.OrdinalIgnoreCase);
-
-        private static bool IsNotConfigured(string? state) =>
-            !string.IsNullOrWhiteSpace(state) &&
-            state.Contains("Not configured", StringComparison.OrdinalIgnoreCase);
-
-        private static bool IsError(string? state) =>
-            !string.IsNullOrWhiteSpace(state) &&
-            state.Contains("Error reading", StringComparison.OrdinalIgnoreCase);
 
         private static void TallyPrivacyValue(string state, ObservationSummary summary)
         {
             if (string.IsNullOrWhiteSpace(state))
                 return;
 
-            // Exact-ish ConsentStore tokens; avoid matching unrelated strings.
             var token = state.Trim();
             if (token.Equals("Allow", StringComparison.OrdinalIgnoreCase) ||
                 token.StartsWith("Allow ", StringComparison.OrdinalIgnoreCase))
