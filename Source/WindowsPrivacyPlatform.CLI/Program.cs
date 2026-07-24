@@ -52,35 +52,42 @@ namespace WindowsPrivacyPlatform.CLI
                 Console.WriteLine($"Scanner failed: {scanResult.Message}");
             }
 
-            // 2. Create one well-formed test ManagedObject
-            var testObject = new ManagedObject
+            // 2. Load first-batch privacy ManagedObjects from catalog into KnowledgeBase
+            var catalog = ManagedObjectCatalog.PrivacySettings;
+            foreach (var managedObject in catalog)
             {
-                ObjectId = "prototype-test-001",
-                ObjectName = "Test Managed Object"
-            };
-
-            var entry = new KnowledgeBaseEntry
-            {
-                ObjectId = testObject.ObjectId,
-                Object = testObject,
-                Metadata = new KnowledgeBaseMetadata
+                var entry = new KnowledgeBaseEntry
                 {
-                    Source = "CLI-Test",
-                    SourceReliabilityScore = 1
-                }
-            };
+                    ObjectId = managedObject.ObjectId,
+                    Object = managedObject,
+                    Metadata = new KnowledgeBaseMetadata
+                    {
+                        Source = "ManagedObjectCatalog",
+                        SourceReliabilityScore = managedObject.ConfidenceScore
+                    }
+                };
+                knowledgeBase.Add(entry);
+            }
 
-            knowledgeBase.Add(entry);
-            Console.WriteLine($"KnowledgeBase: stored entry, count={knowledgeBase.Count}");
+            Console.WriteLine(
+                $"KnowledgeBase: stored {catalog.Count} catalog entries, count={knowledgeBase.Count}");
 
-            // 3. Validate
-            var validationResult = validator.Validate(entry);
-            Console.WriteLine($"Validator result: IsValid={validationResult.IsValid}");
-            if (!validationResult.IsValid && validationResult.Errors is not null)
+            // 3. Validate first catalog object as structural smoke check
+            if (catalog.Count > 0)
             {
-                foreach (var err in validationResult.Errors)
+                var firstEntry = knowledgeBase.Get(catalog[0].ObjectId);
+                if (firstEntry is not null)
                 {
-                    Console.WriteLine($"  - {err}");
+                    var validationResult = validator.Validate(firstEntry);
+                    Console.WriteLine(
+                        $"Validator result: IsValid={validationResult.IsValid} (ObjectId={catalog[0].ObjectId})");
+                    if (!validationResult.IsValid && validationResult.Errors is not null)
+                    {
+                        foreach (var err in validationResult.Errors)
+                        {
+                            Console.WriteLine($"  - {err}");
+                        }
+                    }
                 }
             }
 
