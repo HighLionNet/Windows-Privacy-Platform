@@ -1,0 +1,59 @@
+<UserControl x:Class="WindowsPrivacyPlatform.App.Views.HomeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <StackPanel>
+    <TextBlock Text="Machine Overview" Style="{StaticResource SectionTitle}" />
+    <TextBlock Text="Device context only — not a security score. Unknown values stay Unknown."
+               Style="{StaticResource SectionSubtitle}" />
+
+    <UniformGrid Columns="2">
+      <Border Style="{StaticResource Card}" Margin="0,0,8,12">
+        <StackPanel>
+          <TextBlock Text="Operating system" Style="{StaticResource LabelMuted}" />
+          <TextBlock x:Name="OsText" Style="{StaticResource ValueText}" FontSize="15" FontWeight="SemiBold" Margin="0,4,0,0" />
+          <TextBlock x:Name="ArchText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
+        </StackPanel>
+      </Border>
+      <Border Style="{StaticResource Card}" Margin="8,0,0,12">
+        <StackPanel>
+          <TextBlock Text="Device" Style="{StaticResource LabelMuted}" />
+          <TextBlock x:Name="DeviceText" Style="{StaticResource ValueText}" FontSize="15" FontWeight="SemiBold" Margin="0,4,0,0" />
+          <TextBlock x:Name="CpuText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
+          <TextBlock x:Name="MemText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
+        </StackPanel>
+      </Border>
+      <Border Style="{StaticResource Card}" Margin="0,0,8,12">
+        <StackPanel>
+          <TextBlock Text="Security posture (observed)" Style="{StaticResource LabelMuted}" />
+          <TextBlock x:Name="SecureBootText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
+          <TextBlock x:Name="TpmText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
+          <TextBlock x:Name="BitLockerText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
+        </StackPanel>
+      </Border>
+      <Border Style="{StaticResource Card}" Margin="8,0,0,12">
+        <StackPanel>
+          <TextBlock Text="Services &amp; network" Style="{StaticResource LabelMuted}" />
+          <TextBlock x:Name="FirewallText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
+          <TextBlock x:Name="DefenderText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
+          <TextBlock x:Name="DomainText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
+        </StackPanel>
+      </Border>
+    </UniformGrid>
+
+    <Border Style="{StaticResource Card}">
+      <StackPanel>
+        <TextBlock Text="Scan &amp; knowledge" Style="{StaticResource LabelMuted}" />
+        <TextBlock x:Name="ScanMetaText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
+        <TextBlock x:Name="IdentityNotesText" Style="{StaticResource ValueText}" Margin="0,8,0,0"
+                   Foreground="{StaticResource BrushTextSecondary}" />
+      </StackPanel>
+    </Border>
+
+    <Border Style="{StaticResource Card}">
+      <StackPanel>
+        <TextBlock Text="Observation summary" Style="{StaticResource LabelMuted}" />
+        <TextBlock x:Name="SummaryText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
+      </StackPanel>
+    </Border>
+  </StackPanel>
+</UserControl>

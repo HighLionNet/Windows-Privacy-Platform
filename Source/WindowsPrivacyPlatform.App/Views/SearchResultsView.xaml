@@ -1,0 +1,9 @@
+<UserControl x:Class="WindowsPrivacyPlatform.App.Views.SearchResultsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <StackPanel>
+    <TextBlock x:Name="TitleText" Style="{StaticResource SectionTitle}" />
+    <TextBlock x:Name="SubtitleText" Style="{StaticResource SectionSubtitle}" />
+    <ItemsControl x:Name="List" />
+  </StackPanel>
+</UserControl>
