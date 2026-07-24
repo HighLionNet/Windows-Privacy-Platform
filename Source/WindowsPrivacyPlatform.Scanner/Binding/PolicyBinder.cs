@@ -8,7 +8,7 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
     /// <summary>
     /// Binds curated policy/GPO registry probes onto catalog policy settings.
     /// Distinguishes MachinePolicy vs AlternatePolicyStore vs UserPreference by hive/path.
-    /// Read-only.
+    /// Read-only. Populates full ConfigurationObservation provenance (v0.9 evidence maturity).
     /// </summary>
     public sealed class PolicyBinder : IStateBinder
     {
@@ -44,17 +44,29 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
             var display = $"{policy.Value} ({policy.Hive})";
             var layerKind = ClassifyLayer(policy);
 
+            var sourcePath = string.IsNullOrWhiteSpace(policy.Path)
+                ? managedObject.DiscoveryMethod
+                : $"{policy.Hive}\\{policy.Path}\\{policy.ValueName}";
+
+            var isNotConfigured = BinderHelpers.IsNotConfigured(policy.Value) ||
+                                  BinderHelpers.IsError(policy.Value) ||
+                                  string.IsNullOrWhiteSpace(policy.Value);
+
             var layer = new ConfigurationObservation
             {
                 ObjectId = managedObject.ObjectId,
                 Layer = layerKind,
                 RawValue = policy.Value,
-                SourcePath = string.IsNullOrWhiteSpace(policy.Path)
-                    ? managedObject.DiscoveryMethod
-                    : $"{policy.Hive}\\{policy.Path}\\{policy.ValueName}",
+                SourcePath = sourcePath,
                 Hive = policy.Hive,
                 ObservedAt = DateTime.UtcNow,
-                ConfidenceScore = managedObject.ConfidenceScore
+                ConfidenceScore = isNotConfigured ? 40 : managedObject.ConfidenceScore > 0 ? managedObject.ConfidenceScore : 85,
+                CollectorName = "PolicyCollector",
+                EvidenceSource = $"Registry {sourcePath}",
+                CollectionNotes = isNotConfigured
+                    ? "Policy value absent or not configured at the probed path; treated as not configured."
+                    : string.Empty,
+                EffectiveConfidence = isNotConfigured ? EffectiveConfidence.Low : EffectiveConfidence.High
             };
 
             BinderHelpers.ApplyObservation(managedObject, display, layer);
