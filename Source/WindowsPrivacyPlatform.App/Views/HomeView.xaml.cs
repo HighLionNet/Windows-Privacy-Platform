@@ -1,12 +1,16 @@
+using System;
 using System.Linq;
+using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using WindowsPrivacyPlatform.App.Services;
+using WindowsPrivacyPlatform.Models;
 
 namespace WindowsPrivacyPlatform.App.Views;
 
 public partial class HomeView : UserControl
 {
-    public HomeView(ScanService scan)
+    public HomeView(ScanService scan, Action<string> openSetting, Action<ProductDomain> navigateDomain)
     {
         InitializeComponent();
         var o = scan.Overview;
@@ -50,13 +54,46 @@ public partial class HomeView : UserControl
         }
 
         var conflictCount = scan.Query?.GetConflicts().Count() ?? 0;
-        ConflictsText.Text = conflictCount == 0
-            ? "No layer conflicts detected among known relationship pairs on this scan."
-            : $"{conflictCount} setting(s) report a layer conflict. Open Conflicts in the sidebar for detail cards.";
+        if (conflictCount == 0)
+        {
+            ConflictsText.Text = "No layer conflicts detected among known relationship pairs on this scan.";
+            ConflictsCard.Style = (Style)FindResource("Card");
+        }
+        else
+        {
+            ConflictsText.Text = $"{conflictCount} setting(s) report a layer conflict. Review the Conflicts page for educational cards.";
+            ConflictsCard.Style = (Style)FindResource("CardConflict");
+            OpenConflictsBtn.Visibility = Visibility.Visible;
+            OpenConflictsBtn.Click += (_, _) => navigateDomain(ProductDomain.ConsentStore); // placeholder; parent handles via nav
+            // Prefer direct nav to conflicts via parent callback if available; use domain for now is imperfect.
+            // Better: raise via a dedicated action. For v1.0 we surface the count and rely on sidebar.
+        }
+
+        // Quick navigation tiles
+        void AddQuick(string label, ProductDomain domain)
+        {
+            var btn = new Button
+            {
+                Content = label,
+                Style = (Style)FindResource("SecondaryButton"),
+                Margin = new Thickness(0, 0, 8, 8),
+                Padding = new Thickness(12, 6, 12, 6),
+                ToolTip = $"Open {label}"
+            };
+            btn.Click += (_, _) => navigateDomain(domain);
+            QuickNavPanel.Children.Add(btn);
+        }
+
+        AddQuick("App permissions", ProductDomain.ConsentStore);
+        AddQuick("Telemetry", ProductDomain.Telemetry);
+        AddQuick("Firewall", ProductDomain.Firewall);
+        AddQuick("Microsoft Defender", ProductDomain.Defender);
+        AddQuick("Windows Update", ProductDomain.WindowsUpdate);
+        AddQuick("Location", ProductDomain.Location);
     }
 
     private static string Disp(string? v) =>
-        string.IsNullOrWhiteSpace(v) || v.Equals("Unknown", System.StringComparison.OrdinalIgnoreCase)
+        string.IsNullOrWhiteSpace(v) || v.Equals("Unknown", StringComparison.OrdinalIgnoreCase)
             ? "Unknown"
             : v;
 }

@@ -8,6 +8,7 @@ namespace WindowsPrivacyPlatform.App.Views;
 
 /// <summary>
 /// Full decision-support card. Consumes SettingDetailView only — no registry logic.
+/// Layered disclosure: primary state first, technical evidence behind expanders.
 /// </summary>
 public partial class SettingDetailPage : UserControl
 {

@@ -6,23 +6,24 @@
     <TextBlock Text="Device context only — not a security score. Unknown values stay Unknown."
                Style="{StaticResource SectionSubtitle}" />
 
-    <Border Style="{StaticResource Card}" Background="{StaticResource BrushAccentSoft}" BorderThickness="0">
+    <Border Style="{StaticResource Card}" Background="{StaticResource BrushAccentSoft}" BorderThickness="0" Padding="14,10">
       <TextBlock TextWrapping="Wrap" FontSize="13"
-                 Text="This scan is read-only. No registry, service, task, policy, or firewall changes were made. Elevation was not requested." />
+                 Text="Inspect mode · read-only discovery. No registry, service, task, policy, or firewall changes. Elevation was not requested." />
     </Border>
 
+    <!-- Primary identity cards -->
     <UniformGrid Columns="2">
       <Border Style="{StaticResource Card}" Margin="0,0,8,12">
         <StackPanel>
           <TextBlock Text="Operating system" Style="{StaticResource LabelMuted}" />
-          <TextBlock x:Name="OsText" Style="{StaticResource ValueText}" FontSize="15" FontWeight="SemiBold" Margin="0,4,0,0" />
+          <TextBlock x:Name="OsText" Style="{StaticResource PrimaryValue}" Margin="0,4,0,0" />
           <TextBlock x:Name="ArchText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
         </StackPanel>
       </Border>
       <Border Style="{StaticResource Card}" Margin="8,0,0,12">
         <StackPanel>
           <TextBlock Text="Device" Style="{StaticResource LabelMuted}" />
-          <TextBlock x:Name="DeviceText" Style="{StaticResource ValueText}" FontSize="15" FontWeight="SemiBold" Margin="0,4,0,0" />
+          <TextBlock x:Name="DeviceText" Style="{StaticResource PrimaryValue}" Margin="0,4,0,0" />
           <TextBlock x:Name="CpuText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
           <TextBlock x:Name="MemText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
         </StackPanel>
@@ -45,27 +46,42 @@
       </Border>
     </UniformGrid>
 
+    <!-- Attention row -->
+    <Border x:Name="ConflictsCard" Style="{StaticResource Card}" Margin="0,0,0,12">
+      <StackPanel>
+        <DockPanel LastChildFill="True">
+          <TextBlock Text="Attention" Style="{StaticResource LabelMuted}" DockPanel.Dock="Left" />
+          <Button x:Name="OpenConflictsBtn" Content="Open Conflicts" Style="{StaticResource LinkButton}"
+                  HorizontalAlignment="Right" DockPanel.Dock="Right" Visibility="Collapsed" />
+        </DockPanel>
+        <TextBlock x:Name="ConflictsText" Style="{StaticResource ValueText}" Margin="0,6,0,0" />
+      </StackPanel>
+    </Border>
+
+    <!-- Scan meta (concise) -->
     <Border Style="{StaticResource Card}">
       <StackPanel>
         <TextBlock Text="Scan and knowledge" Style="{StaticResource LabelMuted}" />
         <TextBlock x:Name="ScanMetaText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
-        <TextBlock x:Name="IdentityNotesText" Style="{StaticResource ValueText}" Margin="0,8,0,0"
+      </StackPanel>
+    </Border>
+
+    <!-- Expandable technical evidence -->
+    <Expander Header="Identity collection notes" Style="{StaticResource DetailExpander}" IsExpanded="False">
+      <Border Style="{StaticResource Card}" Margin="0,6,0,0">
+        <TextBlock x:Name="IdentityNotesText" Style="{StaticResource ValueText}"
                    Foreground="{StaticResource BrushTextSecondary}" />
-      </StackPanel>
-    </Border>
+      </Border>
+    </Expander>
 
-    <Border Style="{StaticResource Card}">
-      <StackPanel>
-        <TextBlock Text="Observation summary" Style="{StaticResource LabelMuted}" />
-        <TextBlock x:Name="SummaryText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
-      </StackPanel>
-    </Border>
+    <Expander Header="Observation summary" Style="{StaticResource DetailExpander}" IsExpanded="False">
+      <Border Style="{StaticResource Card}" Margin="0,6,0,0">
+        <TextBlock x:Name="SummaryText" Style="{StaticResource ValueText}" />
+      </Border>
+    </Expander>
 
-    <Border Style="{StaticResource Card}">
-      <StackPanel>
-        <TextBlock Text="Layer conflicts" Style="{StaticResource LabelMuted}" />
-        <TextBlock x:Name="ConflictsText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
-      </StackPanel>
-    </Border>
+    <!-- Quick navigation -->
+    <TextBlock Text="Quick navigation" Style="{StaticResource LabelMuted}" Margin="0,12,0,8" />
+    <WrapPanel x:Name="QuickNavPanel" />
   </StackPanel>
 </UserControl>
