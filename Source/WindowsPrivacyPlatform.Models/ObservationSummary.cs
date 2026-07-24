@@ -33,6 +33,7 @@ public class ObservedItem
 {
     public string ObjectId { get; set; } = string.Empty;
     public string ObjectName { get; set; } = string.Empty;
+    public ProductDomain ProductDomain { get; set; }
     public string SubCategory { get; set; } = string.Empty;
     public RiskLevel RiskLevel { get; set; }
     public string CurrentState { get; set; } = string.Empty;
