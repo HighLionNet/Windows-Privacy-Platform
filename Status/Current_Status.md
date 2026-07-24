@@ -2,8 +2,8 @@
 ## Current Status
 
 **Project Name:** Windows Privacy Platform  
-**Current Development Version:** Prototype v0.3 (Functional Identity Skeleton)  
-**Previous Stable Version:** Prototype v0.2 (Complete) / Prototype v0.1 (Archived)  
+**Current Development Version:** Prototype v0.4 (Live Discovery Skeleton)  
+**Previous Versions:** v0.3 (Identity) → v0.2 (Architecture) → v0.1 (Archived)  
 **Document Status:** Authoritative Current State  
 **Last Updated:** 2026-07-24
 
@@ -13,263 +13,123 @@
 
 This document records the exact current state of the active repository.
 
-It is intended to remove ambiguity between implementation sessions.
-
 Future AI sessions must treat this document as the authoritative description of the repository's current state.
-
-If this document conflicts with assumptions made by an AI, this document takes precedence.
 
 ---
 
 # Current Development Phase
 
-Prototype v0.3 — Functional identity skeleton.
+Prototype v0.4 — Live discovery skeleton.
 
-v0.2 delivered and verified the full architectural foundation (Logging, collector-based Scanner, structural Validator, explicit CLI composition).
+All six collectors are implemented and verified on a real Windows 11 Pro 25H2 machine:
 
-Immediately after v0.2 the first real Windows collector was implemented and verified:
+| Collector                  | Result on test machine |
+|----------------------------|------------------------|
+| WindowsIdentityCollector   | Windows 11 Pro / 25H2 / 26200 |
+| CapabilityCollector        | 0 (DISM parse / availability gap) |
+| PackageCollector           | 165 packages |
+| ServiceCollector           | 303 services |
+| ScheduledTaskCollector     | 247 tasks |
+| PrivacyCollector           | 17 privacy settings |
 
-**WindowsIdentityCollector**
-- Correctly distinguishes Windows 10 vs Windows 11 (build ≥ 22000)
-- Reports marketing release (22H2 / 23H2 / 24H2 / 25H2 …)
-- Reports edition (Pro, Home, Enterprise …)
-- Strictly read-only (Registry.LocalMachine read + Environment fallback)
-- Zero elevation, zero writes
-
-The platform can now identify the machine it is running on and act accordingly within the existing pipeline.
-
-No remediation. No elevation. Strictly read-only.
+Build: 0 errors, 0 warnings.  
+Runtime: verified. Safety confirmation present. No elevation, no writes.
 
 ---
 
-# Previous Milestone
+# Verified Runtime Output (2026-07-24)
 
-Prototype v0.1 successfully demonstrated the original seven-project architecture, Managed Object model, in-memory Knowledge Base, structural validation, placeholder scanner, working CLI, successful Release build and runtime, and zero Windows modification. It has been archived under `Archive/v0.1/` and must never be modified.
-
-Prototype v0.2 completed the architectural evolution (Logging, collector framework, Validator refactor, explicit composition) and was fully verified (build + runtime).
+```
+Identity : Windows 11 Pro | 25H2 | Build 26200
+Capabilities : 0 | Packages : 165 | Services : 303 | Tasks : 247 | Privacy settings : 17
+KnowledgeBase: stored entry, count=1
+Validator result: IsValid=True
+SAFETY CONFIRMATION: ... Prototype remains strictly read-only.
+```
 
 ---
 
 # Current Objective
 
-Continue expanding safe, read-only discovery while preserving the verified architecture.
+Stay inside the Discover → Model → Validate sequence.
 
 Immediate priorities:
 
-1. Keep every change compiling and runtime-verified.
-2. Implement remaining real collectors one at a time (Capabilities → Packages → Services → Tasks → Privacy).
-3. Preserve the strict read-only safety model.
-4. Prepare for later lightweight CLI argument parsing and persistent KnowledgeBase only after discovery is solid.
+1. Improve CapabilityCollector reliability (currently returns 0 on this build).
+2. Begin turning raw inventory into explained ManagedObjects (name, description, category, risk).
+3. Add a simple reporting / categorization view of what was discovered.
+4. Do **not** introduce write paths, elevation, or GUI until the model layer is useful.
 
 ---
 
-# Current Repository Structure
+# Repository Structure
 
-Top-level folders:
+Archive/  
+KnowledgeBase/  
+Source/  
+Status/
 
-- Archive
-- KnowledgeBase
-- Source
-- Status
-
-Historical documentation remains inside `Archive/v0.1/`.
+Seven projects under Source/. Scanner + CLI target `net8.0-windows`.
 
 ---
 
-# Current Solution Structure
+# Implementation Status Summary
 
-Exactly seven projects:
-
-WindowsPrivacyPlatform.Models  
-WindowsPrivacyPlatform.Core  
-WindowsPrivacyPlatform.Logging  
-WindowsPrivacyPlatform.KnowledgeBase  
-WindowsPrivacyPlatform.Scanner  
-WindowsPrivacyPlatform.Validator  
-WindowsPrivacyPlatform.CLI
-
-Scanner and CLI target `net8.0-windows` (required for Registry APIs). All other projects remain `net8.0`.
-
-No new projects have been introduced.
-
----
-
-# Current Development Workflow
-
-Architecture and continuity managed by ChatGPT.  
-Implementation performed by Grok via GitHub connector.  
-Human performs local build + runtime verification and approves direction.
+| Area                         | Status                          |
+|------------------------------|---------------------------------|
+| Architecture (7 projects)    | Complete + verified             |
+| Logging                      | Complete + verified             |
+| KnowledgeBase (memory)       | Complete + verified             |
+| Validator (structural)       | Complete + verified             |
+| Identity collector           | Live + verified                 |
+| Services / Packages / Tasks  | Live + verified                 |
+| Privacy (ConsentStore)       | Live + verified (limited set)   |
+| Capabilities                 | Live but returns 0 on test box  |
+| ManagedObject explanations   | Not started                     |
+| Reporting / categories       | Not started                     |
+| Write / remediation paths    | Explicitly deferred             |
+| Elevation handling           | Explicitly deferred             |
+| Terminal / GUI               | Explicitly deferred             |
 
 ---
 
-# Current Implementation Status
+# Safety Status
 
-| Component                        | Status                                      |
-|----------------------------------|---------------------------------------------|
-| Models                           | Complete                                    |
-| Core                             | Complete                                    |
-| Logging                          | Complete + verified                         |
-| KnowledgeBase (memory)           | Complete + verified                         |
-| Scanner + collector framework    | Complete + verified                         |
-| Validator (structural)           | Complete + verified                         |
-| CLI pipeline                     | Complete + verified                         |
-| WindowsIdentityCollector         | **Real** (Win10/11, read-only) + verified   |
-| Remaining collectors             | Placeholders                                |
-| Release build                    | Verified (0 errors, 0 warnings)             |
-| Runtime                          | Verified (correct identity + safety text)   |
+Strictly read-only. No registry writes, no service/task/package/policy changes, no elevation, no remediation, no network, no telemetry.
 
 ---
 
-# Build Status (2026-07-24)
+# Pending Work (ordered)
 
-**Release build: VERIFIED**
-
-```
-dotnet build -c Release
-→ 0 errors, 0 warnings
-```
-
-All seven projects compile cleanly. Scanner and CLI use `net8.0-windows`.
-
----
-
-# Runtime Status (2026-07-24)
-
-**Verified on Windows 11 Pro 25H2 (build 26200)**
-
-Confirmed output includes:
-- Logger with UTC timestamps
-- All six collectors execute
-- Real identity data: `WindowsVersion=Windows 11 Pro, Edition=25H2, BuildNumber=26200`
-- KnowledgeBase stores test object (count=1)
-- SchemaValidator returns IsValid=True
-- Safety confirmation printed
-- No elevation, no Windows modification
-
-Multi-version logic (build ≥ 22000 → Windows 11, otherwise Windows 10) is in place and low-complexity.
-
----
-
-# Completed Work
-
-- Managed Object Model foundation
-- Knowledge Base architecture (in-memory)
-- Core project
-- Seven-project solution
-- Structural validator (ObjectId / ObjectName)
-- Collector-based Scanner architecture
-- Logging architecture (console, thread-safe)
-- Explicit CLI composition
-- Successful Release builds (v0.1, v0.2, v0.3)
-- Successful runtime execution (v0.1, v0.2, v0.3)
-- Read-only architecture verification
-- Prototype v0.1 archive
-- First real collector: WindowsIdentityCollector (read-only, Win10/11)
-- Platform targeting corrected (`net8.0-windows` for Scanner/CLI)
-- Security / quality review of identity collector and pipeline (clean)
-
----
-
-# Current Safety Status
-
-The project remains strictly read-only.
-
-Prohibited:
-
-- Registry writes
-- Service / scheduled-task / package / capability / policy changes
-- Elevation or UAC prompts
-- Remediation, rollback, recovery, snapshots
-- Network communication or telemetry
-
-WindowsIdentityCollector performs only non-elevated reads against Registry.LocalMachine and Environment. It never writes and never elevates.
-
----
-
-# Current Logging Status
-
-AuditLogger / IAuditLogger / AuditEventType.  
-Console only, thread-safe, UTC timestamps.  
-No file, network or third-party logging framework.
-
----
-
-# Current Scanner Status
-
-Collector-based architecture is live.
-
-| Collector                  | Status                          |
-|----------------------------|---------------------------------|
-| WindowsIdentityCollector   | **Real** (read-only, Win10/11)  |
-| CapabilityCollector        | Placeholder                     |
-| PackageCollector           | Placeholder                     |
-| ServiceCollector           | Placeholder                     |
-| ScheduledTaskCollector     | Placeholder                     |
-| PrivacyCollector           | Placeholder                     |
-
----
-
-# Current Validator Status
-
-Structural only. Required fields: ObjectId, ObjectName.  
-No policy engine. No compliance engine.
-
----
-
-# Current Knowledge Base Status
-
-In-memory only. No persistence, no database, no file output.  
-Interface unchanged and ready for later persistence without redesign.
-
----
-
-# Current CLI Status
-
-Intentionally simple. Proves architecture, demonstrates pipeline, verifies read-only execution.  
-No command-line parsing yet.
-
----
-
-# Pending Work
-
-Highest priority:
-
-1. Implement next real collector (CapabilityCollector or PackageCollector) — still strictly read-only.
-2. Continue one collector at a time while preserving build + runtime success after every change.
-3. Later: lightweight CLI argument parsing, persistent KnowledgeBase, reporting.
+1. Fix or improve CapabilityCollector (investigate DISM output format on 25H2).
+2. Start modeling discovered items as ManagedObjects with human-readable descriptions and categories.
+3. Simple console report that groups findings by category.
+4. Expand PrivacyCollector coverage carefully.
+5. Only after the above: design controlled change model (elevation-on-demand, warnings, reversibility).
+6. Terminal UI (preferred) or GUI after the model is solid.
 
 ---
 
 # Explicitly Deferred
 
-Full registry discovery beyond identity, service discovery, scheduled-task discovery, installed-package discovery, privacy-policy discovery, file persistence, compliance engine, relationship engine, risk scoring, remediation, recovery, elevation, GUI.
+Remediation, GPO writes, registry writes, elevation helpers, rollback, recovery, GUI frameworks, network features, telemetry.
 
 ---
 
-# Current Risks
+# Risks
 
-Architectural risk: LOW  
-Safety risk: LOW  
-Integration risk: LOW
-
-Security / quality review of the identity collector and surrounding pipeline found no vulnerabilities, no race conditions, no elevation paths, and no write paths.
-
----
-
-# Rules For Next Session
-
-1. Every change must leave the solution compiling (0 errors preferred, 0 warnings preferred).
-2. Runtime verification after every successful build.
-3. Only implement the next real collector after the previous one is verified.
-4. Never introduce write paths or elevation.
-5. Update Status documents at the end of the session.
+Architectural: LOW  
+Safety: LOW  
+Discovery quality (Capabilities=0): MEDIUM — investigate next  
+Scope creep toward UI/writes too early: MEDIUM — resist until model layer exists
 
 ---
 
-# Current Overall Status
+# Overall Status
 
-Prototype v0.1 — Archived, stable, verified.  
-Prototype v0.2 — Complete (architecture + build + runtime).  
-Prototype v0.3 — Functional identity skeleton (correct Win10/11 identification, clean build/runtime, security review passed).
+v0.1 archived.  
+v0.2 architecture complete.  
+v0.3 identity working.  
+v0.4 live discovery working (5 of 6 collectors returning real data).
 
 Philosophy remains mandatory: **Understand first. Change later.**

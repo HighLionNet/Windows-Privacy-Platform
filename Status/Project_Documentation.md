@@ -2,7 +2,7 @@
 ## Complete Technical Documentation
 
 **Document Status:** Living  
-**Current Applies To:** Prototype v0.3 (Functional Identity Skeleton)  
+**Current Applies To:** Prototype v0.4 (Live Discovery Skeleton)  
 **Last Updated:** 2026-07-24
 
 ---
@@ -11,219 +11,90 @@
 
 Windows Privacy Platform is a local, declarative privacy intelligence platform for Windows.
 
-Its long-term purpose is to discover, model, validate, understand and eventually (under a separately authorised development phase) perform controlled, reversible remediation of Windows privacy-related configuration.
+Long-term purpose: discover, model, validate, explain, and eventually (under controlled conditions) allow safe, reversible adjustment of Windows privacy-related configuration — without requiring the user to memorize GPO paths, registry locations, or PowerShell.
 
-The platform is intentionally architecture-first.
-
-Every Windows-managed entity will ultimately become a formally defined ManagedObject stored inside the platform's Knowledge Base.
-
-Unlike traditional Windows tweaking tools, the platform is designed around understanding Windows before attempting to modify it.
-
-This philosophy governs every architectural decision.
+Architecture-first. Understand before change.
 
 ---
 
 # 2. Guiding Philosophy
 
-The platform follows one immutable development sequence.
+Fixed sequence:
 
-1. Discover
-2. Model
-3. Validate
-4. Report
-5. Understand relationships
-6. Perform controlled remediation (future work only)
+1. Discover  
+2. Model  
+3. Validate  
+4. Report  
+5. Understand relationships  
+6. Controlled remediation (future, separately authorised)
 
-Prototype v0.2 completed the architectural foundation for stages 1–3.
-
-Prototype v0.3 delivered the first real discovery capability (Windows identity) while remaining strictly read-only.
-
-No remediation exists. No Windows modifications occur.
+v0.4 completes a working Discover layer for the major inventory surfaces. Modeling and reporting are the next stages. No remediation exists yet.
 
 ---
 
-# 3. Prototype Objectives
+# 3. Current Capabilities (Verified)
 
-**v0.2 (achieved)** verified that the platform architecture can safely:
-
-• Construct a layered runtime  
-• Discover system state through a structured Scanner  
-• Represent Windows entities as ManagedObjects  
-• Store ManagedObjects inside a Knowledge Base  
-• Validate ManagedObjects against structural rules  
-• Record runtime activity through an Audit Logger  
-• Complete the pipeline without modifying Windows
-
-**v0.3 (achieved)** added the first real, multi-version Windows identity collector and confirmed clean build + runtime + security posture.
+- Windows identity (10/11, edition, build)
+- AppX packages (current user)
+- Windows services
+- Scheduled tasks
+- Selected privacy consent settings (HKCU ConsentStore)
+- Capabilities query via DISM (currently returns 0 on tested 25H2 machine — known gap)
+- Structural validation of ManagedObjects
+- In-memory Knowledge Base
+- Console audit logging
+- Strictly read-only execution
 
 ---
 
-# 4. Current Repository Layout
+# 4. Repository Layout
 
-Current repository structure:
-
-Archive/  
-KnowledgeBase/  
-Source/  
-Status/
-
-Archive contains immutable historical versions.
-
-Prototype v0.1 has been archived under Archive/v0.1/.
-
-Development occurs exclusively against the active Source directory.
-
-The top-level KnowledgeBase folder intentionally mirrors the KnowledgeBase implementation used by the Source project.
-
-No additional duplicate implementations should be created.
+Archive/ — immutable history (v0.1)  
+KnowledgeBase/ — intentional mirror  
+Source/ — active seven-project solution  
+Status/ — continuity documents
 
 ---
 
 # 5. Solution Architecture
 
-The solution consists of seven projects.
+Seven projects. Explicit composition. No DI framework.
 
-WindowsPrivacyPlatform.Models — pure data structures (ManagedObject, InventorySnapshot, ValidationResult, ScanResult, ComplianceReport, AuditEntry, Enums). No business logic.
+Models → Core → Logging → KnowledgeBase → Validator → Scanner → CLI
 
-WindowsPrivacyPlatform.Core — shared infrastructure (OperationResult, PlatformException, PathConstants). No ElevationHelper.
-
-WindowsPrivacyPlatform.Logging — runtime audit logging (AuditEventType, IAuditLogger, AuditLogger). Console only, thread-safe, UTC timestamps.
-
-WindowsPrivacyPlatform.KnowledgeBase — storage of ManagedObjects (InMemoryKnowledgeBaseRepository). Memory only.
-
-WindowsPrivacyPlatform.Scanner — discovery. InventoryScanner orchestrates collectors. Collectors own data acquisition. Targets `net8.0-windows`.
-
-WindowsPrivacyPlatform.Validator — structural validation (SchemaValidator, RequiredFieldRule). Required fields: ObjectId, ObjectName.
-
-WindowsPrivacyPlatform.CLI — operator entry point. Explicit composition, no DI container, no command parsing yet. Targets `net8.0-windows`.
+Scanner and CLI target net8.0-windows. Others net8.0.
 
 ---
 
 # 6. Runtime Pipeline
 
-CLI → AuditLogger → KnowledgeBase → InventoryScanner → Collectors → InventorySnapshot → ManagedObject → KnowledgeBaseEntry → SchemaValidator → ValidationResult → Console Output
-
-Every component has a single responsibility. Dependencies flow in one direction only.
+CLI → Logger → KnowledgeBase → Scanner → Collectors → Snapshot → test ManagedObject → KnowledgeBase → Validator → console output + safety confirmation
 
 ---
 
-# 7. Logging Architecture
+# 7–13. Logging / Scanner / Validation / Knowledge Base / Dependencies / Security / Safety
 
-Console output only. UTC timestamps. Severity levels: Debug, Information, Warning, Error. Thread-safe. No file, network or telemetry. Future sinks can be added without changing callers.
-
----
-
-# 8. Scanner Architecture
-
-InventoryScanner coordinates collectors. Each collector owns one subsystem.
-
-Current collectors:
-
-- WindowsIdentityCollector — **real, read-only** (Registry.LocalMachine + Environment fallback). Correctly handles Windows 10 and Windows 11 (build ≥ 22000 rule), DisplayVersion and EditionID.
-- CapabilityCollector — placeholder
-- PackageCollector — placeholder
-- ServiceCollector — placeholder
-- ScheduledTaskCollector — placeholder
-- PrivacyCollector — placeholder
+Unchanged in principle from v0.2/v0.3.  
+All collectors are now live implementations (read-only).  
+No elevation, no writes, no network, no telemetry.
 
 ---
 
-# 9. Validation Architecture
+# 14. Known Gaps
 
-Structural only. RequiredFieldRule checks ObjectId and ObjectName. No policy or compliance engine yet.
-
----
-
-# 10. Knowledge Base
-
-InMemoryKnowledgeBaseRepository. Memory only. No persistence. Interfaces designed for later persistence without redesign.
+- CapabilityCollector returns 0 results on tested Windows 11 25H2 (DISM output format or availability).
+- PrivacyCollector covers a focused ConsentStore set only.
+- No human-readable explanations or categories on ManagedObjects yet.
+- No reporting view beyond raw counts.
+- No write / elevation / UI paths (intentionally).
 
 ---
 
-# 11. Dependency Philosophy
+# 15–19. Workflow, Build, Runtime, Future Expansion, Principles
 
-Models ← Core ← Logging ← KnowledgeBase ← Validator ← Scanner ← CLI
+Build: `dotnet build -c Release` → 0 errors / 0 warnings expected.  
+Runtime: `dotnet run` in CLI project → real inventory + safety confirmation.
 
-No circular dependencies. Explicit composition by CLI. No DI framework.
+Future order remains: improve discovery → model with explanations → report/categorize → only then design controlled change + elevation-on-demand → terminal UI preferred over full GUI until the model is solid.
 
----
-
-# 12. Security Model
-
-Executes under current user context only. No elevation, no UAC, no privilege escalation, no network, no telemetry.
-
-Scanner and CLI target `net8.0-windows` solely to access Registry APIs safely; no elevation is ever requested.
-
----
-
-# 13. Safety Model
-
-Strictly read-only. Prohibited: registry writes, service/task/package/capability/policy changes, remediation, rollback, recovery, snapshots.
-
-WindowsIdentityCollector performs only non-elevated reads.
-
-A focused security / quality review of the identity collector and surrounding pipeline found no vulnerabilities, no race conditions, no elevation paths and no write paths.
-
----
-
-# 14. Current Technical Debt (Intentional)
-
-- Console-only logging
-- Remaining placeholder collectors
-- Memory-only KnowledgeBase
-- No CLI argument parser
-- No persistence
-- No reporting / compliance / relationship engine
-
----
-
-# 15. Development Workflow
-
-ChatGPT: architecture, design, safety, continuity, documentation.  
-Grok: repository modifications via GitHub connector.  
-Human: objectives, local build + runtime verification, approval.
-
----
-
-# 16. Build Expectations
-
-```
-dotnet build -c Release
-```
-Expected: successful build, zero errors, zero warnings preferred.
-
----
-
-# 17. Runtime Expectations
-
-CLI starts, logger initializes, scanner executes, collectors run (identity collector returns real data), KnowledgeBase stores object, validator validates, safety confirmation displayed. No Windows modifications.
-
----
-
-# 18. Future Expansion (Recommended Order)
-
-1. Implement remaining real collectors one at a time (still read-only).
-2. Lightweight CLI argument parsing.
-3. Expand validation rules.
-4. Persistent KnowledgeBase (preserve interfaces).
-5. Reporting.
-6. Relationship modelling.
-
-Only after these layers are mature should any remediation architecture be considered under a separately authorised phase.
-
----
-
-# 19. Architectural Principles
-
-Preserve the seven-project solution.  
-Preserve layered architecture.  
-Prefer explicit composition.  
-Keep Models free of business logic.  
-Keep Scanner read-only.  
-Keep Validator independent of Windows.  
-Keep Logging independent of storage.  
-Avoid unnecessary dependencies.  
-Avoid speculative implementation.  
-Avoid architectural redesign.
-
-Every change should strengthen the existing foundation rather than replace it.
+Architectural principles unchanged: preserve seven projects, layered architecture, explicit composition, Models free of logic, Scanner read-only, no speculative redesign.

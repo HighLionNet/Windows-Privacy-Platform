@@ -1,198 +1,74 @@
 # Windows Privacy Platform
-## Implementation Map — Prototype v0.3
+## Implementation Map — Prototype v0.4
 
 **Purpose**
 
-This document records the exact implementation state after Prototype v0.2 closure and the introduction of the first real collector (v0.3 functional identity skeleton).
-
-It is authoritative for the current codebase.
+Authoritative record of the current implementation after v0.4 live discovery verification.
 
 ---
 
-# Current Prototype Status
+# Current Status
 
-Prototype v0.2 is complete (architecture, build, runtime).
+Prototype v0.4 verified on Windows 11 Pro 25H2 (build 26200):
 
-Prototype v0.3 adds the first real Windows discovery component:
-
-**WindowsIdentityCollector** — strictly read-only, correctly identifies Windows 10 and Windows 11, reports marketing release and edition.
-
-No remediation exists. No elevation exists. No Windows modification occurs.
-
----
-
-# Overall Runtime Pipeline
-
-CLI  
-↓ Create AuditLogger  
-↓ Create InMemoryKnowledgeBaseRepository  
-↓ Create Inventory Collector List  
-↓ Create InventoryScanner  
-↓ Create SchemaValidator  
-↓ Scanner.Scan()  
-↓ InventoryScanner iterates collectors  
-↓ Collectors populate InventorySnapshot  
-↓ InventorySnapshot returned inside ScanResult  
-↓ CLI creates one test ManagedObject  
-↓ CLI creates KnowledgeBaseEntry  
-↓ KnowledgeBase stores entry  
-↓ SchemaValidator validates entry  
-↓ ValidationResult returned  
-↓ CLI prints results  
-↓ CLI prints explicit safety confirmation
+- Build: 0 errors, 0 warnings
+- Identity: Windows 11 Pro | 25H2 | 26200
+- Packages: 165 | Services: 303 | Tasks: 247 | Privacy: 17 | Capabilities: 0
+- Safety confirmation present
+- No elevation, no writes
 
 ---
 
-# Scanner Architecture
+# Runtime Pipeline
 
-InventoryScanner is responsible only for orchestration, collector execution order, logging and exception handling.
-
-It no longer contains collection logic.
-
-Future collectors can be added without modifying InventoryScanner itself.
+Unchanged from v0.2 architecture. All collectors now execute real read-only discovery.
 
 ---
 
-# Collector Interface
+# Collectors
 
-IInventoryCollector  
-• Name property  
-• Collect(InventorySnapshot)
-
-Collectors receive the snapshot and populate only their own section. They never report, never validate, never write to Windows.
-
----
-
-# Current Collectors
-
-WindowsIdentityCollector — **real, read-only**  
-  Primary: Registry.LocalMachine\SOFTWARE\Microsoft\Windows NT\CurrentVersion (non-elevated)  
-  Logic: build ≥ 22000 → Windows 11, otherwise Windows 10  
-  Uses DisplayVersion (22H2 / 23H2 / 24H2 / 25H2 …) and EditionID  
-  Fallback: Environment.OSVersion  
-  Populates: WindowsVersion, Edition, BuildNumber, CaptureTimestamp  
-  Verified on Windows 11 Pro 25H2 (build 26200)
-
-CapabilityCollector — placeholder  
-PackageCollector — placeholder  
-ServiceCollector — placeholder  
-ScheduledTaskCollector — placeholder  
-PrivacyCollector — placeholder
+| Collector                  | Implementation                                      | Status on test machine |
+|----------------------------|-----------------------------------------------------|------------------------|
+| WindowsIdentityCollector   | Registry NT\CurrentVersion + build≥22000 rule       | Live, correct          |
+| CapabilityCollector        | dism /online /get-capabilities parse                | Live, 0 results        |
+| PackageCollector           | PowerShell Get-AppxPackage (current user)           | Live, 165              |
+| ServiceCollector           | ServiceController.GetServices()                     | Live, 303              |
+| ScheduledTaskCollector     | schtasks /query /fo CSV                             | Live, 247              |
+| PrivacyCollector           | HKCU ConsentStore (limited capability list)         | Live, 17               |
 
 ---
 
-# Dependency Injection
+# Dependencies
 
-InventoryScanner constructor receives IAuditLogger and IEnumerable<IInventoryCollector>.  
-Collectors are created by CLI.  
-No DI container. Construction remains explicit.
-
----
-
-# Logging Architecture
-
-AuditEventType, IAuditLogger, AuditLogger.  
-Console only, thread-safe, UTC timestamps.  
-No file, network or third-party dependencies.
+- System.ServiceProcess.ServiceController 8.0.1 (Scanner only)
+- No other new third-party packages
+- No elevation helpers
 
 ---
 
-# Validator Architecture
+# Read-Only Guarantees
 
-SchemaValidator receives IAuditLogger.  
-Structural validation only via RequiredFieldRule (ObjectId, ObjectName).  
-No policy or compliance engine.
-
----
-
-# Knowledge Base
-
-InMemoryKnowledgeBaseRepository.  
-Stores KnowledgeBaseEntry objects.  
-No persistence, no serialization, no database.
+All collectors open registry keys writable:false or use query-only process invocation.  
+No collector writes. No collector requests elevation.  
+CLI prints explicit safety confirmation.
 
 ---
 
-# Models / Core
+# Known Issue
 
-Unchanged in structure.  
-Models contain pure data.  
-Core contains OperationResult, PlatformException, PathConstants.  
-No ElevationHelper exists.
+CapabilityCollector returns 0 on the verified 25H2 machine. Investigate DISM output format / locale / path next.
 
 ---
 
-# CLI
+# Next Implementation Targets
 
-Creates logger, repository, collector list, scanner, validator.  
-Runs scan → stores one ManagedObject → validates → prints results + safety confirmation.  
-No command parsing yet.
-
----
-
-# Current Dependency Graph
-
-Models ← Core ← Logging ← KnowledgeBase ← Validator ← Scanner ← CLI
-
-Scanner and CLI target `net8.0-windows`. All other projects target `net8.0`.
+1. CapabilityCollector reliability
+2. ManagedObject population with descriptions + categories for discovered items
+3. Categorized console report
+4. Controlled-change design (not implementation) only after model/report layer exists
 
 ---
 
-# Current Read-Only Guarantees
+# Deferred
 
-InventoryScanner cannot modify Windows.  
-Collectors contain no write paths (WindowsIdentityCollector is read-only).  
-Logging, Validator, KnowledgeBase and CLI cannot modify Windows.  
-No remediation code exists anywhere.
-
-A focused security / quality review found no vulnerabilities, no race conditions, no elevation paths and no write paths in the identity collector or surrounding pipeline.
-
----
-
-# Files Added / Modified for Real Identity Collector
-
-Modified:  
-Source/WindowsPrivacyPlatform.Scanner/WindowsIdentityCollector.cs  
-Source/WindowsPrivacyPlatform.Scanner/WindowsPrivacyPlatform.Scanner.csproj (net8.0-windows)  
-Source/WindowsPrivacyPlatform.CLI/WindowsPrivacyPlatform.CLI.csproj (net8.0-windows)
-
-No new projects or files required.
-
----
-
-# Build Expectations
-
-```
-dotnet build -c Release
-```
-Expected: success, zero errors, zero warnings.
-
----
-
-# Runtime Expectations
-
-CLI starts. Logger initializes. Scanner executes.  
-WindowsIdentityCollector returns real version/edition/build (Win10 or Win11).  
-Remaining collectors remain placeholders.  
-KnowledgeBase stores object. Validator validates.  
-Safety confirmation is printed.  
-No Windows changes, no elevation, no UAC.
-
----
-
-# Repository Layout
-
-Archive/  
-KnowledgeBase/  
-Source/  
-Status/
-
-Development continues only against the active Source directory.
-
----
-
-# Next Steps
-
-1. Implement next real collector (CapabilityCollector recommended).
-2. Continue one collector at a time while preserving build and runtime success after every change.
-3. Later: lightweight CLI argument parsing, persistent KnowledgeBase, reporting.
+Remediation, GPO/registry writes, elevation-on-demand UI, terminal/GUI frameworks, persistence beyond memory, compliance scoring, relationship graph.
