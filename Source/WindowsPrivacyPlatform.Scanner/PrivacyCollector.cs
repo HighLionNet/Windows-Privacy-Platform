@@ -116,13 +116,6 @@ namespace WindowsPrivacyPlatform.Scanner
                 "TailoredExperiencesWithDiagnosticDataEnabled",
                 "Privacy.TailoredExperiences");
 
-            // Let apps use advertising ID for experiences across apps
-            TryAddRegistryValue(
-                snapshot,
-                @"Software\Microsoft\Windows\CurrentVersion\AdvertisingInfo",
-                "Enabled",
-                "AdvertisingInfo.Enabled");
-
             // Content Delivery / suggested content (Start, Settings tips)
             TryAddRegistryValue(
                 snapshot,
@@ -141,13 +134,6 @@ namespace WindowsPrivacyPlatform.Scanner
                 @"Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager",
                 "SystemPaneSuggestionsEnabled",
                 "ContentDelivery.SystemPaneSuggestions");
-
-            // Activity History / Timeline related
-            TryAddRegistryValue(
-                snapshot,
-                @"Software\Microsoft\Windows\CurrentVersion\ActivityDataModel",
-                "Enabled",
-                "ActivityHistory.Enabled");
 
             // Online speech recognition preference (user)
             TryAddRegistryValue(
