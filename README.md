@@ -1,7 +1,7 @@
 # Windows Privacy Platform
 
-**Current milestone:** Prototype **v0.9**  
-**Previous:** v0.8 (Machine Overview + provenance + Firewall) → v0.7 → v0.6 FINAL → … → v0.1  
+**Current milestone:** Prototype **v0.9.5**  
+**Previous:** v0.9 (ValueSemantics + educational resolution) → v0.8 → v0.7 → v0.6 FINAL → … → v0.1  
 
 Local, **read-only** privacy and security **knowledge explorer** for Windows.
 
@@ -54,7 +54,7 @@ Models → Core → Logging → KnowledgeBase → Validator → Scanner → CLI
 | **Core** | Shared primitives |
 | **Logging** | Audit logging |
 | **KnowledgeBase** | In-memory knowledge store |
-| **Validator** | Structural schema checks only |
+| **Validator** | Structural schema checks + unique ObjectId guard |
 | **Scanner** | Collectors, binders, **PolicyPrecedenceResolver** (precedence; meaning from catalog) |
 | **CLI** | Pipeline host, reports, **TuiHost** |
 
@@ -66,17 +66,15 @@ Collectors → InventorySnapshot → Binders → PrecedenceResolver (+ ValueSema
 
 ---
 
-## What v0.9 adds
+## What v0.9.5 adds
 
-- **ValueSemantics** maps on high-value catalog entries (ConsentStore, AppPrivacy, AllowTelemetry, Advertising ID, Firewall profiles, selected policies).  
-- **ValueSemanticsInterpreter** — pure; never guesses missing maps.  
-- **Educational** resolution and confidence reasons; SemanticValue on resolution results.  
-- Resolver verified free of leftover hardcoded numeric semantic tables.  
-- Full provenance on Privacy and Policy binders.  
-- Expanded relationship kinds and curated edges.  
-- Catalog WhenIgnored / CommonMisconception fields feeding explanations.  
+- **Catalog maturity** — every PolicyCollector probe now has a catalog entry; ConsentStore coverage expanded  
+- **ValueSemantics** for AUOptions, Delivery Optimization, MAPS/Spynet, sample submission, Edge tracking prevention, and the full binary polarity set  
+- **Full AppPrivacy–ConsentStore relationship graph** (14 capability pairs) plus Defender / Update / Search / Location edges  
+- **SchemaValidator** unique-ObjectId batch detection  
+- SchemaVersion **0.9.5**  
 
-(v0.8 retained: Machine Overview, observation provenance fields, resilient identity, Firewall domain, TUI Home.)
+(v0.9 retained: ValueSemanticsInterpreter, educational resolution reasons, provenance, WhenIgnored / CommonMisconception scaffolding.)
 
 ---
 

@@ -2,7 +2,7 @@
 ## Roadmap
 
 **Last updated:** 2026-07-24  
-**Current completed milestone:** Prototype **v0.9**  
+**Current completed milestone:** Prototype **v0.9.5**  
 **Document role:** Ordered priorities, not calendar commitments. Preserve product identity on every horizon.
 
 ---
@@ -33,7 +33,20 @@ Shipped (see `Status/History/v0.9.md`):
 
 ---
 
-## Next — v0.10 / presentation and depth
+## Completed: v0.9.5 — Knowledge maturity
+
+Shipped (see `Status/History/v0.9.5.md`):
+
+- Catalog aligned with full PolicyCollector probe set + expanded ConsentStore  
+- ValueSemantics for AUOptions, DODownloadMode, MAPS, samples, Edge tracking, binary policies  
+- Full AppPrivacy–ConsentStore relationship graph (14 pairs)  
+- Additional Defender / Update / Search / Location edges  
+- SchemaValidator unique-ObjectId batch guard  
+- SchemaVersion 0.9.5  
+
+---
+
+## Next — presentation and depth
 
 **Theme:** Make knowledge visible; deepen selected domains; still read-only.
 
@@ -47,28 +60,23 @@ Shipped (see `Status/History/v0.9.md`):
 - Query shapes on SettingsQuery / StructuredRelationships (“everything affecting microphone”)  
 - Still curated edges  
 
-### 3. Expand ValueSemantics coverage
-
-- Catalog-first maps for remaining high-traffic ObjectIds  
-- Never invent maps in resolvers  
-
-### 4. Machine understanding
+### 3. Machine understanding
 
 - Best-effort Secure Boot / TPM / BitLocker / Defender visibility when read-only sources exist  
 - Always label confidence and Unknown reasons  
 
-### 5. Domain depth (careful)
+### 4. Domain depth (careful)
 
-- Microsoft Defender (deeper)  
+- Microsoft Defender (deeper platform info)  
 - Windows Update (deeper)  
 - Firewall **rule inventory** (read-only)  
 - Services / tasks understanding-oriented  
 
-### 6. GUI preparation
+### 5. GUI preparation
 
 - Strengthen detail-view contract only; no large GUI required yet  
 
-### 7. Comparison (design / light scaffolding)
+### 6. Comparison (design / light scaffolding)
 
 - Scan history / compare-only diffs — design notes before heavy implementation  
 

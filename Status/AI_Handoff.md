@@ -2,7 +2,7 @@
 ## AI / Engineer Handoff Document
 
 **Document status:** Authoritative continuity rules  
-**Applies to:** Prototype **v0.9** (live)  
+**Applies to:** Prototype **v0.9.5** (live)  
 **Last updated:** 2026-07-24  
 **Audience:** Next human or AI implementer who has never seen this repository  
 
@@ -17,10 +17,9 @@ Do not assume undocumented behavior from chat history.
 |----------|----------|
 | `Status/Current_Status.md` | Live capabilities, collectors, limitations |
 | `Status/Architecture.md` | Pipeline, ValueSemantics, evidence, extension checklist |
-| `Status/Roadmap.md` | Ordered next work (post-v0.9) |
-| `Status/History/v0.7.md` | TUI / explanation polish |
-| `Status/History/v0.8.md` | Machine Overview, provenance, Firewall |
-| `Status/History/v0.9.md` | Value semantics, educational resolution |
+| `Status/Roadmap.md` | Ordered next work (post-v0.9.5) |
+| `Status/History/v0.9.md` | Value semantics foundation |
+| `Status/History/v0.9.5.md` | Knowledge maturity (this milestone) |
 | `Status/Project_Documentation.md` | Long-form philosophy |
 | `README.md` | Public overview and run commands |
 
@@ -95,7 +94,8 @@ Observation (collectors + evidence)
 | v0.6 FINAL | Binders, precedence, explanations, query/navigation |
 | v0.7 | TUI, explanation polish |
 | v0.8 | Machine Overview, provenance, Firewall |
-| **v0.9** | ValueSemantics, educational resolution, evidence maturity — see `History/v0.9.md` |
+| v0.9 | ValueSemantics, educational resolution, evidence maturity |
+| **v0.9.5** | Knowledge maturity — full probe catalog, semantics, relationships — see `History/v0.9.5.md` |
 | Next | Surface knowledge in UI; relationship queries; careful domain depth |
 
 ---
@@ -106,7 +106,7 @@ Observation (collectors + evidence)
 2. `Current_Status.md`  
 3. `Architecture.md`  
 4. `Roadmap.md`  
-5. `History/v0.9.md` (and prior)  
+5. `History/v0.9.5.md` (and prior)  
 6. Skim `ManagedObjectCatalog.cs`, `ValueSemantics.cs`, `PolicyPrecedenceResolver.cs`  
 7. Build and run default CLI + `--tui` on Windows  
 

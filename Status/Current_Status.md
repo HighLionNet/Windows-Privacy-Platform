@@ -1,11 +1,11 @@
 # Windows Privacy Platform
-## Current Status — Prototype v0.9 (post-implementation)
+## Current Status — Prototype v0.9.5 (post-implementation)
 
 **Document role:** Authoritative live snapshot. A new engineer or AI session should be able to orient from this file alone, then drill into Architecture, Roadmap, and History.
 
 **Last updated:** 2026-07-24  
-**Current development version:** Prototype **v0.9**  
-**Previous archived milestone:** Prototype v0.8  
+**Current development version:** Prototype **v0.9.5**  
+**Previous archived milestone:** Prototype v0.9  
 **Runtime target:** Windows 11 (25H2 / build ~26200 class); Scanner and CLI target `net8.0-windows`  
 **Safety posture:** Strictly read-only. No writes. No elevation. No remediation. No scores.
 
@@ -14,10 +14,9 @@ Companion documents:
 | Document | Role |
 |----------|------|
 | `Status/Architecture.md` | Layer responsibilities, pipeline, value semantics, evidence model |
-| `Status/Roadmap.md` | Ordered priorities after v0.9 |
-| `Status/History/v0.7.md` | TUI + explanation polish |
-| `Status/History/v0.8.md` | Machine Overview, provenance, Firewall |
-| `Status/History/v0.9.md` | Value semantics, educational resolution, evidence maturity |
+| `Status/Roadmap.md` | Ordered priorities after v0.9.5 |
+| `Status/History/v0.9.md` | Value semantics, educational resolution |
+| `Status/History/v0.9.5.md` | Knowledge maturity — full probe catalog, semantics, relationships |
 | `Status/AI_Handoff.md` | Continuity rules for implementers |
 | `Status/Project_Documentation.md` | Long-form philosophy handbook |
 | `README.md` | Public overview and run instructions |
@@ -59,7 +58,7 @@ Models → Core → Logging → KnowledgeBase → Validator → Scanner → CLI
 | **Core** | OperationResult, PathConstants, PlatformException |
 | **Logging** | IAuditLogger / AuditLogger |
 | **KnowledgeBase** | In-memory store of bound catalog entries |
-| **Validator** | Structural SchemaValidator only |
+| **Validator** | Structural SchemaValidator + batch unique ObjectId guard |
 | **Scanner** | Collectors, binders, RelationshipBinder, **PolicyPrecedenceResolver** (precedence only; meaning from catalog maps) |
 | **CLI** | Flags, pipeline, reports, **TuiHost** (presentation only) |
 
@@ -85,7 +84,7 @@ Rules:
 
 ## 4. Current collectors
 
-Unchanged from v0.8 set: WindowsIdentityCollector, CapabilityCollector, PackageCollector, ServiceCollector, ScheduledTaskCollector, PrivacyCollector, PolicyCollector, FirewallCollector. All read-only, fail-soft.
+Unchanged from v0.8/v0.9 set: WindowsIdentityCollector, CapabilityCollector, PackageCollector, ServiceCollector, ScheduledTaskCollector, PrivacyCollector, PolicyCollector, FirewallCollector. All read-only, fail-soft.
 
 ---
 
@@ -93,21 +92,19 @@ Unchanged from v0.8 set: WindowsIdentityCollector, CapabilityCollector, PackageC
 
 ConsentStore · AppPrivacy · Telemetry · WindowsUpdate · Defender · Search · Edge · ActivityHistory · CloudContent · Advertising · Location · Biometrics · Device · Speech · Firewall · Other
 
-Catalog SchemaVersion: **0.9** on entries after attach.
+Catalog SchemaVersion: **0.9.5** on entries after attach.
 
 ---
 
-## 6. Current capabilities (v0.9)
+## 6. Current capabilities (v0.9.5)
 
-Everything from v0.8, plus:
+Everything from v0.9, plus:
 
-- **ValueSemantics** maps on high-value catalog entries (ConsentStore, AppPrivacy, AllowTelemetry, Advertising ID, Firewall enable/inbound, selected binaries)  
-- **ValueSemanticsInterpreter** — pure; Unknown when no map  
-- **Educational ResolutionReason + ConfidenceReason**; SemanticValue / SemanticDisplay on resolution  
-- **PolicyPrecedenceResolver** uses catalog canonicals only (verified: no leftover numeric semantic hardcoding)  
-- Full provenance on PrivacyBinder and PolicyBinder  
-- Expanded RelationshipKind + curated edges  
-- WhenIgnored / CommonMisconception / TypicalEnterpriseUse fields; explanation factory prefers them  
+- **Catalog coverage** aligned with every PolicyCollector probe + expanded ConsentStore capabilities
+- **ValueSemantics** maps for AUOptions, Delivery Optimization, MAPS/Spynet, sample submission, Edge tracking prevention, and the full binary polarity set
+- **Relationship graph**: 14 AppPrivacy–ConsentStore pairs; additional Defender / Update / Search / Location edges
+- **Validator** batch unique-ObjectId detection
+- Educational WhenIgnored / CommonMisconception / TypicalEnterpriseUse populated on high-value entries
 
 ---
 
@@ -122,12 +119,11 @@ Unchanged: no registry/service/task/policy/firewall writes; no elevation; no rem
 1. Secure Boot / TPM / BitLocker / Entra often **Unknown** without elevation.  
 2. Firewall **profile-level** only.  
 3. MDM / SecurityBaseline collection incomplete.  
-4. Not every ObjectId has a ValueSemantics map yet.  
-5. TUI/CLI do not fully surface SemanticValue / ConfidenceReason on all detail cards.  
-6. No relationship “query everything affecting X” API beyond StructuredRelationships.  
-7. No scan history / comparison.  
-8. No GUI.  
-9. Dual KnowledgeBase folder at repo root vs `Source/` — **Source is authoritative**.  
+4. TUI/CLI do not fully surface SemanticValue / ConfidenceReason on all detail cards.  
+5. No relationship “query everything affecting X” API beyond StructuredRelationships.  
+6. No scan history / comparison.  
+7. No GUI.  
+8. Dual KnowledgeBase folder at repo root vs `Source/` — **Source is authoritative**.  
 
 ---
 
@@ -152,7 +148,7 @@ Unchanged: no registry/service/task/policy/firewall writes; no elevation; no rem
 
 ## 11. Immediate next direction
 
-See `Status/Roadmap.md` (post-v0.9): presentation of semantics/evidence, relationship query shapes, careful domain depth — still read-only.
+See `Status/Roadmap.md` (post-v0.9.5): surface semantics/evidence in presentation, relationship query shapes, careful domain depth — still read-only.
 
 ---
 
