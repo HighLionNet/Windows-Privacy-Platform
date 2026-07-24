@@ -3,7 +3,7 @@
 **Current release:** **Version 1.0**  
 **Previous:** Prototype v0.9.5 → v0.9 → v0.8 → …
 
-Local, **read-only** privacy and security **knowledge explorer** for Windows — now with a professional desktop application.
+Local, **read-only** privacy and security **knowledge explorer** for Windows — professional desktop application with optional CLI/TUI.
 
 > **Understand first. Change later.**
 
@@ -20,16 +20,18 @@ Models → Core → Logging → KnowledgeBase → Validator → Scanner → CLI
                                                               ↘ App (WPF)
 ```
 
-Presentation hosts (App, CLI, TUI) never contain Windows configuration logic.
+Presentation hosts (App, CLI, TUI) never contain Windows configuration logic. Backend architecture is frozen for the 1.0 line.
 
 ---
 
 ## Version 1.0
 
 - Professional **WPF** desktop application  
-- Machine Overview dashboard  
-- Domain pages + full Setting Detail knowledge cards  
+- Machine Overview dashboard (trust banner, conflict summary)  
+- Domain pages with status badges  
+- Full Setting Detail knowledge cards (confidence/conflict badges, Copy ObjectId)  
 - Knowledge Explorer, Conflicts, Search  
+- Keyboard shortcuts (F5 / Ctrl+R scan, Ctrl+F search)  
 - Async read-only scan  
 - Same knowledge engine as v0.9.5 underneath  
 - CLI and TUI retained  
