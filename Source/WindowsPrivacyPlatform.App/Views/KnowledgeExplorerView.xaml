@@ -5,6 +5,9 @@
     <TextBlock Text="Knowledge Explorer" Style="{StaticResource SectionTitle}" />
     <TextBlock Style="{StaticResource SectionSubtitle}"
                Text="Curated catalog independent of live observation values." />
-    <ItemsControl x:Name="List" />
+    <Border Style="{StaticResource HeaderRule}" />
+    <Border Style="{StaticResource ListContainer}">
+      <ItemsControl x:Name="List" />
+    </Border>
   </StackPanel>
 </UserControl>

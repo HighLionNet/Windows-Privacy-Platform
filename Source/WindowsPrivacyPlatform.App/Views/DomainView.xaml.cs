@@ -27,7 +27,7 @@ public partial class DomainView : UserControl
             {
                 Text = "No curated entries yet.",
                 Foreground = (Brush)FindResource("BrushTextMuted"),
-                Margin = new Thickness(0, 6, 0, 0)
+                Margin = new Thickness(10, 8, 10, 8)
             });
             return;
         }
@@ -40,8 +40,29 @@ public partial class DomainView : UserControl
             ? $"{items.Count} settings · {conflicts} with layer conflict"
             : $"{items.Count} settings";
 
+        string? lastSub = null;
         foreach (var mo in items)
         {
+            var sub = string.IsNullOrWhiteSpace(mo.SubCategory) ? null : mo.SubCategory;
+            if (sub is not null && !string.Equals(sub, lastSub, StringComparison.Ordinal))
+            {
+                lastSub = sub;
+                SettingsList.Items.Add(new Border
+                {
+                    Background = (Brush)FindResource("BrushBgHeader"),
+                    BorderBrush = (Brush)FindResource("BrushBorder"),
+                    BorderThickness = new Thickness(0, 0, 0, 1),
+                    Padding = new Thickness(10, 4, 10, 4),
+                    Child = new TextBlock
+                    {
+                        Text = sub,
+                        FontWeight = FontWeights.SemiBold,
+                        FontSize = 11,
+                        Foreground = (Brush)FindResource("BrushTextSecondary")
+                    }
+                });
+            }
+
             var hasConflict = mo.Observation?.Resolution?.HasConflict == true ||
                               mo.Observation?.Effective?.HasConflict == true;
             var observed = mo.CurrentState ?? "Not observed";
@@ -57,14 +78,15 @@ public partial class DomainView : UserControl
 
             var grid = new Grid();
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(220) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(90) });
 
             var left = new StackPanel();
             left.Children.Add(new TextBlock
             {
                 Text = mo.ObjectName,
                 FontWeight = FontWeights.SemiBold,
-                FontSize = 13,
+                FontSize = 12,
                 TextWrapping = TextWrapping.Wrap
             });
             left.Children.Add(new TextBlock
@@ -73,50 +95,42 @@ public partial class DomainView : UserControl
                 Style = (Style)FindResource("MetaText"),
                 Margin = new Thickness(0, 1, 0, 0)
             });
+            Grid.SetColumn(left, 0);
+            grid.Children.Add(left);
 
             var effective = mo.Observation?.Resolution?.EffectiveValue
                             ?? mo.Observation?.Effective?.EffectiveValue;
             var stateLine = effective is not null
-                ? $"Observed: {observed}  ·  Effective: {effective}"
-                : $"Observed: {observed}";
+                ? $"{observed}  →  {effective}"
+                : observed;
 
-            left.Children.Add(new TextBlock
+            var stateBlock = new TextBlock
             {
                 Text = stateLine,
-                Margin = new Thickness(0, 4, 0, 0),
                 TextWrapping = TextWrapping.Wrap,
-                FontSize = 12
-            });
-
-            if (!string.IsNullOrWhiteSpace(mo.SubCategory))
-            {
-                left.Children.Add(new TextBlock
-                {
-                    Text = mo.SubCategory,
-                    Style = (Style)FindResource("MetaText"),
-                    Margin = new Thickness(0, 2, 0, 0)
-                });
-            }
-
-            Grid.SetColumn(left, 0);
-            grid.Children.Add(left);
+                FontSize = 11,
+                VerticalAlignment = VerticalAlignment.Center,
+                Foreground = (Brush)FindResource("BrushTextSecondary")
+            };
+            Grid.SetColumn(stateBlock, 1);
+            grid.Children.Add(stateBlock);
 
             if (hasConflict || isUnknown)
             {
                 var badge = new Border
                 {
                     Style = (Style)FindResource(hasConflict ? "BadgeConflict" : "BadgeUnknown"),
-                    VerticalAlignment = VerticalAlignment.Top,
-                    Margin = new Thickness(10, 0, 0, 0)
+                    VerticalAlignment = VerticalAlignment.Center,
+                    HorizontalAlignment = HorizontalAlignment.Right
                 };
                 badge.Child = new TextBlock
                 {
                     Text = hasConflict ? "Conflict" : "Unknown",
-                    FontSize = 11,
+                    FontSize = 10,
                     FontWeight = FontWeights.SemiBold,
                     Foreground = (Brush)FindResource(hasConflict ? "BrushConflict" : "BrushUnknown")
                 };
-                Grid.SetColumn(badge, 1);
+                Grid.SetColumn(badge, 2);
                 grid.Children.Add(badge);
             }
 

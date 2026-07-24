@@ -4,6 +4,9 @@
   <StackPanel>
     <TextBlock x:Name="TitleText" Style="{StaticResource SectionTitle}" />
     <TextBlock x:Name="SubtitleText" Style="{StaticResource SectionSubtitle}" />
-    <ItemsControl x:Name="List" />
+    <Border Style="{StaticResource HeaderRule}" />
+    <Border Style="{StaticResource ListContainer}">
+      <ItemsControl x:Name="List" />
+    </Border>
   </StackPanel>
 </UserControl>

@@ -30,7 +30,7 @@ public partial class SearchResultsView : UserControl
             {
                 Text = "Try ObjectId fragment, name, domain, or description term.",
                 Foreground = (Brush)FindResource("BrushTextMuted"),
-                Margin = new Thickness(0, 6, 0, 0),
+                Margin = new Thickness(10, 8, 10, 8),
                 TextWrapping = TextWrapping.Wrap
             });
             return;
@@ -46,7 +46,7 @@ public partial class SearchResultsView : UserControl
             {
                 Text = mo.ObjectName,
                 FontWeight = FontWeights.SemiBold,
-                FontSize = 13
+                FontSize = 12
             });
             panel.Children.Add(new TextBlock
             {
@@ -60,8 +60,8 @@ public partial class SearchResultsView : UserControl
                 {
                     Text = mo.Description,
                     TextWrapping = TextWrapping.Wrap,
-                    Margin = new Thickness(0, 4, 0, 0),
-                    FontSize = 12,
+                    Margin = new Thickness(0, 2, 0, 0),
+                    FontSize = 11,
                     Foreground = (Brush)FindResource("BrushTextSecondary")
                 });
             }

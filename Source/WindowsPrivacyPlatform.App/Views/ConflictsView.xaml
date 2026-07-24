@@ -5,6 +5,23 @@
     <TextBlock Text="Layer conflicts" Style="{StaticResource SectionTitle}" />
     <TextBlock x:Name="SubtitleText" Style="{StaticResource SectionSubtitle}"
                Text="Settings where observed configuration layers disagree." />
-    <ItemsControl x:Name="List" />
+    <Border Style="{StaticResource HeaderRule}" />
+    <Border Style="{StaticResource ListContainer}">
+      <StackPanel>
+        <Border Style="{StaticResource ListHeader}">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="280" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="Setting" FontWeight="SemiBold" FontSize="11"
+                       Foreground="{StaticResource BrushTextSecondary}" />
+            <TextBlock Grid.Column="1" Text="Effective / reason" FontWeight="SemiBold" FontSize="11"
+                       Foreground="{StaticResource BrushTextSecondary}" />
+          </Grid>
+        </Border>
+        <ItemsControl x:Name="List" />
+      </StackPanel>
+    </Border>
   </StackPanel>
 </UserControl>

@@ -22,7 +22,8 @@ public partial class ConflictsView : UserControl
             List.Items.Add(new TextBlock
             {
                 Text = "No disagreements among known relationship pairs.",
-                Foreground = (Brush)FindResource("BrushTextMuted")
+                Foreground = (Brush)FindResource("BrushTextMuted"),
+                Margin = new Thickness(10, 8, 10, 8)
             });
             return;
         }
@@ -35,27 +36,38 @@ public partial class ConflictsView : UserControl
             if (card is null) continue;
 
             var border = new Border { Style = (Style)FindResource("ListRowConflict") };
-            var panel = new StackPanel();
-            panel.Children.Add(new TextBlock
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(280) });
+
+            var left = new StackPanel();
+            left.Children.Add(new TextBlock
             {
                 Text = card.Title,
                 FontWeight = FontWeights.SemiBold,
-                FontSize = 13
+                FontSize = 12
             });
-            panel.Children.Add(new TextBlock
+            left.Children.Add(new TextBlock
             {
                 Text = card.DomainPath,
                 Style = (Style)FindResource("MetaText"),
                 Margin = new Thickness(0, 1, 0, 0)
             });
-            panel.Children.Add(new TextBlock
+            Grid.SetColumn(left, 0);
+            grid.Children.Add(left);
+
+            var right = new TextBlock
             {
-                Text = $"Effective: {card.EffectiveValueDisplay ?? "Unknown"} · {card.ResolutionReason}",
+                Text = $"{card.EffectiveValueDisplay ?? "Unknown"} · {card.ResolutionReason}",
                 TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(0, 5, 0, 0),
-                FontSize = 12
-            });
-            border.Child = panel;
+                FontSize = 11,
+                VerticalAlignment = VerticalAlignment.Center,
+                Foreground = (Brush)FindResource("BrushTextSecondary")
+            };
+            Grid.SetColumn(right, 1);
+            grid.Children.Add(right);
+
+            border.Child = grid;
             var id = mo.ObjectId;
             border.MouseLeftButtonUp += (_, _) => openSetting(id);
             border.ToolTip = "Open setting details";

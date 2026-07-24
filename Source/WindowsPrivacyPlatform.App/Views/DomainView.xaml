@@ -4,6 +4,26 @@
   <StackPanel>
     <TextBlock x:Name="TitleText" Style="{StaticResource SectionTitle}" />
     <TextBlock x:Name="SubtitleText" Style="{StaticResource SectionSubtitle}" />
-    <ItemsControl x:Name="SettingsList" />
+    <Border Style="{StaticResource HeaderRule}" />
+    <Border Style="{StaticResource ListContainer}">
+      <StackPanel>
+        <Border Style="{StaticResource ListHeader}">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="220" />
+              <ColumnDefinition Width="90" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="Setting" FontWeight="SemiBold" FontSize="11"
+                       Foreground="{StaticResource BrushTextSecondary}" />
+            <TextBlock Grid.Column="1" Text="Observed / effective" FontWeight="SemiBold" FontSize="11"
+                       Foreground="{StaticResource BrushTextSecondary}" />
+            <TextBlock Grid.Column="2" Text="Status" FontWeight="SemiBold" FontSize="11"
+                       Foreground="{StaticResource BrushTextSecondary}" HorizontalAlignment="Right" />
+          </Grid>
+        </Border>
+        <ItemsControl x:Name="SettingsList" />
+      </StackPanel>
+    </Border>
   </StackPanel>
 </UserControl>
