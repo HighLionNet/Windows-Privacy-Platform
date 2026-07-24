@@ -2,7 +2,7 @@
 ## Roadmap
 
 **Last updated:** 2026-07-24  
-**Current completed milestone:** **Version 1.0**
+**Current completed milestone:** **Version 1.0** (including final presentation polish)
 
 ---
 
@@ -19,18 +19,19 @@
 
 - v0.9 — ValueSemantics foundation  
 - v0.9.5 — Knowledge maturity  
-- **v1.0** — Professional WPF desktop host on frozen backend (see `History/v1.0.md`)  
+- **v1.0** — Professional WPF desktop host + UX polish on frozen backend (see `History/v1.0.md`)  
 
 ---
 
-## Next (post-1.0)
+## Next (v1.5)
 
 1. Dark mode / high-contrast themes  
-2. Richer SemanticValue / ConfidenceReason surfaces everywhere  
-3. Relationship query helpers (“everything affecting X”)  
-4. Careful domain depth (Defender platform, Update, firewall rules)  
-5. Optional export of reports (read-only)  
-6. Design notes for comparison / history  
+2. Export (read-only reports: HTML/JSON)  
+3. Snapshot / historical comparison design  
+4. Richer relationship visualization  
+5. Careful domain depth (Defender platform, Update, firewall rules)  
+6. Knowledge update packaging notes  
+7. Optional remediation *planning* surfaces (still read-only)  
 
 ---
 
