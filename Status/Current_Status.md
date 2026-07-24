@@ -1,171 +1,146 @@
 # Windows Privacy Platform
-## Current Status
+## Current Status — Prototype v0.7
 
-**Project Name:** Windows Privacy Platform  
-**Current Development Version:** Prototype **v0.6 FINAL**  
-**Previous Versions:** v0.5 (archived) → v0.4 → v0.3 → v0.2 → v0.1  
-**Document Status:** Authoritative Current State  
-**Last Updated:** 2026-07-24  
-**Runtime:** Verified on Windows 11 Pro 25H2 (build 26200) — build 0 warnings / 0 errors  
-**Note:** Intermediate “v0.6.5” foundation work is **folded into final v0.6**. Human is archiving this state as the official v0.6 backup.
+**Document role:** Authoritative snapshot of what is live in the repository *right now*.  
+**Last updated:** 2026-07-24  
+**Current development version:** Prototype **v0.7**  
+**Previous archive:** Prototype v0.6 FINAL (understanding foundation)  
+**Runtime target:** Windows 11 Pro 25H2 (build 26200 verified in v0.6; v0.7 requires local re-verification after documentation freeze)  
+**Safety posture:** Strictly read-only. No writes. No elevation. No remediation.
 
----
+For continuity, architecture depth, and roadmap, also read:
 
-# Purpose
-
-Exact current state of the active repository for future AI sessions.  
-For full roadmap logic and insertion points, also read `Status/AI_Handoff.md` (authoritative continuity).
-
----
-
-# Version history (verbose)
-
-| Version | Summary |
-|---------|---------|
-| v0.1 | Initial seven-project skeleton and basic models |
-| v0.2 | Early identity/package collector experiments |
-| v0.3 | Services/tasks inventory paths expanded |
-| v0.4 | Live multi-collector discovery skeleton → InventorySnapshot |
-| v0.5 | PolicyCollector, ManagedObjectCatalog (human names + rationales), full categorized report — **archived by human** |
-| v0.6 core | InventoryStateBinder, SchemaValidator.ValidateAll, ObservationSummary, concise default report + high-risk watch list, safety confirmation — **hardware verified** |
-| Step A (on v0.6) | `ProductDomain` enum + property; all 65 catalog entries assigned; reports group by domain then SubCategory |
-| Foundation pass (internal “v0.6.5”, now **final v0.6**) | Domain-organized snapshot; split binders; ConfigurationResolution + PolicyPrecedenceResolver; SettingExplanation; SettingsQuery; NavigationBuilder; CLI conflict **decision cards** |
+- `Status/AI_Handoff.md` — next-engineer continuity  
+- `Status/Project_Documentation.md` — architecture and philosophy handbook  
+- `Status/Prototype_v0.1_Implementation_Map.md` — file and pipeline map  
+- `README.md` — public project overview  
 
 ---
 
-# What the app does today (medium-level)
+## One-sentence product identity
 
-Non-interactive CLI pipeline:
+Windows Privacy Platform is a **local, read-only privacy and security knowledge explorer** for Windows: it discovers configuration, explains it in human language, resolves effective layers where known, and lets a user navigate the result without changing the system.
 
-1. CLI starts collectors via InventoryScanner.  
-2. Collectors **read** (never write): registry (identity, privacy ConsentStore, curated policy keys), PowerShell (packages; capabilities attempt), ServiceController (services), schtasks (tasks).  
-3. Results go into a **domain-organized InventorySnapshot**.  
-4. ManagedObjectCatalog (static explained settings, each with a **ProductDomain**) is bound via orchestrated binders:
-   - PrivacyBinder / PolicyBinder attach `CurrentState` + per-layer `ConfigurationObservation`  
-   - RelationshipBinder wires known pairs and runs **PolicyPrecedenceResolver** → `ConfigurationResolution` (effective value, source, reason, conflict)  
-5. KnowledgeBase stores entries; SchemaValidator batch-checks **structure** (not security score).  
-6. **SettingsQuery** + **NavigationBuilder** expose a UI-independent application API.  
-7. CLI prints:
-   - Observation/risk **summary** (including layer conflict count, needs-review count, nav domain count)  
-   - High-risk **watch list** grouped by domain  
-   - **Decision cards** for effective-layer conflicts (what / why / effective / source / layers / related)  
-   - Or `--full` dump under domain headers with What/Why lines  
-8. Safety confirmation: no modifications, no elevation.
-
-`bin/` DLLs are **compiled build outputs** from our C# projects + NuGet dependencies — not separately authored binary sources.
-
-**Not present:** firewall collector, interactive TUI/GUI host, writes, overall security score, full GPO library, remediation.
+It is **not** a registry cleaner, optimizer, tweaker, score engine, compliance product, or remediation tool.
 
 ---
 
-# Verified runtime sample (v0.6 final)
+## What v0.7 delivered
+
+v0.7 is the first milestone that is intentionally **human-facing** rather than report-only.
+
+| Area | Status in v0.7 |
+|------|----------------|
+| Thin read-only TUI (`--tui`) | **Implemented** — keyboard domain → category → setting → documentation card |
+| Explanation quality | **Raised** — documentation-style narratives, neutral impact labels, misconceptions, unknowns |
+| Card hierarchy | **Improved** — Observed vs Interpretation vs Related vs Provenance |
+| Relationship presentation | **Humanized** — “Controlled by”, “Also related to”, “Potential conflicts” |
+| Relationship coverage | **Expanded** (still curated) — Advertising, Location, Activity, Search groups + prior Consent↔AppPrivacy |
+| CapabilityCollector | **Hardened + transparent** — multi-shell/DISM attempts; zero results explained as *Unknown*, not absence |
+| Impact language | **De-judged** — “high-impact watch list”, not a security score |
+| CLI default report | Still available; language aligned with explanation philosophy |
+| Architecture | **Unchanged** seven-project layout and pipeline |
+
+---
+
+## Verified capabilities (functional)
+
+### Pipeline (unchanged order)
 
 ```
-Identity : Windows 11 Pro | 25H2 | Build 26200
-Capabilities : 0 | Packages : ~165 | Services : ~303 | Tasks : ~247
-Privacy settings : ~30 | Policy probes : ~79 (configured: ~45)
-KnowledgeBase: 65 | Validator: 65 passed / 0 failed
-Observed ~63 / not ~2 | High-risk configured ~25 | Medium-risk configured ~22
-Layer conflicts : shown when dual policy paths or force-policy pairs disagree
-Nav domains : enumerated from catalog
+Discover → Model → Validate → Bind → Resolve → Explain → Navigate → Present
 ```
 
-When conflicts exist, default mode prints decision cards (title, domain path, risk, what/why, effective value + source + reason, layers, related settings, guidance).
+### Inventory surfaces
 
-### Meaning of risk lines
+| Surface | Mechanism | Typical notes |
+|---------|-----------|---------------|
+| Identity | HKLM NT\CurrentVersion | Version, edition, build |
+| Capabilities | PowerShell / pwsh / DISM | Often empty without elevation; treated as Unknown |
+| Packages | Get-AppxPackage | Current user |
+| Services | ServiceController | Read-only list |
+| Scheduled tasks | schtasks CSV | Read-only list |
+| Privacy ConsentStore + prefs | HKCU | ~30 privacy-related values |
+| Curated policy probes | HKLM/HKCU | ~79 probes; many “Not configured” |
 
-- **Not a security score.**  
-- Catalog H/M/L tags are static.  
-- “High-risk configured” = high-impact topics that have a configured value worth reviewing.  
-- Deny on Location/Microphone can still appear under high-risk *category* because the capability is sensitive.  
-- Effective resolution tells **who wins and why**; it does not auto-label “secure/insecure.”
+### Knowledge and intelligence
 
----
+| Component | Role |
+|-----------|------|
+| ManagedObjectCatalog | ~65 curated explained settings, each with `ProductDomain` |
+| SchemaValidator | Structural validation only (not a score) |
+| PrivacyBinder / PolicyBinder | Attach live values + configuration layers |
+| RelationshipBinder | Curated graph edges |
+| PolicyPrecedenceResolver | **Only** place for layer precedence rules |
+| SettingExplanationFactory | Documentation-style explanation cards |
+| SettingsQuery | UI-independent query API |
+| NavigationBuilder | Domain tree + SettingDetailView |
+| TuiHost | Presentation-only keyboard explorer |
 
-# Implementation status
+### Presentation modes
 
-| Area | Status |
-|------|--------|
-| Seven-project architecture | Complete |
-| Discover (7 collectors) | Live; Capabilities often 0 |
-| Model catalog (~65 explained objects) | Live |
-| Product domain taxonomy (`ProductDomain`) | **Complete** |
-| Report grouped by domain | **Complete** |
-| Domain-organized InventorySnapshot | **Complete** |
-| Split binders (IStateBinder + Privacy/Policy/Relationship) | **Complete** |
-| ConfigurationLayer + ConfigurationObservation | **Complete** |
-| ConfigurationResolution + PolicyPrecedenceResolver | **Complete** (known pairs) |
-| SettingExplanation + factory | **Complete** |
-| SettingsQuery application API | **Complete** |
-| NavigationBuilder / SettingDetailView | **Complete** (data only; no TUI host) |
-| CLI conflict decision cards | **Complete** |
-| Bind CurrentState | Live |
-| Structural ValidateAll | Live |
-| Firewall discovery | **Planned** |
-| CapabilityCollector reliability | **Planned** |
-| More relationship pairs / editorial explanations | **Planned** |
-| TUI host over existing models | **Planned (v0.7 candidate)** |
-| Baselines / recommended sets | **Planned (compare-only first)** |
-| Formal risk assessment feature | **Optional planned** |
-| Writes / elevation / interactive hardening | **Deferred** |
+| Mode | Command | Behavior |
+|------|---------|----------|
+| Default CLI | `dotnet run -c Release` | Observation summary, high-impact watch list, conflict cards |
+| Full report | `--full` | Domain-grouped catalog dump with What/Why |
+| TUI | `--tui` | Interactive explorer |
+| Help | `--help` | Usage |
 
 ---
 
-# Product domains in catalog
+## Product domains in catalog
 
-ConsentStore, AppPrivacy, Telemetry, WindowsUpdate, Defender, Search, Edge, ActivityHistory, CloudContent, Advertising, Location, Biometrics, Device, Speech, Firewall (reserved empty), Other.
-
----
-
-# Key source files (v0.6 final map)
-
-### Models
-- `Enums.cs` — ProductDomain, ConfigurationLayer, RelationshipKind, EffectiveConfidence, …  
-- `ManagedObject.cs` — definition + Observation / StructuredRelationships  
-- `ManagedObjectCatalog.cs` — 65 explained entries  
-- `InventorySnapshot.cs` + `InventorySections.cs` — domain sections + compat accessors  
-- `ConfigurationModels.cs` — ConfigurationObservation, ConfigurationResolution, EffectiveState, SettingRelationship  
-- `SettingExplanation.cs` — decision-card model + factory  
-- `SettingsQuery.cs` — read-only application API  
-- `NavigationModels.cs` — NavigationNode, SettingDetailView, NavigationBuilder  
-
-### Scanner
-- Collectors under `Collectors/`  
-- `Binding/IStateBinder.cs`, `PrivacyBinder.cs`, `PolicyBinder.cs`, `RelationshipBinder.cs`, `BinderHelpers.cs`  
-- `Binding/PolicyPrecedenceResolver.cs` — **only** place for precedence rules  
-- `InventoryStateBinder.cs` — orchestrator  
-
-### CLI
-- `Program.cs` — pipeline + summary + high-risk + conflict cards + `--full`  
+ConsentStore · AppPrivacy · Telemetry · WindowsUpdate · Defender · Search · Edge · ActivityHistory · CloudContent · Advertising · Location · Biometrics · Device · Speech · Firewall (**reserved, no entries yet**) · Other
 
 ---
 
-# Future steps (ordered — summary)
+## Safety confirmation (permanent for this phase)
 
-Full detail: **AI_Handoff.md § FUTURE STEPS**.
-
-1. ~~Domain taxonomy~~ **DONE**  
-2. ~~Effective layer foundation + explanations + query/nav models~~ **DONE (final v0.6)**  
-3. **Thin read-only TUI** consuming NavigationBuilder + SettingsQuery — **recommended v0.7 start**  
-4. Expand relationship pairs + richer explanation overrides for top settings  
-5. **CapabilityCollector** reliability pass  
-6. **Expand discovery by domain** (Firewall first), each with catalog explanations — not full gpedit import  
-7. Optional `--domain=` filter; compare-only baselines; transparent risk assessment  
-8. Controlled-change **design doc only** until authorised  
-
-### Balance rule (owner)
-
-Maximize relevant privacy/security coverage **domain by domain** without a self-strangling “every ADMX setting” model. Human-readable explanations and effective-layer honesty are the product differentiators.
+- No registry writes  
+- No service, task, package, capability, policy, or firewall modifications  
+- No elevation / UAC  
+- No remediation or “fix” paths  
+- No privacy score or security score  
+- No product network telemetry  
+- Discovered strings treated as display text only (sanitized; never executed)  
 
 ---
 
-# Safety
+## Known limitations (honest)
 
-Strictly read-only. No registry/service/task/package/policy writes. No elevation. No remediation. No interactive prompts. No product telemetry network.
+1. **Capability collection** on Windows 11 25H2 frequently returns zero without elevation; the product now states this as Unknown rather than implying nothing is installed.  
+2. **Catalog size** is curated (~65), not a full ADMX or Settings app mirror.  
+3. **Explanations** are substantially improved but not yet miniature encyclopedia articles for every ObjectId.  
+4. **Relationship graph** is curated pairs only — not inferred, not exhaustive.  
+5. **MDM / SecurityBaseline** ranks exist in the model; collectors for those layers are not implemented.  
+6. **Firewall domain** is reserved only.  
+7. **No GUI**, no baselines, no historical snapshots, no comparison mode.  
+8. **TUI** is console-based (alternate screen buffer where supported); not a full Terminal.Gui app.  
+9. **RiskLevel enum** remains H/M/L in the data model; presentation uses neutral “impact” language. The enum name is historical.  
 
 ---
 
-# Overall
+## What must not be broken
 
-**Prototype v0.6 FINAL** is the archived understanding foundation: discover → explain → resolve effective configuration for known overlaps → query/navigate in a UI-independent way → present decision cards.  
-Next product step is a **read-only TUI** (or continued curated domain expansion) — still understand-first, still no writes.
+1. Seven-project dependency direction: Models → Core → Logging → KnowledgeBase → Validator → Scanner → CLI.  
+2. Models contain data and pure composition only — **no registry logic**.  
+3. Precedence rules live **only** in `PolicyPrecedenceResolver`.  
+4. UI (CLI/TUI) is **presentation only**.  
+5. Collectors are fail-soft and read-only.  
+6. Catalog-first when expanding domains.  
+7. Unknown must remain visible; never invent Enabled/Disabled from absence of data.  
+
+---
+
+## Immediate next engineering priorities (after docs)
+
+1. Local `dotnet build -c Release` and runtime verification of `--tui` on Windows 11 25H2.  
+2. Optional: curated Firewall catalog + collector (still read-only).  
+3. Continued explanation quality and relationship pairs — quality over quantity.  
+4. CapabilityCollector deeper diagnosis only if transparency proves insufficient.  
+
+---
+
+## Overall assessment
+
+v0.7 completes the transition from “scanner that prints reports” to “knowledge platform you can explore.” The architecture is stable. The product value is explanation, effective-layer honesty, and navigable understanding — not feature count.
