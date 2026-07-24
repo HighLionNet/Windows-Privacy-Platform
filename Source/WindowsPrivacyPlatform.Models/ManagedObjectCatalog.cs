@@ -9,6 +9,7 @@ namespace WindowsPrivacyPlatform.Models;
 /// Pure data only — no business logic. Used by report layer to explain inventory.
 /// ObjectId values align with PolicyCollector probe ids and PrivacyCollector names.
 /// Every entry has exactly one primary ProductDomain for navigation/report grouping.
+/// v0.8: Firewall domain entries added (curated, read-only understanding only).
 /// </summary>
 public static class ManagedObjectCatalog
 {
@@ -16,9 +17,11 @@ public static class ManagedObjectCatalog
 
     public static IReadOnlyList<ManagedObject> PolicySettings { get; } = CreatePolicyBatch();
 
-    /// <summary>Combined catalog (privacy + policy).</summary>
+    public static IReadOnlyList<ManagedObject> FirewallSettings { get; } = CreateFirewallBatch();
+
+    /// <summary>Combined catalog (privacy + policy + firewall).</summary>
     public static IReadOnlyList<ManagedObject> All { get; } =
-        PrivacySettings.Concat(PolicySettings).ToList().AsReadOnly();
+        PrivacySettings.Concat(PolicySettings).Concat(FirewallSettings).ToList().AsReadOnly();
 
     private static IReadOnlyList<ManagedObject> CreatePrivacyBatch()
     {
@@ -320,6 +323,61 @@ public static class ManagedObjectCatalog
         return list.AsReadOnly();
     }
 
+    private static IReadOnlyList<ManagedObject> CreateFirewallBatch()
+    {
+        var list = new List<ManagedObject>
+        {
+            Fw("firewall.profile.domain.enabled", "Domain Profile Enabled",
+                "Indicates whether the Windows Firewall Domain profile is enabled.",
+                "The Domain profile applies when the computer is connected to a network that is authenticated to a domain controller. Enabling it applies the domain network firewall policy; disabling it leaves that network segment without this host firewall profile.",
+                RiskLevel.High, "Profiles",
+                "HKLM\\SYSTEM\\CurrentControlSet\\Services\\SharedAccess\\Parameters\\FirewallPolicy\\DomainProfile\\EnableFirewall"),
+
+            Fw("firewall.profile.private.enabled", "Private Profile Enabled",
+                "Indicates whether the Windows Firewall Private profile is enabled.",
+                "The Private profile is used on networks the user or administrator has marked as private (home or work). It typically allows more inbound connectivity than the Public profile while still filtering unsolicited traffic.",
+                RiskLevel.High, "Profiles",
+                "HKLM\\SYSTEM\\CurrentControlSet\\Services\\SharedAccess\\Parameters\\FirewallPolicy\\StandardProfile\\EnableFirewall"),
+
+            Fw("firewall.profile.public.enabled", "Public Profile Enabled",
+                "Indicates whether the Windows Firewall Public profile is enabled.",
+                "The Public profile is the most restrictive default profile and is used on networks not identified as domain or private. It is intended to reduce exposure on untrusted networks such as cafes and airports.",
+                RiskLevel.High, "Profiles",
+                "HKLM\\SYSTEM\\CurrentControlSet\\Services\\SharedAccess\\Parameters\\FirewallPolicy\\PublicProfile\\EnableFirewall"),
+
+            Fw("firewall.profile.domain.inbound", "Domain Profile Default Inbound Action",
+                "Default action for inbound connections that do not match an allow rule on the Domain profile.",
+                "When set to Block, unsolicited inbound traffic is dropped unless an explicit allow rule exists. Allow is uncommon for inbound defaults and increases exposure of local services.",
+                RiskLevel.High, "Defaults",
+                "HKLM\\SYSTEM\\CurrentControlSet\\Services\\SharedAccess\\Parameters\\FirewallPolicy\\DomainProfile\\DefaultInboundAction"),
+
+            Fw("firewall.profile.private.inbound", "Private Profile Default Inbound Action",
+                "Default action for inbound connections that do not match an allow rule on the Private profile.",
+                "Controls the baseline inbound posture on private networks. Block is the typical secure default; Allow widens the attack surface for local services.",
+                RiskLevel.High, "Defaults",
+                "HKLM\\SYSTEM\\CurrentControlSet\\Services\\SharedAccess\\Parameters\\FirewallPolicy\\StandardProfile\\DefaultInboundAction"),
+
+            Fw("firewall.profile.public.inbound", "Public Profile Default Inbound Action",
+                "Default action for inbound connections that do not match an allow rule on the Public profile.",
+                "Public networks are treated as untrusted. A Block default is the expected posture; an Allow default on Public is a significant exposure signal.",
+                RiskLevel.High, "Defaults",
+                "HKLM\\SYSTEM\\CurrentControlSet\\Services\\SharedAccess\\Parameters\\FirewallPolicy\\PublicProfile\\DefaultInboundAction"),
+
+            Fw("firewall.service.mpssvc", "Windows Firewall Service (MpsSvc)",
+                "Runtime state of the Windows Defender Firewall service (MpsSvc).",
+                "If the firewall service is stopped, profile enable flags may not be enforced. The service state is observed via ServiceController and does not by itself describe individual rules.",
+                RiskLevel.High, "Service",
+                "ServiceController:MpsSvc"),
+
+            Fw("firewall.logging.summary", "Firewall Logging Configuration",
+                "Summarizes whether firewall logging paths and dropped/successful connection logging are configured for profiles.",
+                "Logging supports forensic and operational review of blocked or allowed traffic. Presence of a log path does not imply continuous high-volume capture; configuration varies by profile and policy.",
+                RiskLevel.Medium, "Logging",
+                "HKLM\\SYSTEM\\CurrentControlSet\\Services\\SharedAccess\\Parameters\\FirewallPolicy\\*\\Logging")
+        };
+        return list.AsReadOnly();
+    }
+
     private static ManagedObject P(
         string id, string name, string description, string rationale,
         RiskLevel risk, ProductDomain domain, string subCategory, string discovery)
@@ -342,6 +400,15 @@ public static class ManagedObjectCatalog
             : ConfigurationType.PolicyState;
         return Create(id, name, "PolicySetting", description, rationale, risk,
             category, owner, control, domain, subCategory, discovery, iface, cfg);
+    }
+
+    private static ManagedObject Fw(
+        string id, string name, string description, string rationale,
+        RiskLevel risk, string subCategory, string discovery)
+    {
+        return Create(id, name, "FirewallSetting", description, rationale, risk,
+            FeatureCategory.FirewallRule, ComponentOwner.Networking, ControlLevel.AdministratorControlled,
+            ProductDomain.Firewall, subCategory, discovery, InterfaceName.Firewall, ConfigurationType.FirewallRuleState);
     }
 
     private static ManagedObject Create(
@@ -371,7 +438,7 @@ public static class ManagedObjectCatalog
             ProductDomain = domain,
             SubCategory = subCategory,
             RiskLevel = risk,
-            ImpactLevel = ImpactLevel.User,
+            ImpactLevel = ImpactLevel.Security,
             LifecycleState = LifecycleState.Active,
             InterfaceName = iface,
             ConfigurationType = cfg,
@@ -382,11 +449,11 @@ public static class ManagedObjectCatalog
             PriorityLevel = PriorityLevel.Recommended,
             Reversibility = Reversibility.Reversible,
             RebootRequirement = RebootRequirement.None,
-            SchemaVersion = "0.6",
+            SchemaVersion = "0.8",
             CreatedBy = "ManagedObjectCatalog",
             CreatedTimestamp = DateTime.UtcNow,
             ConfidenceScore = 80,
-            ConfidenceSource = "Catalog-v0.6"
+            ConfidenceSource = "Catalog-v0.8"
         };
     }
 }
