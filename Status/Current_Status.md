@@ -1,10 +1,10 @@
 # Windows Privacy Platform
-## Current Status — Version 1.0
+## Current Status — Version 1.0 (final polish)
 
 **Document role:** Authoritative live snapshot.
 
 **Last updated:** 2026-07-24  
-**Current development version:** **1.0**  
+**Current development version:** **1.0** (production-ready presentation polish)  
 **Previous archived milestone:** Prototype v0.9.5  
 **Runtime target:** Windows 11; Scanner / CLI / App target `net8.0-windows`  
 **Safety posture:** Strictly read-only. No writes. No elevation. No remediation. No scores.
@@ -39,17 +39,22 @@ Models → Core → Logging → KnowledgeBase → Validator → Scanner → CLI
 | **CLI** | Console / TUI host |
 | **App** | WPF desktop host (presentation only) |
 
+Backend architecture remains frozen.
+
 ---
 
 ## 3. Version 1.0 capabilities
 
 - Professional WPF shell (nav, search, status, read-only badge)  
-- Machine Overview dashboard  
-- Domain pages for every ProductDomain  
-- Setting Detail full knowledge card  
+- Machine Overview dashboard with trust banner and conflict summary  
+- Domain pages with status badges (Conflict / Unknown)  
+- Setting Detail full knowledge card with confidence/conflict badges and Copy ObjectId  
 - Knowledge Explorer  
 - Conflicts view  
-- Search  
+- Search (SettingsQuery-backed) with empty state  
+- Keyboard: F5 / Ctrl+R scan, Ctrl+F search focus  
+- Richer status bar (catalog, conflicts, validation)  
+- ToolTips on primary chrome  
 - Async scan via ScanService  
 - Full v0.9.5 knowledge engine underneath  
 - CLI and TUI retained  
@@ -64,7 +69,7 @@ Unchanged: no registry/service/task/policy/firewall writes; no elevation; no rem
 
 ## 5. Limitations
 
-1. Light theme only  
+1. Light theme only (dark / high-contrast deferred)  
 2. Secure Boot / TPM / BitLocker often Unknown without elevation  
 3. Firewall profile-level  
 4. No scan history / comparison / export  
