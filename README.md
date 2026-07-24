@@ -1,54 +1,70 @@
 # Windows Privacy Platform
 
-**Prototype v0.2** — Local, declarative privacy intelligence platform for Windows.
+**Current milestone:** Prototype v0.3 — Functional identity skeleton  
+**Previous:** Prototype v0.2 (architecture complete) → v0.1 (archived)
 
-## Core Principles
-- **Understand first. Change later.**
-- Strictly read-only. No remediation, no elevation, no Windows writes.
-- Architecture-first: seven-project layered solution under `Source/`.
+Local, declarative privacy intelligence platform for Windows.  
+Philosophy: **Understand first. Change later.**
 
-## Repository Layout
+## What works today
+- Correctly identifies Windows 10 and Windows 11 (including 22H2 / 23H2 / 24H2 / 25H2)
+- Reports product name, marketing edition, and build number
+- Full collector-based Scanner pipeline
+- In-memory Knowledge Base + structural validation
+- Thread-safe console audit logging
+- Strictly read-only (no elevation, no writes, no remediation)
+
+## Repository layout
 ```
 Archive/          # Immutable historical snapshots (v0.1)
-KnowledgeBase/    # Mirror of KnowledgeBase source (intentional)
-Source/           # Active solution (7 projects + .sln)
-Status/           # Continuity & architecture docs (authoritative)
+KnowledgeBase/    # Intentional mirror of Source KnowledgeBase
+Source/           # Active seven-project solution
+Status/           # Continuity & architecture documents (authoritative)
 ```
 
-## Solution Projects
-| Project | Role |
-|---------|------|
-| Models | Pure data structures (ManagedObject, Snapshot, Results) |
-| Core | OperationResult, PlatformException, PathConstants |
-| Logging | IAuditLogger / AuditLogger (console, thread-safe) |
-| KnowledgeBase | InMemoryKnowledgeBaseRepository |
-| Scanner | InventoryScanner + IInventoryCollector framework (placeholders) |
-| Validator | SchemaValidator + RequiredFieldRule (ObjectId/ObjectName) |
-| CLI | Explicit composition & pipeline entry point |
+## Solution projects
+| Project        | Role                                      |
+|----------------|-------------------------------------------|
+| Models         | Pure data structures                      |
+| Core           | OperationResult, PlatformException, paths |
+| Logging        | IAuditLogger / AuditLogger (console)      |
+| KnowledgeBase  | InMemoryKnowledgeBaseRepository           |
+| Scanner        | InventoryScanner + collectors             |
+| Validator      | SchemaValidator + RequiredFieldRule       |
+| CLI            | Explicit composition & pipeline entry     |
 
-## Build
-```bash
+## Build & run
+```powershell
 cd Source
 dotnet build -c Release
-```
-
-## Runtime
-```bash
-cd Source/WindowsPrivacyPlatform.CLI
+cd WindowsPrivacyPlatform.CLI
 dotnet run -c Release
 ```
-Expected: scan → store test ManagedObject → validate → safety confirmation. No Windows changes.
+Expected: real Windows version/edition/build, safety confirmation, 0 errors / 0 warnings.
 
-## Key Constraints
-- No circular dependencies. Explicit composition only (no DI container).
-- Models contain zero business logic.
-- Collectors remain placeholders until architecture is verified.
-- Top-level `KnowledgeBase/` mirrors Source implementation — do not create further duplicates.
-- Required fields validated: `ObjectId`, `ObjectName`.
+## Safety model (absolute)
+- No registry writes
+- No service / task / package / capability / policy changes
+- No elevation or UAC
+- No remediation, rollback, or recovery
+- No network or telemetry
 
-## Next Steps
-1. Local Release build + CLI runtime verification.
-2. First real read-only collector: `WindowsIdentityCollector`.
-3. Expand validation / persistence only after verification.
+## Current collector status
+| Collector                  | Status                          |
+|----------------------------|---------------------------------|
+| WindowsIdentityCollector   | **Real** (read-only, Win10/11)  |
+| CapabilityCollector        | Placeholder                     |
+| PackageCollector           | Placeholder                     |
+| ServiceCollector           | Placeholder                     |
+| ScheduledTaskCollector     | Placeholder                     |
+| PrivacyCollector           | Placeholder                     |
+
+## Next steps
+1. Implement remaining real collectors one at a time (still read-only).
+2. Lightweight CLI argument parsing.
+3. Persistent KnowledgeBase (preserve existing interfaces).
+4. Reporting / relationship modelling.
+
+Only after the discovery layer is mature should any remediation architecture be considered under a separately authorised phase.
 
 See `Status/` for full architecture, handoff, and status documents.

@@ -1,9 +1,9 @@
 # Windows Privacy Platform
-## Prototype v0.2 Implementation Map (Updated)
+## Implementation Map — Prototype v0.3
 
 **Purpose**
 
-This document records the exact implementation state after Prototype v0.2 closure and the introduction of the first real collector.
+This document records the exact implementation state after Prototype v0.2 closure and the introduction of the first real collector (v0.3 functional identity skeleton).
 
 It is authoritative for the current codebase.
 
@@ -11,11 +11,11 @@ It is authoritative for the current codebase.
 
 # Current Prototype Status
 
-Prototype v0.2 is complete.
+Prototype v0.2 is complete (architecture, build, runtime).
 
-Architecture, build and runtime have all been verified.
+Prototype v0.3 adds the first real Windows discovery component:
 
-The first real Windows discovery component (WindowsIdentityCollector) has been implemented and is strictly read-only.
+**WindowsIdentityCollector** — strictly read-only, correctly identifies Windows 10 and Windows 11, reports marketing release and edition.
 
 No remediation exists. No elevation exists. No Windows modification occurs.
 
@@ -67,8 +67,11 @@ Collectors receive the snapshot and populate only their own section. They never 
 
 WindowsIdentityCollector — **real, read-only**  
   Primary: Registry.LocalMachine\SOFTWARE\Microsoft\Windows NT\CurrentVersion (non-elevated)  
+  Logic: build ≥ 22000 → Windows 11, otherwise Windows 10  
+  Uses DisplayVersion (22H2 / 23H2 / 24H2 / 25H2 …) and EditionID  
   Fallback: Environment.OSVersion  
-  Populates: WindowsVersion, Edition, BuildNumber, CaptureTimestamp
+  Populates: WindowsVersion, Edition, BuildNumber, CaptureTimestamp  
+  Verified on Windows 11 Pro 25H2 (build 26200)
 
 CapabilityCollector — placeholder  
 PackageCollector — placeholder  
@@ -131,6 +134,8 @@ No command parsing yet.
 
 Models ← Core ← Logging ← KnowledgeBase ← Validator ← Scanner ← CLI
 
+Scanner and CLI target `net8.0-windows`. All other projects target `net8.0`.
+
 ---
 
 # Current Read-Only Guarantees
@@ -140,12 +145,16 @@ Collectors contain no write paths (WindowsIdentityCollector is read-only).
 Logging, Validator, KnowledgeBase and CLI cannot modify Windows.  
 No remediation code exists anywhere.
 
+A focused security / quality review found no vulnerabilities, no race conditions, no elevation paths and no write paths in the identity collector or surrounding pipeline.
+
 ---
 
 # Files Added / Modified for Real Identity Collector
 
 Modified:  
-Source/WindowsPrivacyPlatform.Scanner/WindowsIdentityCollector.cs
+Source/WindowsPrivacyPlatform.Scanner/WindowsIdentityCollector.cs  
+Source/WindowsPrivacyPlatform.Scanner/WindowsPrivacyPlatform.Scanner.csproj (net8.0-windows)  
+Source/WindowsPrivacyPlatform.CLI/WindowsPrivacyPlatform.CLI.csproj (net8.0-windows)
 
 No new projects or files required.
 
@@ -156,14 +165,14 @@ No new projects or files required.
 ```
 dotnet build -c Release
 ```
-Expected: success, zero errors, zero warnings preferred.
+Expected: success, zero errors, zero warnings.
 
 ---
 
 # Runtime Expectations
 
 CLI starts. Logger initializes. Scanner executes.  
-WindowsIdentityCollector returns real version/edition/build (or safe fallback).  
+WindowsIdentityCollector returns real version/edition/build (Win10 or Win11).  
 Remaining collectors remain placeholders.  
 KnowledgeBase stores object. Validator validates.  
 Safety confirmation is printed.  
@@ -184,6 +193,6 @@ Development continues only against the active Source directory.
 
 # Next Steps
 
-1. Confirm real WindowsIdentityCollector output on a local machine.
-2. Implement next real collector (CapabilityCollector recommended).
-3. Continue one collector at a time while preserving build and runtime success after every change.
+1. Implement next real collector (CapabilityCollector recommended).
+2. Continue one collector at a time while preserving build and runtime success after every change.
+3. Later: lightweight CLI argument parsing, persistent KnowledgeBase, reporting.

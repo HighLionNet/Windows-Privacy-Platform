@@ -2,7 +2,7 @@
 ## Complete Technical Documentation
 
 **Document Status:** Living  
-**Current Applies To:** Prototype v0.2 (Complete) + first real collector  
+**Current Applies To:** Prototype v0.3 (Functional Identity Skeleton)  
 **Last Updated:** 2026-07-24
 
 ---
@@ -36,15 +36,15 @@ The platform follows one immutable development sequence.
 
 Prototype v0.2 completed the architectural foundation for stages 1–3.
 
-The first real discovery (Windows identity) has now begun.
+Prototype v0.3 delivered the first real discovery capability (Windows identity) while remaining strictly read-only.
 
 No remediation exists. No Windows modifications occur.
 
 ---
 
-# 3. Prototype Objectives (v0.2 — Achieved)
+# 3. Prototype Objectives
 
-Prototype v0.2 verified that the platform architecture can safely:
+**v0.2 (achieved)** verified that the platform architecture can safely:
 
 • Construct a layered runtime  
 • Discover system state through a structured Scanner  
@@ -54,7 +54,7 @@ Prototype v0.2 verified that the platform architecture can safely:
 • Record runtime activity through an Audit Logger  
 • Complete the pipeline without modifying Windows
 
-All objectives were met. Build and runtime are verified.
+**v0.3 (achieved)** added the first real, multi-version Windows identity collector and confirmed clean build + runtime + security posture.
 
 ---
 
@@ -91,11 +91,11 @@ WindowsPrivacyPlatform.Logging — runtime audit logging (AuditEventType, IAudit
 
 WindowsPrivacyPlatform.KnowledgeBase — storage of ManagedObjects (InMemoryKnowledgeBaseRepository). Memory only.
 
-WindowsPrivacyPlatform.Scanner — discovery. InventoryScanner orchestrates collectors. Collectors own data acquisition.
+WindowsPrivacyPlatform.Scanner — discovery. InventoryScanner orchestrates collectors. Collectors own data acquisition. Targets `net8.0-windows`.
 
 WindowsPrivacyPlatform.Validator — structural validation (SchemaValidator, RequiredFieldRule). Required fields: ObjectId, ObjectName.
 
-WindowsPrivacyPlatform.CLI — operator entry point. Explicit composition, no DI container, no command parsing yet.
+WindowsPrivacyPlatform.CLI — operator entry point. Explicit composition, no DI container, no command parsing yet. Targets `net8.0-windows`.
 
 ---
 
@@ -119,7 +119,7 @@ InventoryScanner coordinates collectors. Each collector owns one subsystem.
 
 Current collectors:
 
-- WindowsIdentityCollector — **real, read-only** (Registry.LocalMachine + Environment fallback)
+- WindowsIdentityCollector — **real, read-only** (Registry.LocalMachine + Environment fallback). Correctly handles Windows 10 and Windows 11 (build ≥ 22000 rule), DisplayVersion and EditionID.
 - CapabilityCollector — placeholder
 - PackageCollector — placeholder
 - ServiceCollector — placeholder
@@ -152,6 +152,8 @@ No circular dependencies. Explicit composition by CLI. No DI framework.
 
 Executes under current user context only. No elevation, no UAC, no privilege escalation, no network, no telemetry.
 
+Scanner and CLI target `net8.0-windows` solely to access Registry APIs safely; no elevation is ever requested.
+
 ---
 
 # 13. Safety Model
@@ -159,6 +161,8 @@ Executes under current user context only. No elevation, no UAC, no privilege esc
 Strictly read-only. Prohibited: registry writes, service/task/package/capability/policy changes, remediation, rollback, recovery, snapshots.
 
 WindowsIdentityCollector performs only non-elevated reads.
+
+A focused security / quality review of the identity collector and surrounding pipeline found no vulnerabilities, no race conditions, no elevation paths and no write paths.
 
 ---
 
@@ -192,19 +196,18 @@ Expected: successful build, zero errors, zero warnings preferred.
 
 # 17. Runtime Expectations
 
-CLI starts, logger initializes, scanner executes, collectors run, KnowledgeBase stores object, validator validates, safety confirmation displayed. No Windows modifications.
+CLI starts, logger initializes, scanner executes, collectors run (identity collector returns real data), KnowledgeBase stores object, validator validates, safety confirmation displayed. No Windows modifications.
 
 ---
 
 # 18. Future Expansion (Recommended Order)
 
-1. Confirm real WindowsIdentityCollector output.
-2. Implement remaining real collectors one at a time.
-3. Lightweight CLI argument parsing.
-4. Expand validation rules.
-5. Persistent KnowledgeBase (preserve interfaces).
-6. Reporting.
-7. Relationship modelling.
+1. Implement remaining real collectors one at a time (still read-only).
+2. Lightweight CLI argument parsing.
+3. Expand validation rules.
+4. Persistent KnowledgeBase (preserve interfaces).
+5. Reporting.
+6. Relationship modelling.
 
 Only after these layers are mature should any remediation architecture be considered under a separately authorised phase.
 

@@ -2,7 +2,7 @@
 ## AI Project Handoff Document
 
 **Document Status:** Authoritative Continuity Document  
-**Applies To:** Post-v0.2 Development  
+**Applies To:** Prototype v0.3 (Functional Identity Skeleton)  
 **Last Updated:** 2026-07-24
 
 ---
@@ -48,20 +48,19 @@ Any attempt to bypass this order violates the project charter.
 
 # CURRENT PROJECT STATE
 
-Prototype v0.1 was completed successfully and archived under `Archive/v0.1/`.
+Prototype v0.1 archived under `Archive/v0.1/`.
 
-Prototype v0.2 is **complete**:
+Prototype v0.2 complete (architecture, build, runtime).
 
-- Logging project
-- Collector-based Scanner
-- Structural Validator
-- Explicit CLI composition
-- Release build verified (0 errors / 0 warnings)
-- Runtime pipeline verified (placeholder collectors + full safety confirmation)
+Prototype v0.3 (current):
+- First real collector implemented and verified
+- Correctly identifies Windows 10 and Windows 11 (build ≥ 22000 rule)
+- Reports marketing release (22H2 / 23H2 / 24H2 / 25H2 …) and edition
+- Release build clean (0 errors / 0 warnings)
+- Runtime verified on Windows 11 Pro 25H2 (build 26200)
+- Security / quality review of identity collector and pipeline passed (no vulnerabilities, no race conditions, no elevation or write paths)
 
-Immediately after v0.2 closure the first real Windows collector was added:
-
-**WindowsIdentityCollector** — read-only discovery of Windows version, edition and build number using Registry.LocalMachine (non-elevated) + Environment fallback.
+The platform can now identify the machine it is running on.
 
 ---
 
@@ -114,19 +113,19 @@ Prohibited:
 - Remediation, rollback, recovery, snapshots
 - Network communication or telemetry
 
-WindowsIdentityCollector is the first real collector and performs **only reads** against Registry.LocalMachine and Environment. It never writes and never elevates.
+WindowsIdentityCollector performs **only reads** against Registry.LocalMachine and Environment. It never writes and never elevates.
 
 ---
 
 # CURRENT DEVELOPMENT PHASE
 
-Post-v0.2 discovery phase.
+Post-v0.2 discovery phase (v0.3 identity skeleton).
 
 Focus: replace remaining placeholder collectors with real, read-only Windows discovery, one collector at a time.
 
 ---
 
-# V0.2 OBJECTIVES — FINAL STATUS
+# V0.2 / V0.3 OBJECTIVES — FINAL STATUS
 
 | Objective                              | Status      |
 |----------------------------------------|-------------|
@@ -136,7 +135,9 @@ Focus: replace remaining placeholder collectors with real, read-only Windows dis
 | Keep prototype read-only               | Complete    |
 | Successful Release compilation         | Verified    |
 | Runtime pipeline verification          | Verified    |
-| First real collector (Identity)        | Implemented |
+| First real collector (Identity)        | Verified    |
+| Multi-version support (Win10/11)       | Verified    |
+| Security / quality review              | Passed      |
 
 ---
 
@@ -166,13 +167,13 @@ Seven-project solution remains mandatory.
 
 Current projects:
 
-WindowsPrivacyPlatform.CLI  
-WindowsPrivacyPlatform.Core  
-WindowsPrivacyPlatform.KnowledgeBase  
-WindowsPrivacyPlatform.Logging  
-WindowsPrivacyPlatform.Models  
-WindowsPrivacyPlatform.Scanner  
-WindowsPrivacyPlatform.Validator
+WindowsPrivacyPlatform.CLI          (net8.0-windows)  
+WindowsPrivacyPlatform.Core         (net8.0)  
+WindowsPrivacyPlatform.KnowledgeBase(net8.0)  
+WindowsPrivacyPlatform.Logging      (net8.0)  
+WindowsPrivacyPlatform.Models       (net8.0)  
+WindowsPrivacyPlatform.Scanner      (net8.0-windows)  
+WindowsPrivacyPlatform.Validator    (net8.0)
 
 No additional projects without explicit task.
 
@@ -194,25 +195,27 @@ The duplicate top-level KnowledgeBase folder remains intentional. Do not create 
 
 # NEXT IMPLEMENTATION TASK
 
-1. Pull latest and confirm WindowsIdentityCollector produces real version/edition/build data.
-2. Implement the next real collector (recommended order):
-   - CapabilityCollector
-   - PackageCollector
-   - ServiceCollector
-   - ScheduledTaskCollector
-   - PrivacyCollector
+Implement the next real collector (recommended order):
 
-Each collector must remain strictly read-only.
+1. CapabilityCollector
+2. PackageCollector
+3. ServiceCollector
+4. ScheduledTaskCollector
+5. PrivacyCollector
+
+Each collector must remain strictly read-only. Verify build + runtime after each one.
 
 ---
 
 # FIRST REAL DISCOVERY TARGET — COMPLETED
 
-WindowsIdentityCollector has been implemented with:
-
+WindowsIdentityCollector:
 - Primary path: read-only Registry.LocalMachine\SOFTWARE\Microsoft\Windows NT\CurrentVersion
+- Build ≥ 22000 → Windows 11, otherwise Windows 10
+- Uses DisplayVersion and EditionID for accurate release and edition
 - Fallback: Environment.OSVersion
 - No writes, no elevation, graceful failure handling
+- Verified on Windows 11 Pro 25H2 (build 26200)
 
 ---
 
