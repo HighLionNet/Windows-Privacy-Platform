@@ -56,6 +56,12 @@ UI consumes only:
 
 `ScanService` (App) mirrors CLI composition. No registry logic in App.
 
+Presentation polish (v1.0 final):
+- Grouped navigation and breadcrumbs are pure UI state
+- Mode control (Inspect/Modify) is UX scaffold only; Modify is disabled and performs no writes
+- Expandable disclosure and visual hierarchy are XAML-only
+- Window/sidebar preferences stored under LocalApplicationData (geometry only)
+
 ---
 
 ## 4. Safety architecture
