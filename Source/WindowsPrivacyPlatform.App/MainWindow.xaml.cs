@@ -56,7 +56,7 @@ public partial class MainWindow : Window
     {
         ContentHost.Content = new TextBlock
         {
-            Text = "Windows Privacy Platform\n\nRead-only knowledge explorer.\nPress Scan to discover local configuration.\n\nThis application never modifies Windows.",
+            Text = "Windows Privacy Platform\n\nRead-only knowledge explorer.\nPress Scan (or F5) to discover local configuration.\n\nThis application never modifies Windows.\nNo elevation · No telemetry · Unknown stays Unknown.",
             FontSize = 15,
             Foreground = (System.Windows.Media.Brush)FindResource("BrushTextSecondary"),
             TextWrapping = TextWrapping.Wrap,
@@ -93,6 +93,13 @@ public partial class MainWindow : Window
             ScanTimeLabel.Text = $"Scanned {_scan.Overview.LastScanUtc:yyyy-MM-dd HH:mm} UTC";
             CatalogCountLabel.Text = $"Catalog: {_scan.Catalog.Count}";
             ValidationLabel.Text = $"Validation: {_scan.ValidationPassed} ok / {_scan.ValidationFailed} fail";
+
+            var conflicts = _scan.Query?.GetConflicts().Count() ?? 0;
+            ConflictCountLabel.Text = $"Conflicts: {conflicts}";
+            if (conflicts > 0)
+                ConflictCountLabel.Foreground = (System.Windows.Media.Brush)FindResource("BrushConflict");
+            else
+                ConflictCountLabel.Foreground = (System.Windows.Media.Brush)FindResource("BrushTextMuted");
         }
     }
 
@@ -185,10 +192,46 @@ public partial class MainWindow : Window
         if (e.Key != Key.Enter)
             return;
 
+        RunSearch();
+        e.Handled = true;
+    }
+
+    private void RunSearch()
+    {
         var q = SearchBox.Text?.Trim() ?? string.Empty;
         if (string.IsNullOrEmpty(q) || _scan.Query is null)
             return;
 
         ContentHost.Content = new SearchResultsView(_scan, q, OpenSetting);
+    }
+
+    private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        // F5 or Ctrl+R → rescan
+        if (e.Key == Key.F5 || (e.Key == Key.R && Keyboard.Modifiers == ModifierKeys.Control))
+        {
+            e.Handled = true;
+            _ = RunScanAsync();
+            return;
+        }
+
+        // Ctrl+F → focus search
+        if (e.Key == Key.F && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            e.Handled = true;
+            SearchBox.Focus();
+            SearchBox.SelectAll();
+            return;
+        }
+
+        // Escape → clear search focus / return home if on search results
+        if (e.Key == Key.Escape)
+        {
+            if (SearchBox.IsKeyboardFocusWithin)
+            {
+                Keyboard.ClearFocus();
+                e.Handled = true;
+            }
+        }
     }
 }
