@@ -42,7 +42,19 @@ public partial class DomainView : UserControl
 
         foreach (var mo in items)
         {
-            var border = new Border { Style = (Style)FindResource("Card"), Cursor = System.Windows.Input.Cursors.Hand };
+            var hasConflict = mo.Observation?.Resolution?.HasConflict == true ||
+                              mo.Observation?.Effective?.HasConflict == true;
+            var observed = mo.CurrentState ?? "Not observed";
+            var isUnknown = string.IsNullOrWhiteSpace(mo.CurrentState) ||
+                            observed.Contains("Not observed", StringComparison.OrdinalIgnoreCase) ||
+                            observed.Contains("Unknown", StringComparison.OrdinalIgnoreCase) ||
+                            observed.Contains("Not configured", StringComparison.OrdinalIgnoreCase);
+
+            var border = new Border
+            {
+                Style = (Style)FindResource(hasConflict ? "CardConflict" : "Card"),
+                Cursor = System.Windows.Input.Cursors.Hand
+            };
             var panel = new StackPanel();
 
             var header = new DockPanel { LastChildFill = true };
@@ -55,14 +67,6 @@ public partial class DomainView : UserControl
             };
             DockPanel.SetDock(title, Dock.Left);
             header.Children.Add(title);
-
-            var hasConflict = mo.Observation?.Resolution?.HasConflict == true ||
-                              mo.Observation?.Effective?.HasConflict == true;
-            var observed = mo.CurrentState ?? "Not observed";
-            var isUnknown = string.IsNullOrWhiteSpace(mo.CurrentState) ||
-                            observed.Contains("Not observed", StringComparison.OrdinalIgnoreCase) ||
-                            observed.Contains("Unknown", StringComparison.OrdinalIgnoreCase) ||
-                            observed.Contains("Not configured", StringComparison.OrdinalIgnoreCase);
 
             if (hasConflict || isUnknown)
             {

@@ -1,6 +1,6 @@
 # Windows Privacy Platform
 
-**Current release:** **Version 1.0**  
+**Current release:** **Version 1.0** (final presentation polish)  
 **Previous:** Prototype v0.9.5 → v0.9 → v0.8 → …
 
 Local, **read-only** privacy and security **knowledge explorer** for Windows — professional desktop application with optional CLI/TUI.
@@ -26,12 +26,16 @@ Presentation hosts (App, CLI, TUI) never contain Windows configuration logic. Ba
 
 ## Version 1.0
 
-- Professional **WPF** desktop application  
-- Machine Overview dashboard (trust banner, conflict summary)  
-- Domain pages with status badges  
-- Full Setting Detail knowledge cards (confidence/conflict badges, Copy ObjectId)  
+- Professional **WPF** desktop application with production shell polish  
+- Grouped navigation (Machine / Privacy / Security / Windows / Applications / Knowledge)  
+- Breadcrumbs for orientation  
+- Machine Overview dashboard (primary identity, attention row, expandable technical notes, quick navigation)  
+- Domain pages with conflict-accented cards and status badges  
+- Setting Detail with layered disclosure (primary state first; layers and long guidance behind expanders)  
 - Knowledge Explorer, Conflicts, Search  
-- Keyboard shortcuts (F5 / Ctrl+R scan, Ctrl+F search)  
+- Application mode control: **Inspect** (active) / **Modify** (scaffold, disabled, future)  
+- Collapsible sidebar, remembered window size/position and sidebar state  
+- Keyboard: F5 / Ctrl+R scan, Ctrl+F search, Esc clears search  
 - Async read-only scan  
 - Same knowledge engine as v0.9.5 underneath  
 - CLI and TUI retained  
@@ -72,6 +76,8 @@ dotnet run -c Release -- --tui
 ## Safety
 
 This product does **not** write to the registry, change services/tasks/packages/policies/firewall rules, request elevation, remediate, score, or send product telemetry.
+
+Mode control exposes Inspect only. Modify remains a disabled future scaffold with an explanatory message.
 
 ---
 

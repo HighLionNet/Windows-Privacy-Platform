@@ -2,7 +2,7 @@
 ## Roadmap
 
 **Last updated:** 2026-07-24  
-**Current completed milestone:** **Version 1.0** (including final presentation polish)
+**Current completed milestone:** **Version 1.0** (final presentation polish complete)
 
 ---
 
@@ -37,4 +37,4 @@
 
 ## Far future (design-doc only until authorized)
 
-Controlled reversible change as a separate architecture pass.
+Controlled reversible change as a separate architecture pass. The Modify mode control already scaffolds the UX entry point without enabling any writes.

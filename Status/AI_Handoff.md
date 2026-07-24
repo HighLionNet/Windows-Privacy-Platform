@@ -1,7 +1,7 @@
 # Windows Privacy Platform
 ## AI / Engineer Handoff Document
 
-**Applies to:** **Version 1.0** (final polish, live)  
+**Applies to:** **Version 1.0** (final presentation polish, complete)  
 **Last updated:** 2026-07-24  
 
 **Read this file, then `Status/Current_Status.md`, `Status/Architecture.md`, `Status/Roadmap.md`, and `Status/History/v1.0.md` before changing code.**

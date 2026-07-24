@@ -1,10 +1,10 @@
 # Windows Privacy Platform
-## Current Status — Version 1.0 (final polish)
+## Current Status — Version 1.0 (final presentation polish)
 
 **Document role:** Authoritative live snapshot.
 
 **Last updated:** 2026-07-24  
-**Current development version:** **1.0** (production-ready presentation polish)  
+**Current development version:** **1.0** (production-ready presentation polish complete)  
 **Previous archived milestone:** Prototype v0.9.5  
 **Runtime target:** Windows 11; Scanner / CLI / App target `net8.0-windows`  
 **Safety posture:** Strictly read-only. No writes. No elevation. No remediation. No scores.
@@ -43,18 +43,17 @@ Backend architecture remains frozen.
 
 ---
 
-## 3. Version 1.0 capabilities
+## 3. Version 1.0 capabilities (final polish)
 
-- Professional WPF shell (nav, search, status, read-only badge)  
-- Machine Overview dashboard with trust banner and conflict summary  
-- Domain pages with status badges (Conflict / Unknown)  
-- Setting Detail full knowledge card with confidence/conflict badges and Copy ObjectId  
-- Knowledge Explorer  
-- Conflicts view  
-- Search (SettingsQuery-backed) with empty state  
-- Keyboard: F5 / Ctrl+R scan, Ctrl+F search focus  
+- Professional WPF shell with grouped navigation, breadcrumbs, collapsible sidebar  
+- Application mode: Inspect (active) / Modify (disabled scaffold + explanation)  
+- Machine Overview dashboard: primary identity cards, attention row for conflicts, expandable technical notes, quick navigation tiles  
+- Domain pages with conflict-accented cards and Conflict / Unknown badges  
+- Setting Detail: primary state first; observed layers and long guidance behind Expanders  
+- Knowledge Explorer, Conflicts, Search  
+- Window size / position / sidebar collapse remembered under LocalApplicationData  
+- Keyboard: F5 / Ctrl+R scan, Ctrl+F search, Esc clears search  
 - Richer status bar (catalog, conflicts, validation)  
-- ToolTips on primary chrome  
 - Async scan via ScanService  
 - Full v0.9.5 knowledge engine underneath  
 - CLI and TUI retained  
@@ -63,13 +62,13 @@ Backend architecture remains frozen.
 
 ## 4. Safety
 
-Unchanged: no registry/service/task/policy/firewall writes; no elevation; no remediation; no scores; no product telemetry; Unknown first-class.
+Unchanged: no registry/service/task/policy/firewall writes; no elevation; no remediation; no scores; no product telemetry; Unknown first-class. Mode control does not enable writes.
 
 ---
 
 ## 5. Limitations
 
-1. Light theme only (dark / high-contrast deferred)  
+1. Light theme only (dark / high-contrast deferred to v1.5)  
 2. Secure Boot / TPM / BitLocker often Unknown without elevation  
 3. Firewall profile-level  
 4. No scan history / comparison / export  
