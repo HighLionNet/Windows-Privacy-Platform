@@ -3,7 +3,7 @@ namespace WindowsPrivacyPlatform.Models;
 /// <summary>
 /// One observed value from a single Windows configuration layer.
 /// Pure data — no resolution logic.
-/// v0.8: carries explicit provenance so explanations can answer "How do you know?".
+/// Carries explicit provenance so explanations can answer "How do you know?".
 /// </summary>
 public class ConfigurationObservation
 {
@@ -15,7 +15,7 @@ public class ConfigurationObservation
     public DateTime ObservedAt { get; set; } = DateTime.UtcNow;
     public int ConfidenceScore { get; set; } = 80;
 
-    // --- Evidence / provenance (v0.8) ---
+    // --- Evidence / provenance ---
 
     /// <summary>Name of the collector that produced this observation.</summary>
     public string CollectorName { get; set; } = string.Empty;
@@ -36,6 +36,7 @@ public class ConfigurationObservation
 /// <summary>
 /// Result of effective-configuration reasoning.
 /// Always includes a reason; conflicts are explicit.
+/// SemanticValue is the knowledge-layer interpretation of the effective raw token when a map exists.
 /// </summary>
 public class ConfigurationResolution
 {
@@ -43,7 +44,19 @@ public class ConfigurationResolution
     public string? EffectiveValue { get; set; }
     public ConfigurationLayer EffectiveSource { get; set; } = ConfigurationLayer.Unknown;
     public EffectiveConfidence Confidence { get; set; } = EffectiveConfidence.Unknown;
+
+    /// <summary>Educational explanation of why this layer/value is effective.</summary>
     public string ResolutionReason { get; set; } = string.Empty;
+
+    /// <summary>Why the confidence level was chosen (evidence quality, map presence, agreement).</summary>
+    public string ConfidenceReason { get; set; } = string.Empty;
+
+    /// <summary>Canonical meaning of EffectiveValue when a ValueSemantics map exists; otherwise null.</summary>
+    public string? SemanticValue { get; set; }
+
+    /// <summary>Display label from knowledge map when available.</summary>
+    public string? SemanticDisplay { get; set; }
+
     public bool HasConflict { get; set; }
 
     /// <summary>Compatibility projection used by existing Observation.Effective consumers.</summary>
@@ -53,6 +66,9 @@ public class ConfigurationResolution
         EffectiveSource = EffectiveSource,
         Confidence = Confidence,
         Explanation = ResolutionReason,
+        ConfidenceReason = ConfidenceReason,
+        SemanticValue = SemanticValue,
+        SemanticDisplay = SemanticDisplay,
         HasConflict = HasConflict,
         ContributingLayers = RawObservations
     };
@@ -67,6 +83,9 @@ public class EffectiveState
     public ConfigurationLayer EffectiveSource { get; set; } = ConfigurationLayer.Unknown;
     public EffectiveConfidence Confidence { get; set; } = EffectiveConfidence.Unknown;
     public string Explanation { get; set; } = string.Empty;
+    public string ConfidenceReason { get; set; } = string.Empty;
+    public string? SemanticValue { get; set; }
+    public string? SemanticDisplay { get; set; }
     public bool HasConflict { get; set; }
     public List<ConfigurationObservation> ContributingLayers { get; set; } = new();
 }
