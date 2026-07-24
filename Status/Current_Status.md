@@ -3,93 +3,105 @@
 
 **Project Name:** Windows Privacy Platform  
 **Current Development Version:** Prototype v0.6 (Bind + Validate + Risk Summary)  
-**Previous Versions:** v0.5 (Model + Policy Report) → v0.4 (Live Discovery) → v0.3 → v0.2 → v0.1  
+**Previous Versions:** v0.5 (archived) → v0.4 → v0.3 → v0.2 → v0.1  
 **Document Status:** Authoritative Current State  
-**Last Updated:** 2026-07-24
+**Last Updated:** 2026-07-24  
+**v0.6 runtime:** Verified on Windows 11 Pro 25H2 (build 26200)
 
 ---
 
 # Purpose
 
-Authoritative description of the active repository state for future AI sessions.
+Exact current state of the active repository for future AI sessions.  
+For full roadmap logic (domains, effective layers, insertion points), also read `Status/AI_Handoff.md`.
 
 ---
 
-# Current Development Phase
+# What the app does today (medium-level)
 
-Prototype v0.6 — inventory-to-model binding, batch catalog validation, observation/risk summary, concise default report.
+Non-interactive CLI pipeline:
 
-## Verified history
+1. CLI starts collectors via InventoryScanner.  
+2. Collectors **read** (never write): registry (identity, privacy ConsentStore, curated policy keys), PowerShell (packages; capabilities attempt), ServiceController (services), schtasks (tasks).  
+3. Results go into InventorySnapshot.  
+4. ManagedObjectCatalog (static explained settings) is bound to live values via InventoryStateBinder (`CurrentState`).  
+5. KnowledgeBase stores entries; SchemaValidator batch-checks catalog structure.  
+6. CLI prints observation/risk **summary** and high-risk **watch list** (or `--full` dump).  
+7. Safety confirmation: no modifications, no elevation.
 
-| Version | Status |
-|---------|--------|
-| v0.4 | Hardware verified (Win11 Pro 25H2) — live discovery |
-| v0.5 | Hardware verified — policy probes + categorized report (archived/backed up) |
-| v0.6 | Implemented — pending local build/runtime verify |
+`bin/` DLLs are **compiled build outputs** from our C# projects + NuGet dependencies — not separately authored binary sources.
 
-## v0.6 additions
-
-- **InventoryStateBinder** — sets `ManagedObject.CurrentState` from snapshot; builds `ObservationSummary`
-- **SchemaValidator** — Description, ObjectType, SchemaVersion required; **ValidateAll** batch API
-- **ObservationSummary** model — risk counts, privacy Allow/Deny/Prompt tallies, high/medium configured lists
-- **CLI** — default concise output (summary + high-risk configured items); `--full` for complete dump; `--help`
-- Still strictly read-only. No interactive prompts. No elevation. No writes.
+**Not present:** firewall collector, interactive UI, writes, overall security score, full GPO library, effective GPO-vs-UI resolution.
 
 ---
 
-# Current Objective
+# Verified runtime sample (v0.6)
 
-Stay in Discover → Model → Validate → Report.
+```
+Identity : Windows 11 Pro | 25H2 | Build 26200
+Capabilities : 0 | Packages : 165 | Services : 303 | Tasks : 247
+Privacy settings : 30 | Policy probes : 79 (configured: 45)
+KnowledgeBase: 65 | Validator: 65 passed / 0 failed
+Observed 63 / not 2 | High-risk configured 25 | Medium-risk configured 22
+Privacy Allow/Deny/Prompt: 18 / 2 / 0
+```
 
-After v0.6 verify:
+### Meaning of risk lines
 
-1. Expand relationship metadata on catalog objects (optional).
-2. CapabilityCollector follow-up if still 0.
-3. Do **not** add interactive UI or write paths yet.
-
----
-
-# Implementation Status Summary
-
-| Area                         | Status                                      |
-|------------------------------|---------------------------------------------|
-| Architecture (7 projects)    | Complete                                    |
-| Discover (collectors)        | Strong (v0.4–v0.5)                          |
-| Model (ManagedObject catalog)| Strong (v0.5)                               |
-| Bind inventory → model       | Live (v0.6)                                 |
-| Validate (structural batch)  | Live (v0.6)                                 |
-| Report (summary + optional full) | Live (v0.6)                             |
-| Relationships                | Not started                                 |
-| Write / remediation          | Deferred                                    |
-| Interactive / GUI            | Deferred                                    |
+- **Not a security score.**  
+- Catalog H/M/L tags are static.  
+- “High-risk configured” = high-impact topics that have a configured value worth reviewing.  
+- Deny on Location/Microphone can still appear under high-risk *category* because the capability is sensitive.
 
 ---
 
-# Safety Status
+# Implementation status
 
-Strictly read-only. No registry writes, no service/task/package/policy changes, no elevation, no remediation, no network, no telemetry.
-
----
-
-# Pending Work (ordered)
-
-1. Local build + runtime verification of v0.6.
-2. Relationship stubs / deeper compliance baselines (optional next).
-3. CapabilityCollector if still 0.
-4. Design controlled-change contract only after report layer is stable.
-5. Terminal UI only after model + report are solid.
-
----
-
-# Explicitly Deferred
-
-Remediation, GPO/registry writes, elevation helpers, interactive prompts, GUI frameworks, network features, outbound telemetry.
+| Area | Status |
+|------|--------|
+| Seven-project architecture | Complete |
+| Discover (7 collectors) | Live; Capabilities often 0 |
+| Model catalog (~65 explained objects) | Live |
+| Bind CurrentState | Live |
+| Structural ValidateAll | Live |
+| Concise + full report | Live |
+| Product domain taxonomy | **Planned** |
+| Effective layer / GPO vs UI | **Planned** |
+| Firewall discovery | **Planned** |
+| Baselines / recommended sets | **Planned (compare-only first)** |
+| Formal risk assessment feature | **Optional planned** |
+| Relationships graph | **Planned** |
+| Writes / elevation / interactive UI | **Deferred** |
 
 ---
 
-# Overall Status
+# Future steps (ordered — summary)
 
-v0.5 archived/backed up by human.  
-v0.6 advances Validate + Report quality without interactivity.
+Full detail and pipeline insertion points: **AI_Handoff.md § FUTURE STEPS**.
 
-Philosophy: **Understand first. Change later.**
+1. **Domain taxonomy** on catalog (Models) — Firewall, Defender, Update, Telemetry, AppPrivacy, etc.  
+2. **Effective layer + relationships** (Models + InventoryStateBinder + report) — resolve GPO vs ConsentStore vs alternate policy paths; show conflicts.  
+3. **CapabilityCollector** reliability pass.  
+4. **Expand discovery by domain** (Firewall first among missing surfaces), each with catalog explanations — **not** full gpedit import.  
+5. **Report grouped by domain**; non-interactive flags only.  
+6. **Optional baselines** (desired vs observed, compare-only).  
+7. **Optional transparent risk assessment** (separate from today’s watch list).  
+8. Relationships presentation polish.  
+9. Controlled-change **design doc only** until authorised.  
+10. Terminal UI only after report is navigable and layers are clear.
+
+### Balance rule (owner)
+
+Maximize relevant privacy/security coverage **domain by domain** without a self-strangling “every ADMX setting” model. Human-readable GPO area is a primary value prop; overlap must be explained, not doubled blindly.
+
+---
+
+# Safety
+
+Strictly read-only. No registry/service/task/package/policy writes. No elevation. No remediation. No interactive prompts.
+
+---
+
+# Overall
+
+v0.6 verified. v0.5 archived by human. Next work is taxonomy + effective layers + domain expansion — still understand-first.
