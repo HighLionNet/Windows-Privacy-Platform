@@ -2,62 +2,97 @@
 ## Complete Technical Documentation
 
 **Document Status:** Living  
-**Current Applies To:** Prototype v0.6 (Bind + Validate + Risk Summary)  
+**Current Applies To:** Prototype v0.6 (verified)  
 **Last Updated:** 2026-07-24
 
----
-
-# 1. Project Overview
-
-Local, declarative privacy intelligence platform for Windows. Architecture-first. Understand before change.
+For the exhaustive next-work roadmap, pipeline insertion points, and owner constraints, **AI_Handoff.md is authoritative**.
 
 ---
 
-# 2. Guiding Philosophy
+# 1. Overview
 
-Discover → Model → Validate → Report → Relationships → Controlled remediation (future).
-
-v0.6 improves Validate and Report without interactivity or writes.
-
----
-
-# 3. Current Capabilities
-
-- Full v0.5 discovery (identity, packages, services, tasks, privacy, policy probes)
-- ManagedObject catalog with explanations
-- Inventory → CurrentState binding
-- Batch structural validation of catalog entries
-- Observation/risk summary
-- Default concise report; `--full` for complete categorized dump
-- Strictly read-only
+Local, declarative privacy intelligence platform for Windows.  
+Goal: discover and **explain** privacy/security-related configuration (including human-readable policy/GPO surfaces) before any change capability exists.
 
 ---
 
-# 4–5. Layout & Architecture
+# 2. Philosophy
 
-Seven projects. Explicit composition. Models free of business logic. Scanner + CLI = net8.0-windows.
+Discover → Model → Validate → Report → Relationships (incl. effective layers) → Controlled remediation (future, authorised separately).
 
----
-
-# 6. Runtime Pipeline (v0.6)
-
-CLI → Scan → Bind CurrentState → KnowledgeBase load → ValidateAll → ObservationSummary → Report (summary or --full) → Safety confirmation
+**Understand first. Change later.**
 
 ---
 
-# 14. Known Gaps
+# 3. Current capabilities (v0.6 verified)
 
-- Capabilities may be 0 on some hosts
-- Relationship graph not started
-- No desired-state compliance scoring yet (observation only)
-- No write/elevation/UI paths
+- Identity, AppX packages, services, scheduled tasks  
+- Privacy ConsentStore + related HKCU preferences  
+- Curated policy/GPO-style registry probes (missing → Not configured)  
+- ManagedObject catalog with description, rationale, risk tags  
+- Bind live values to catalog; batch structural validation  
+- Observation summary + high-risk watch list; `--full` dump  
+- Strictly read-only, non-interactive CLI  
+
+Not implemented: firewall collector, effective GPO-vs-UI resolution, full ADMX set, security score, baselines, writes, GUI.
 
 ---
 
-# Build & Run
+# 4. Repository
+
+`Archive/` · `KnowledgeBase/` · `Source/` (seven projects) · `Status/`
+
+---
+
+# 5. Architecture
+
+Models → Core → Logging → KnowledgeBase → Validator → Scanner → CLI  
+Explicit composition. No DI. Models have no business logic.
+
+`bin/` DLLs = compile outputs of our projects + NuGet references.
+
+---
+
+# 6. Pipeline
+
+CLI → collectors → InventorySnapshot → catalog + InventoryStateBinder → KnowledgeBase → SchemaValidator.ValidateAll → ObservationSummary → report → safety confirmation
+
+---
+
+# 7. Future architecture (planned)
+
+## Domain taxonomy
+
+Group settings by product domain (Firewall, Defender, Windows Update, Telemetry, App privacy, Edge, Search, …) with human names. Primary navigation model for reports and later UI.
+
+## Effective layers
+
+Model User preference vs Machine policy vs alternate policy stores. Use ManagedObject relationship fields. Binder computes effective/conflict. Prevents silent double-counting when GPO overrides Settings UI.
+
+## Coverage policy
+
+Expand **domain by domain** with curated high-value settings. Do not import entire gpedit. Human-readable GPO explanations are a core product differentiator.
+
+## Optional later
+
+Compare-only baselines; transparent risk assessment feature (not today’s H/M/L counts); still no remediation until authorised.
+
+Insertion order and detail: **Status/AI_Handoff.md § FUTURE STEPS**.
+
+---
+
+# 8. Safety
+
+No writes, no elevation, no interactive blocking prompts, no product telemetry network.
+
+---
+
+# 9. Build & run
 
 ```
+cd Source
 dotnet build -c Release
-dotnet run --project Source\WindowsPrivacyPlatform.CLI -c Release
-dotnet run --project Source\WindowsPrivacyPlatform.CLI -c Release -- --full
+cd WindowsPrivacyPlatform.CLI
+dotnet run -c Release
+dotnet run -c Release -- --full
 ```
