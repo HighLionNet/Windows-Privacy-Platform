@@ -5,6 +5,8 @@
     <TextBlock x:Name="TitleText" Style="{StaticResource SectionTitle}" />
     <TextBlock x:Name="DomainPathText" Style="{StaticResource SectionSubtitle}" />
 
+    <StackPanel x:Name="BadgeRow" Orientation="Horizontal" Margin="0,0,0,12" />
+
     <Border Style="{StaticResource Card}">
       <StackPanel>
         <TextBlock Text="What this is" FontWeight="SemiBold" Margin="0,0,0,6" />
@@ -33,7 +35,7 @@
 
     <Border Style="{StaticResource Card}">
       <StackPanel>
-        <TextBlock Text="Impact &amp; guidance" FontWeight="SemiBold" Margin="0,0,0,6" />
+        <TextBlock Text="Impact & guidance" FontWeight="SemiBold" Margin="0,0,0,6" />
         <TextBlock x:Name="ImpactText" Style="{StaticResource ValueText}" />
         <TextBlock x:Name="UserImpactText" Style="{StaticResource ValueText}" Margin="0,8,0,0" />
         <TextBlock x:Name="EnterpriseText" Style="{StaticResource ValueText}" Margin="0,8,0,0" />
@@ -51,6 +53,11 @@
       </StackPanel>
     </Border>
 
-    <TextBlock x:Name="ObjectIdText" Style="{StaticResource LabelMuted}" Margin="0,8,0,0" />
+    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+      <TextBlock x:Name="ObjectIdText" Style="{StaticResource LabelMuted}" VerticalAlignment="Center" />
+      <Button x:Name="CopyIdButton" Content="Copy ObjectId" Style="{StaticResource LinkButton}"
+              Margin="12,0,0,0" Click="CopyIdButton_Click"
+              ToolTip="Copy ObjectId to the clipboard" />
+    </StackPanel>
   </StackPanel>
 </UserControl>
