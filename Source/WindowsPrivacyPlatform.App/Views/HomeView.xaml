@@ -3,11 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <StackPanel>
     <TextBlock Text="Machine Overview" Style="{StaticResource SectionTitle}" />
-    <TextBlock x:Name="SubtitleText" Style="{StaticResource SectionSubtitle}"
-               Text="Observed device context. Unknown values remain Unknown." />
     <Border Style="{StaticResource HeaderRule}" />
 
-    <!-- Attention first when relevant -->
     <Border x:Name="ConflictsCard" Style="{StaticResource CardConflict}" Visibility="Collapsed">
       <DockPanel LastChildFill="True">
         <StackPanel DockPanel.Dock="Left">
@@ -19,7 +16,7 @@
       </DockPanel>
     </Border>
 
-    <TextBlock Text="Identity" Style="{StaticResource GroupHeader}" Margin="0,4,0,4" />
+    <TextBlock Text="Identity" Style="{StaticResource GroupHeader}" Margin="0,2,0,4" />
     <Grid>
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="*" />
@@ -59,7 +56,7 @@
       </Grid.ColumnDefinitions>
       <Border Style="{StaticResource PropertyGroup}" Margin="0,0,4,0">
         <StackPanel>
-          <TextBlock Text="Platform security (observed)" Style="{StaticResource LabelMuted}" />
+          <TextBlock Text="Platform" Style="{StaticResource LabelMuted}" />
           <TextBlock x:Name="SecureBootText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
           <TextBlock x:Name="TpmText" Style="{StaticResource ValueText}" Margin="0,2,0,0" />
           <TextBlock x:Name="BitLockerText" Style="{StaticResource ValueText}" Margin="0,2,0,0" />
@@ -67,7 +64,7 @@
       </Border>
       <Border Grid.Column="1" Style="{StaticResource PropertyGroup}" Margin="4,0,0,0">
         <StackPanel>
-          <TextBlock Text="Services and network" Style="{StaticResource LabelMuted}" />
+          <TextBlock Text="Services" Style="{StaticResource LabelMuted}" />
           <TextBlock x:Name="FirewallText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
           <TextBlock x:Name="DefenderText" Style="{StaticResource ValueText}" Margin="0,2,0,0" />
         </StackPanel>
@@ -98,7 +95,7 @@
 
     <Border Style="{StaticResource SectionRule}" />
 
-    <TextBlock Text="Quick navigation" Style="{StaticResource GroupHeader}" Margin="0,0,0,4" />
+    <TextBlock Text="Domains" Style="{StaticResource GroupHeader}" Margin="0,0,0,4" />
     <WrapPanel x:Name="QuickNavPanel" />
   </StackPanel>
 </UserControl>

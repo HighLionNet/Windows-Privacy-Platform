@@ -42,7 +42,10 @@ public partial class MainWindow : Window
         {
             CollectNavButtons();
             if (_sidebarCollapsed)
+            {
+                SidebarColumn.Width = new GridLength(0);
                 NavPanel.Visibility = Visibility.Collapsed;
+            }
             UpdateBreadcrumbs("Machine Overview");
             ShowWelcome();
             await RunScanAsync();
@@ -72,7 +75,7 @@ public partial class MainWindow : Window
     {
         ContentHost.Content = new TextBlock
         {
-            Text = "Windows Privacy Platform\n\nPress Scan (F5) to discover local configuration.\n\nInspect mode · read-only · no elevation.",
+            Text = "Press Scan (F5) to discover local configuration.\n\nInspect mode · read-only.",
             FontSize = 13,
             Foreground = (Brush)FindResource("BrushTextSecondary"),
             TextWrapping = TextWrapping.Wrap,
@@ -82,6 +85,29 @@ public partial class MainWindow : Window
     }
 
     private async void ScanButton_Click(object sender, RoutedEventArgs e) => await RunScanAsync();
+    private async void MenuScan_Click(object sender, RoutedEventArgs e) => await RunScanAsync();
+
+    private void MenuExit_Click(object sender, RoutedEventArgs e) => Close();
+
+    private void MenuHome_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("home");
+    private void MenuConflicts_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("conflicts");
+    private void MenuKnowledge_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("knowledge");
+    private void MenuAbout_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("about");
+
+    private void MenuSearch_Click(object sender, RoutedEventArgs e)
+    {
+        SearchBox.Focus();
+        SearchBox.SelectAll();
+    }
+
+    private void NavigateFromMenu(string tag)
+    {
+        _currentNav = tag;
+        var btn = _navButtons.FirstOrDefault(b => b.Tag as string == tag);
+        if (btn is not null)
+            HighlightNav(btn);
+        Navigate(tag);
+    }
 
     private async Task RunScanAsync()
     {
@@ -182,7 +208,10 @@ public partial class MainWindow : Window
             if (Enum.TryParse<ProductDomain>(name, out var domain))
             {
                 ContentHost.Content = new DomainView(_scan, domain, OpenSetting);
-                UpdateBreadcrumbs(NavigationBuilder.HumanizeDomain(domain), group: DomainGroup(domain));
+                UpdateBreadcrumbs(
+                    NavigationBuilder.HumanizeDomain(domain),
+                    group: DomainGroup(domain),
+                    domainTag: tag);
                 return;
             }
         }
@@ -198,21 +227,12 @@ public partial class MainWindow : Window
 
     private void OpenConflicts()
     {
-        _currentNav = "conflicts";
-        var btn = _navButtons.FirstOrDefault(b => b.Tag as string == "conflicts");
-        if (btn is not null)
-            HighlightNav(btn);
-        Navigate("conflicts");
+        NavigateFromMenu("conflicts");
     }
 
     private void NavigateDomain(ProductDomain domain)
     {
-        var tag = $"domain:{domain}";
-        _currentNav = tag;
-        var btn = _navButtons.FirstOrDefault(b => b.Tag as string == tag);
-        if (btn is not null)
-            HighlightNav(btn);
-        Navigate(tag);
+        NavigateFromMenu($"domain:{domain}");
     }
 
     private void OpenSetting(string objectId)
@@ -227,7 +247,12 @@ public partial class MainWindow : Window
             return;
 
         ContentHost.Content = new SettingDetailPage(detail, OpenSetting);
-        UpdateBreadcrumbs(detail.Title, group: DomainGroup(mo.ProductDomain), domain: NavigationBuilder.HumanizeDomain(mo.ProductDomain));
+        var domainTag = $"domain:{mo.ProductDomain}";
+        UpdateBreadcrumbs(
+            detail.Title,
+            group: DomainGroup(mo.ProductDomain),
+            domainName: NavigationBuilder.HumanizeDomain(mo.ProductDomain),
+            domainTag: domainTag);
     }
 
     private static string DomainGroup(ProductDomain d) => d switch
@@ -241,7 +266,11 @@ public partial class MainWindow : Window
         _ => "Domains"
     };
 
-    private void UpdateBreadcrumbs(string current, string? group = null, string? domain = null)
+    private void UpdateBreadcrumbs(
+        string current,
+        string? group = null,
+        string? domainName = null,
+        string? domainTag = null)
     {
         BreadcrumbPanel.Children.Clear();
 
@@ -263,7 +292,8 @@ public partial class MainWindow : Window
             {
                 Content = text,
                 Style = (Style)FindResource("BreadcrumbLink"),
-                Tag = tag
+                Tag = tag,
+                Cursor = Cursors.Hand
             };
             btn.Click += (_, _) =>
             {
@@ -287,6 +317,7 @@ public partial class MainWindow : Window
         }
 
         AddLink("Home", "home");
+
         if (group is not null)
         {
             AddSep();
@@ -296,20 +327,29 @@ public partial class MainWindow : Window
                 Style = (Style)FindResource("BreadcrumbText")
             });
         }
-        if (domain is not null)
+
+        if (domainName is not null && domainTag is not null)
         {
             AddSep();
-            BreadcrumbPanel.Children.Add(new TextBlock
-            {
-                Text = domain,
-                Style = (Style)FindResource("BreadcrumbText")
-            });
+            AddLink(domainName, domainTag);
         }
+        else if (domainTag is not null && current is not null)
+        {
+            // Domain list page: current is the domain title; make it non-link terminal
+        }
+
         if (!string.Equals(current, "Machine Overview", StringComparison.Ordinal) &&
             !string.Equals(current, "Ready", StringComparison.Ordinal))
         {
-            AddSep();
-            AddLink(current, null);
+            // If we already linked the domain name and current is the setting title, show current.
+            // If current IS the domain page title and domainTag was set without domainName, show current as terminal.
+            var alreadyLinkedDomain = domainName is not null &&
+                string.Equals(current, domainName, StringComparison.Ordinal);
+            if (!alreadyLinkedDomain)
+            {
+                AddSep();
+                AddLink(current, null);
+            }
         }
     }
 
@@ -373,10 +413,9 @@ public partial class MainWindow : Window
         if (ModeCombo.SelectedIndex == 1)
         {
             MessageBox.Show(
-                "Modify mode is a future capability.\n\n" +
-                "It will require privilege elevation, restore points, validation, and a separate safety architecture.\n\n" +
-                "Version 1.0 is Inspect-only. No write functionality exists.",
-                "Modify mode (future)",
+                "Modify mode is not available in version 1.0.\n\n" +
+                "Inspect-only. No write functionality exists.",
+                "Modify mode",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
             ModeCombo.SelectedIndex = 0;
@@ -386,7 +425,7 @@ public partial class MainWindow : Window
     private void ToggleSidebar_Click(object sender, RoutedEventArgs e)
     {
         _sidebarCollapsed = !_sidebarCollapsed;
-        SidebarColumn.Width = _sidebarCollapsed ? new GridLength(48) : new GridLength(240);
+        SidebarColumn.Width = _sidebarCollapsed ? new GridLength(0) : new GridLength(220);
         NavPanel.Visibility = _sidebarCollapsed ? Visibility.Collapsed : Visibility.Visible;
     }
 

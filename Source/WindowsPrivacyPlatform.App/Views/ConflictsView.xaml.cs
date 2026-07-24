@@ -18,17 +18,17 @@ public partial class ConflictsView : UserControl
         var conflicts = scan.Query.GetConflicts().ToList();
         if (conflicts.Count == 0)
         {
-            SubtitleText.Text = "No layer conflicts detected on this scan.";
+            SubtitleText.Text = "None detected on this scan.";
             List.Items.Add(new TextBlock
             {
-                Text = "No disagreements among known relationship pairs.",
+                Text = "No layer conflicts.",
                 Foreground = (Brush)FindResource("BrushTextMuted"),
                 Margin = new Thickness(10, 8, 10, 8)
             });
             return;
         }
 
-        SubtitleText.Text = $"{conflicts.Count} setting(s) with layer conflict";
+        SubtitleText.Text = $"{conflicts.Count} setting(s)";
 
         foreach (var mo in conflicts.OrderBy(m => m.ProductDomain).ThenBy(m => m.ObjectName))
         {
@@ -36,38 +36,45 @@ public partial class ConflictsView : UserControl
             if (card is null) continue;
 
             var border = new Border { Style = (Style)FindResource("ListRowConflict") };
-            var grid = new Grid();
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(280) });
+            var panel = new StackPanel();
 
-            var left = new StackPanel();
-            left.Children.Add(new TextBlock
+            panel.Children.Add(new TextBlock
             {
                 Text = card.Title,
                 FontWeight = FontWeights.SemiBold,
-                FontSize = 12
+                FontSize = 13
             });
-            left.Children.Add(new TextBlock
+            panel.Children.Add(new TextBlock
             {
                 Text = card.DomainPath,
                 Style = (Style)FindResource("MetaText"),
-                Margin = new Thickness(0, 1, 0, 0)
+                Margin = new Thickness(0, 2, 0, 0)
             });
-            Grid.SetColumn(left, 0);
-            grid.Children.Add(left);
 
-            var right = new TextBlock
+            var effective = card.EffectiveValueDisplay ?? "Unknown";
+            panel.Children.Add(new TextBlock
             {
-                Text = $"{card.EffectiveValueDisplay ?? "Unknown"} · {card.ResolutionReason}",
-                TextWrapping = TextWrapping.Wrap,
-                FontSize = 11,
-                VerticalAlignment = VerticalAlignment.Center,
-                Foreground = (Brush)FindResource("BrushTextSecondary")
-            };
-            Grid.SetColumn(right, 1);
-            grid.Children.Add(right);
+                Text = $"Effective: {effective}",
+                FontSize = 12,
+                FontWeight = FontWeights.SemiBold,
+                Margin = new Thickness(0, 6, 0, 0),
+                Foreground = (Brush)FindResource("BrushTextPrimary")
+            });
 
-            border.Child = grid;
+            if (!string.IsNullOrWhiteSpace(card.ResolutionReason))
+            {
+                panel.Children.Add(new TextBlock
+                {
+                    Text = card.ResolutionReason,
+                    TextWrapping = TextWrapping.Wrap,
+                    FontSize = 12,
+                    Margin = new Thickness(0, 4, 0, 0),
+                    Foreground = (Brush)FindResource("BrushTextSecondary"),
+                    LineHeight = 18
+                });
+            }
+
+            border.Child = panel;
             var id = mo.ObjectId;
             border.MouseLeftButtonUp += (_, _) => openSetting(id);
             border.ToolTip = "Open setting details";

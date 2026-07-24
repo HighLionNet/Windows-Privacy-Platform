@@ -22,10 +22,10 @@ public partial class DomainView : UserControl
 
         if (items.Count == 0)
         {
-            SubtitleText.Text = "No managed settings in the current catalog for this domain.";
+            SubtitleText.Text = "No curated entries.";
             SettingsList.Items.Add(new TextBlock
             {
-                Text = "No curated entries yet.",
+                Text = "No settings in catalog for this domain.",
                 Foreground = (Brush)FindResource("BrushTextMuted"),
                 Margin = new Thickness(10, 8, 10, 8)
             });
@@ -37,7 +37,7 @@ public partial class DomainView : UserControl
             m.Observation?.Effective?.HasConflict == true);
 
         SubtitleText.Text = conflicts > 0
-            ? $"{items.Count} settings · {conflicts} with layer conflict"
+            ? $"{items.Count} settings · {conflicts} conflict(s)"
             : $"{items.Count} settings";
 
         string? lastSub = null;
@@ -50,7 +50,7 @@ public partial class DomainView : UserControl
                 SettingsList.Items.Add(new Border
                 {
                     Background = (Brush)FindResource("BrushBgHeader"),
-                    BorderBrush = (Brush)FindResource("BrushBorder"),
+                    BorderBrush = (Brush)FindResource("BrushBorderStrong"),
                     BorderThickness = new Thickness(0, 0, 0, 1),
                     Padding = new Thickness(10, 4, 10, 4),
                     Child = new TextBlock
@@ -77,9 +77,9 @@ public partial class DomainView : UserControl
             };
 
             var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2, GridUnitType.Star) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(220) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(90) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(88) });
 
             var left = new StackPanel();
             left.Children.Add(new TextBlock
@@ -93,14 +93,14 @@ public partial class DomainView : UserControl
             {
                 Text = mo.ObjectId,
                 Style = (Style)FindResource("MetaText"),
-                Margin = new Thickness(0, 1, 0, 0)
+                Margin = new Thickness(0, 2, 0, 0)
             });
             Grid.SetColumn(left, 0);
             grid.Children.Add(left);
 
             var effective = mo.Observation?.Resolution?.EffectiveValue
                             ?? mo.Observation?.Effective?.EffectiveValue;
-            var stateLine = effective is not null
+            var stateLine = effective is not null && !string.Equals(effective, observed, StringComparison.Ordinal)
                 ? $"{observed}  →  {effective}"
                 : observed;
 
@@ -108,9 +108,10 @@ public partial class DomainView : UserControl
             {
                 Text = stateLine,
                 TextWrapping = TextWrapping.Wrap,
-                FontSize = 11,
-                VerticalAlignment = VerticalAlignment.Center,
-                Foreground = (Brush)FindResource("BrushTextSecondary")
+                FontSize = 12,
+                VerticalAlignment = VerticalAlignment.Top,
+                Foreground = (Brush)FindResource("BrushTextSecondary"),
+                LineHeight = 17
             };
             Grid.SetColumn(stateBlock, 1);
             grid.Children.Add(stateBlock);
@@ -120,7 +121,7 @@ public partial class DomainView : UserControl
                 var badge = new Border
                 {
                     Style = (Style)FindResource(hasConflict ? "BadgeConflict" : "BadgeUnknown"),
-                    VerticalAlignment = VerticalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Top,
                     HorizontalAlignment = HorizontalAlignment.Right
                 };
                 badge.Child = new TextBlock

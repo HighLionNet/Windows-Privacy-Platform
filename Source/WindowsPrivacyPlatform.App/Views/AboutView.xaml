@@ -3,38 +3,38 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <StackPanel>
     <TextBlock Text="About" Style="{StaticResource SectionTitle}" />
-    <TextBlock Style="{StaticResource SectionSubtitle}"
-               Text="Windows Privacy Platform 1.0 — local read-only configuration knowledge explorer." />
     <Border Style="{StaticResource HeaderRule}" />
 
-    <TextBlock Text="Mode" Style="{StaticResource GroupHeader}" Margin="0,0,0,4" />
     <Border Style="{StaticResource PropertyGroup}">
-      <TextBlock TextWrapping="Wrap" Style="{StaticResource ValueText}"
-                 Text="Inspect (active) — discover and explain configuration without modification.&#10;Modify (future) — reserved for a controlled-change architecture. Not available in 1.0." />
+      <StackPanel>
+        <TextBlock Text="Windows Privacy Platform 1.0" FontWeight="SemiBold" FontSize="13" />
+        <TextBlock Style="{StaticResource ValueText}" Margin="0,4,0,0"
+                   Text="Local read-only configuration knowledge explorer." />
+      </StackPanel>
     </Border>
 
-    <TextBlock Text="Safety" Style="{StaticResource GroupHeader}" Margin="0,2,0,4" />
+    <TextBlock Text="Mode" Style="{StaticResource GroupHeader}" />
     <Border Style="{StaticResource PropertyGroup}">
-      <TextBlock TextWrapping="Wrap" Style="{StaticResource ValueText}"
-                 Text="No registry writes · No service / task / policy / firewall changes · No elevation · No product telemetry · Unknown remains first-class" />
+      <TextBlock Style="{StaticResource ValueText}"
+                 Text="Inspect — active&#10;Modify — not available in 1.0" />
     </Border>
 
-    <TextBlock Text="Architecture" Style="{StaticResource GroupHeader}" Margin="0,2,0,4" />
+    <TextBlock Text="Safety" Style="{StaticResource GroupHeader}" />
     <Border Style="{StaticResource PropertyGroup}">
-      <TextBlock TextWrapping="Wrap" Style="{StaticResource ValueText}"
-                 Text="Models → Core → Logging → KnowledgeBase → Validator → Scanner → CLI / App&#10;Presentation hosts contain no Windows configuration logic." />
+      <TextBlock Style="{StaticResource ValueText}"
+                 Text="No writes · No elevation · No telemetry · Unknown preserved" />
     </Border>
 
-    <TextBlock Text="Keyboard" Style="{StaticResource GroupHeader}" Margin="0,2,0,4" />
+    <TextBlock Text="Keyboard" Style="{StaticResource GroupHeader}" />
     <Border Style="{StaticResource PropertyGroup}">
-      <TextBlock TextWrapping="Wrap" Style="{StaticResource ValueText}"
-                 Text="F5 / Ctrl+R — rescan&#10;Ctrl+F — focus search&#10;Enter (search) — run search&#10;Esc — clear search" />
+      <TextBlock Style="{StaticResource ValueText}"
+                 Text="F5 / Ctrl+R — scan&#10;Ctrl+F — search&#10;Esc — clear search" />
     </Border>
 
-    <TextBlock Text="Project" Style="{StaticResource GroupHeader}" Margin="0,2,0,4" />
+    <TextBlock Text="Project" Style="{StaticResource GroupHeader}" />
     <Border Style="{StaticResource PropertyGroup}">
-      <TextBlock TextWrapping="Wrap" Style="{StaticResource ValueText}"
-                 Text="https://github.com/HighLionNet/Windows-Privacy-Platform&#10;.NET 8 / Windows 11 · Application 1.0 · Knowledge 1.0 · 2026-07-24" />
+      <TextBlock Style="{StaticResource ValueText}"
+                 Text="https://github.com/HighLionNet/Windows-Privacy-Platform&#10;.NET 8 · Windows 11 · 2026-07-24" />
     </Border>
   </StackPanel>
 </UserControl>
