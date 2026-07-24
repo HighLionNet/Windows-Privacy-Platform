@@ -80,7 +80,6 @@
     <Setter Property="Margin" Value="0,2" />
   </Style>
 
-  <!-- Sidebar navigation -->
   <Style x:Key="SidebarButton" TargetType="Button">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderThickness" Value="0" />
@@ -367,22 +366,19 @@
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
 
-  <Style x:Key="BreadcrumbLink" TargetType="Button" BasedOn="{StaticResource LinkButton}">
+  <Style x:Key="BreadcrumbLink" TargetType="Button">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
     <Setter Property="Padding" Value="2,1" />
     <Setter Property="FontSize" Value="11" />
     <Setter Property="Foreground" Value="{StaticResource BrushAccent}" />
-    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Cursor" Value="Hand" />
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="Button">
           <Border Background="Transparent" Padding="{TemplateBinding Padding}">
             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
           </Border>
-          <ControlTemplate.Triggers>
-            <Trigger Property="IsMouseOver" Value="True">
-              <Setter Property="TextDecorations" Value="Underline" />
-            </Trigger>
-          </ControlTemplate.Triggers>
         </ControlTemplate>
       </Setter.Value>
     </Setter>
