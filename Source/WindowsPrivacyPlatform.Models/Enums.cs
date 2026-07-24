@@ -25,6 +25,34 @@ public enum FeatureCategory
     OfficeFeature
 }
 
+/// <summary>
+/// Primary product/feature domain for navigation and report grouping.
+/// Every catalog entry is assigned exactly one primary domain.
+/// SubCategory remains available for finer classification within a domain.
+/// </summary>
+public enum ProductDomain
+{
+    /// <summary>Per-user ConsentStore app capability permissions.</summary>
+    ConsentStore,
+    /// <summary>Machine AppPrivacy GPO overrides for app capabilities.</summary>
+    AppPrivacy,
+    Telemetry,
+    WindowsUpdate,
+    Defender,
+    Search,
+    Edge,
+    ActivityHistory,
+    CloudContent,
+    Advertising,
+    Location,
+    Biometrics,
+    Device,
+    Speech,
+    /// <summary>Reserved for future firewall collector and catalog entries.</summary>
+    Firewall,
+    Other
+}
+
 public enum RiskLevel
 {
     Low,
