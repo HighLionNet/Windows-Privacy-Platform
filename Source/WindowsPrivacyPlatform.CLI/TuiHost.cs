@@ -9,13 +9,16 @@ namespace WindowsPrivacyPlatform.CLI
 {
     /// <summary>
     /// Thin read-only terminal UI. Presentation only.
-    /// Consumes NavigationBuilder + SettingsQuery + SettingDetailView.
+    /// Consumes NavigationBuilder + SettingsQuery + SettingDetailView + MachineOverview.
     /// No business logic, no writes, no elevation.
+    /// v0.8: Home screen separates Machine Overview from domain exploration.
     /// </summary>
     internal static class TuiHost
     {
         private enum Screen
         {
+            Home,
+            MachineOverview,
             Domains,
             Features,
             Settings,
@@ -25,7 +28,7 @@ namespace WindowsPrivacyPlatform.CLI
 
         private static bool _altScreen;
 
-        public static void Run(IReadOnlyList<ManagedObject> catalog, SettingsQuery query)
+        public static void Run(IReadOnlyList<ManagedObject> catalog, SettingsQuery query, MachineOverview? overview = null)
         {
             if (catalog is null || catalog.Count == 0)
             {
@@ -36,13 +39,20 @@ namespace WindowsPrivacyPlatform.CLI
             query ??= new SettingsQuery(catalog);
             var root = NavigationBuilder.BuildDomainTree(catalog);
 
-            var screen = Screen.Domains;
+            var screen = Screen.Home;
             NavigationNode? currentDomain = null;
             NavigationNode? currentFeature = null;
             int cursor = 0;
             string searchTerm = string.Empty;
             List<NavigationNode> searchResults = new();
             int detailScroll = 0;
+
+            var homeItems = new List<string>
+            {
+                "Machine Overview",
+                "Explore Privacy and Security Domains",
+                "Search catalog"
+            };
 
             EnterAltScreen();
             Console.CursorVisible = false;
@@ -55,6 +65,12 @@ namespace WindowsPrivacyPlatform.CLI
 
                     switch (screen)
                     {
+                        case Screen.Home:
+                            RenderHome(homeItems, cursor, overview);
+                            break;
+                        case Screen.MachineOverview:
+                            RenderMachineOverview(overview, detailScroll);
+                            break;
                         case Screen.Domains:
                             RenderNodeList(root.Children, cursor, "Choose a domain", root);
                             break;
@@ -89,12 +105,11 @@ namespace WindowsPrivacyPlatform.CLI
                     if (key.Key == ConsoleKey.Q && screen != Screen.Search)
                         break;
 
-                    // Detail page scroll
-                    if (screen == Screen.Detail)
+                    if (screen is Screen.Detail or Screen.MachineOverview)
                     {
                         if (key.Key == ConsoleKey.DownArrow || key.Key == ConsoleKey.PageDown)
                         {
-                            detailScroll = Math.Min(detailScroll + 1, 40);
+                            detailScroll = Math.Min(detailScroll + 1, 60);
                             continue;
                         }
                         if (key.Key == ConsoleKey.UpArrow || key.Key == ConsoleKey.PageUp)
@@ -126,9 +141,9 @@ namespace WindowsPrivacyPlatform.CLI
                             currentFeature = null;
                             continue;
                         }
-                        if (screen == Screen.Search)
+                        if (screen is Screen.Domains or Screen.MachineOverview or Screen.Search)
                         {
-                            screen = Screen.Domains;
+                            screen = Screen.Home;
                             searchTerm = string.Empty;
                             searchResults.Clear();
                             cursor = 0;
@@ -137,7 +152,7 @@ namespace WindowsPrivacyPlatform.CLI
                         break;
                     }
 
-                    if (key.KeyChar == '/' && screen != Screen.Search && screen != Screen.Detail)
+                    if (key.KeyChar == '/' && screen != Screen.Search && screen != Screen.Detail && screen != Screen.MachineOverview)
                     {
                         screen = Screen.Search;
                         searchTerm = string.Empty;
@@ -149,8 +164,30 @@ namespace WindowsPrivacyPlatform.CLI
 
                     switch (screen)
                     {
+                        case Screen.Home:
+                            HandleListNav(key, homeItems.Count, ref cursor, out var openHome);
+                            if (openHome)
+                            {
+                                detailScroll = 0;
+                                if (cursor == 0)
+                                    screen = Screen.MachineOverview;
+                                else if (cursor == 1)
+                                {
+                                    cursor = 0;
+                                    screen = Screen.Domains;
+                                }
+                                else
+                                {
+                                    screen = Screen.Search;
+                                    searchTerm = string.Empty;
+                                    searchResults.Clear();
+                                    cursor = 0;
+                                }
+                            }
+                            break;
+
                         case Screen.Domains:
-                            HandleListNav(key, root.Children, ref cursor, out var openDomain);
+                            HandleListNav(key, root.Children.Count, ref cursor, out var openDomain);
                             if (openDomain && root.Children.Count > 0)
                             {
                                 currentDomain = root.Children[cursor];
@@ -162,7 +199,7 @@ namespace WindowsPrivacyPlatform.CLI
 
                         case Screen.Features:
                             if (currentDomain is null) break;
-                            HandleListNav(key, currentDomain.Children, ref cursor, out var openFeature);
+                            HandleListNav(key, currentDomain.Children.Count, ref cursor, out var openFeature);
                             if (openFeature && currentDomain.Children.Count > 0)
                             {
                                 currentFeature = currentDomain.Children[cursor];
@@ -173,7 +210,7 @@ namespace WindowsPrivacyPlatform.CLI
 
                         case Screen.Settings:
                             if (currentFeature is null) break;
-                            HandleListNav(key, currentFeature.Children, ref cursor, out var openSetting);
+                            HandleListNav(key, currentFeature.Children.Count, ref cursor, out var openSetting);
                             if (openSetting && currentFeature.Children.Count > 0)
                             {
                                 detailScroll = 0;
@@ -196,11 +233,85 @@ namespace WindowsPrivacyPlatform.CLI
             }
         }
 
+        private static void RenderHome(IReadOnlyList<string> items, int cursor, MachineOverview? overview)
+        {
+            Console.WriteLine("  Home");
+            Console.WriteLine("  Separate machine context from configuration exploration.");
+            Console.WriteLine();
+            if (overview is not null)
+            {
+                Console.WriteLine($"  {Display(overview.WindowsVersion)} · Build {overview.BuildNumber} · {Display(overview.Architecture)}");
+                Console.WriteLine($"  Last scan (UTC): {overview.LastScanUtc:yyyy-MM-dd HH:mm}");
+                Console.WriteLine();
+            }
+            for (var i = 0; i < items.Count; i++)
+            {
+                var marker = i == cursor ? "›" : " ";
+                Console.WriteLine($"  {marker} {items[i]}");
+            }
+        }
+
+        private static void RenderMachineOverview(MachineOverview? o, int scroll)
+        {
+            var lines = new List<string>();
+            lines.Add("  Machine Overview");
+            lines.Add("  Observed security-related platform information (not a score).");
+            lines.Add(string.Empty);
+
+            if (o is null)
+            {
+                lines.Add("  (no snapshot available in this session)");
+            }
+            else
+            {
+                lines.Add($"  OS              : {Display(o.WindowsVersion)} | {Display(o.WindowsEdition)}");
+                lines.Add($"  Build           : {o.BuildNumber}");
+                lines.Add($"  Architecture    : {Display(o.Architecture)}");
+                lines.Add($"  Manufacturer    : {Display(o.DeviceManufacturer)}");
+                lines.Add($"  Model           : {Display(o.DeviceModel)}");
+                lines.Add($"  Processor       : {Display(o.Processor)}");
+                lines.Add($"  Memory (MiB)    : {(o.TotalPhysicalMemoryMiB > 0 ? o.TotalPhysicalMemoryMiB.ToString() : "Unknown")}");
+                lines.Add($"  Secure Boot     : {Display(o.SecureBootState)}");
+                lines.Add($"  TPM             : {Display(o.TpmPresent)} / {Display(o.TpmVersion)}");
+                lines.Add($"  BitLocker       : {Display(o.BitLockerProtectionStatus)}");
+                lines.Add($"  Domain          : {Display(o.DomainMembership)}");
+                lines.Add($"  Entra / Azure AD: {Display(o.AzureAdJoined)}");
+                lines.Add($"  PowerShell      : {Display(o.PowerShellVersion)}");
+                lines.Add($"  .NET runtime    : {Display(o.DotNetRuntimeVersion)}");
+                lines.Add($"  Firewall svc    : {Display(o.FirewallServiceState)}");
+                lines.Add($"  Firewall profiles: {Display(o.FirewallProfilesSummary)}");
+                lines.Add($"  Defender svc    : {Display(o.DefenderServiceState)}");
+                lines.Add($"  Catalog / KB    : {o.CatalogVersion} / {o.KnowledgeBaseVersion}");
+                lines.Add($"  Identity conf.  : {o.IdentityConfidence}");
+                lines.Add(string.Empty);
+                if (!string.IsNullOrWhiteSpace(o.IdentityCollectionNotes))
+                {
+                    lines.Add("  Collection notes:");
+                    lines.Add($"    {o.IdentityCollectionNotes}");
+                }
+                lines.Add(string.Empty);
+                lines.Add("  Values marked Unknown could not be verified with available read-only sources.");
+            }
+
+            var viewHeight = Math.Max(8, Console.WindowHeight - 8);
+            var maxScroll = Math.Max(0, lines.Count - viewHeight);
+            scroll = Math.Min(scroll, maxScroll);
+            var end = Math.Min(lines.Count, scroll + viewHeight);
+            for (var i = scroll; i < end; i++)
+                Console.WriteLine(lines[i]);
+            if (lines.Count > viewHeight)
+                Console.WriteLine($"  … lines {scroll + 1}–{end} of {lines.Count} (↑↓ to scroll)");
+        }
+
+        private static string Display(string? value) =>
+            string.IsNullOrWhiteSpace(value) || value.Equals("Unknown", StringComparison.OrdinalIgnoreCase)
+                ? "Unknown"
+                : value;
+
         private static void EnterAltScreen()
         {
             try
             {
-                // Alternate screen buffer (xterm / Windows Terminal / modern consoles).
                 Console.Write("\u001b[?1049h\u001b[H\u001b[2J");
                 _altScreen = true;
             }
@@ -230,7 +341,6 @@ namespace WindowsPrivacyPlatform.CLI
         {
             try
             {
-                // Home cursor and clear from cursor down — deterministic single-frame repaint.
                 Console.Write("\u001b[H\u001b[J");
             }
             catch
@@ -241,9 +351,11 @@ namespace WindowsPrivacyPlatform.CLI
 
         private static void WriteHeader(Screen screen, NavigationNode? domain, NavigationNode? feature)
         {
-            Console.WriteLine("Windows Privacy Platform  ·  v0.7  ·  Read-only knowledge explorer");
+            Console.WriteLine("Windows Privacy Platform  ·  v0.8  ·  Read-only knowledge explorer");
             var crumb = screen switch
             {
+                Screen.Home => "Home",
+                Screen.MachineOverview => "Machine Overview",
                 Screen.Domains => "Domains",
                 Screen.Features => domain?.Title ?? "Domain",
                 Screen.Settings => $"{domain?.Title} › {feature?.Title}",
@@ -262,8 +374,9 @@ namespace WindowsPrivacyPlatform.CLI
             Console.WriteLine(new string('─', ContentWidth()));
             var help = screen switch
             {
-                Screen.Detail => "↑↓ scroll card   ·   Esc return   ·   Q quit",
+                Screen.Detail or Screen.MachineOverview => "↑↓ scroll   ·   Esc return   ·   Q quit",
                 Screen.Search => "Type to filter   ·   Enter open   ·   Esc cancel",
+                Screen.Home => "↑↓ move   ·   Enter open   ·   Q quit",
                 _ => "↑↓ move   ·   Enter open   ·   / search   ·   Esc back   ·   Q quit"
             };
             Console.WriteLine(help);
@@ -316,7 +429,6 @@ namespace WindowsPrivacyPlatform.CLI
                 return;
             }
 
-            // Build full card as lines, then window by scroll for long content.
             var lines = new List<string>();
             var width = ContentWidth();
 
@@ -325,7 +437,6 @@ namespace WindowsPrivacyPlatform.CLI
             lines.Add(new string('═', width));
             lines.Add(string.Empty);
 
-            // --- Overview ---
             AddSection(lines, "Overview");
             AddField(lines, "Domain", card.DomainPath);
             AddField(lines, "Impact", card.Explanation.ImpactLabel);
@@ -334,7 +445,6 @@ namespace WindowsPrivacyPlatform.CLI
             AddWrapped(lines, card.Explanation.RiskSummary);
             lines.Add(string.Empty);
 
-            // --- What / why (documentation) ---
             AddSection(lines, "What this is");
             AddWrapped(lines, card.Explanation.WhatIsIt);
             lines.Add(string.Empty);
@@ -343,7 +453,6 @@ namespace WindowsPrivacyPlatform.CLI
             AddWrapped(lines, card.Explanation.WhyItMatters);
             lines.Add(string.Empty);
 
-            // --- Observed facts ---
             AddSection(lines, "Observed");
             AddField(lines, "Raw value", DisplayOrUnknown(card.CurrentStateDisplay));
             if (card.Layers.Count > 0)
@@ -362,7 +471,6 @@ namespace WindowsPrivacyPlatform.CLI
             }
             lines.Add(string.Empty);
 
-            // --- Interpretation ---
             AddSection(lines, "Interpretation");
             AddField(lines, "Effective value", DisplayOrUnknown(card.EffectiveValueDisplay));
             AddField(lines, "Effective layer", DisplayOrUnknown(HumanLayer(card.EffectiveSourceDisplay)));
@@ -373,7 +481,6 @@ namespace WindowsPrivacyPlatform.CLI
                 lines.Add("  Note: layer values disagree — see observed layers above.");
             lines.Add(string.Empty);
 
-            // --- Relationships (human language) ---
             if (card.Related.Count > 0)
             {
                 AddSection(lines, "Related configuration");
@@ -393,7 +500,6 @@ namespace WindowsPrivacyPlatform.CLI
                 lines.Add(string.Empty);
             }
 
-            // --- Impacts / knowledge ---
             if (!string.IsNullOrWhiteSpace(card.Explanation.UserImpact))
             {
                 AddSection(lines, "What changes for the user");
@@ -458,7 +564,6 @@ namespace WindowsPrivacyPlatform.CLI
                 lines.Add(string.Empty);
             }
 
-            // --- Unknowns ---
             if (!string.IsNullOrWhiteSpace(card.Explanation.Unknowns))
             {
                 AddSection(lines, "Unknowns and limitations");
@@ -466,7 +571,6 @@ namespace WindowsPrivacyPlatform.CLI
                 lines.Add(string.Empty);
             }
 
-            // --- Provenance ---
             AddSection(lines, "Provenance");
             AddField(lines, "Object id", mo.ObjectId);
             AddField(lines, "Discovery", Truncate(mo.DiscoveryMethod, 52));
@@ -482,7 +586,6 @@ namespace WindowsPrivacyPlatform.CLI
                 AddWrapped(lines, card.Explanation.DecisionGuidance);
             }
 
-            // Window the card
             var viewHeight = Math.Max(8, Console.WindowHeight - 8);
             var maxScroll = Math.Max(0, lines.Count - viewHeight);
             scroll = Math.Min(scroll, maxScroll);
@@ -528,21 +631,26 @@ namespace WindowsPrivacyPlatform.CLI
             Console.WriteLine($"\n  {results.Count} match(es)");
         }
 
-        private static void HandleListNav(ConsoleKeyInfo key, IReadOnlyList<NavigationNode> nodes, ref int cursor, out bool open)
+        private static void HandleListNav(ConsoleKeyInfo key, int count, ref int cursor, out bool open)
         {
             open = false;
-            if (nodes.Count == 0) return;
+            if (count == 0) return;
 
             if (key.Key == ConsoleKey.UpArrow)
-                cursor = (cursor - 1 + nodes.Count) % nodes.Count;
+                cursor = (cursor - 1 + count) % count;
             else if (key.Key == ConsoleKey.DownArrow)
-                cursor = (cursor + 1) % nodes.Count;
+                cursor = (cursor + 1) % count;
             else if (key.Key == ConsoleKey.Home)
                 cursor = 0;
             else if (key.Key == ConsoleKey.End)
-                cursor = nodes.Count - 1;
+                cursor = count - 1;
             else if (key.Key == ConsoleKey.Enter || key.Key == ConsoleKey.RightArrow)
                 open = true;
+        }
+
+        private static void HandleListNav(ConsoleKeyInfo key, IReadOnlyList<NavigationNode> nodes, ref int cursor, out bool open)
+        {
+            HandleListNav(key, nodes.Count, ref cursor, out open);
         }
 
         private static void HandleSearchInput(
