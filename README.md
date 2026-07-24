@@ -1,19 +1,18 @@
 # Windows Privacy Platform
 
-**Current milestone:** Prototype v0.6 — Bind + validate + risk summary  
-**Previous:** v0.5 (model + policy report, archived) → v0.4 → v0.3 → v0.2 → v0.1
+**Current milestone:** Prototype v0.6 — Bind + validate + risk summary (**runtime verified** on Windows 11 Pro 25H2)  
+**Previous:** v0.5 (archived) → v0.4 → v0.3 → v0.2 → v0.1
 
 Local, declarative privacy intelligence platform for Windows.  
 Philosophy: **Understand first. Change later.**
 
 ## What works today
-- Discovers identity, packages, services, tasks, privacy consent, and high-value GPO/policy surfaces
-- ManagedObject catalog with Name, Description, Category, RiskLevel, Rationale
-- Binds live inventory onto catalog `CurrentState`
-- Batch structural validation of the catalog
-- Observation & risk summary (default concise output)
-- Optional full categorized report via `--full`
-- Strictly read-only (no elevation, no writes, no interactive prompts)
+- Discovers identity, packages, services, tasks, privacy consent settings, and curated GPO/policy registry surfaces
+- Explains settings via ManagedObject catalog (name, description, risk tag, rationale)
+- Binds live values to the catalog; batch-validates catalog structure
+- Prints an observation/risk **summary** and a high-risk **watch list** (not a security score)
+- Optional full dump: `--full`
+- Strictly read-only, non-interactive (no elevation, no writes, no prompts)
 
 ## Run
 ```powershell
@@ -24,36 +23,39 @@ dotnet run -c Release
 dotnet run -c Release -- --full
 ```
 
-## CLI flags (non-interactive)
 | Flag | Behavior |
 |------|----------|
-| (default) | Risk summary + high-risk configured items |
-| `--full` | Complete categorized catalog dump |
-| `--help` | Help text |
+| (default) | Summary + high-risk configured items |
+| `--full` | Complete categorized dump |
+| `--help` | Help |
 
-## Safety model (absolute for current phase)
-- No registry writes
-- No service / task / package / capability / policy changes
-- No elevation or UAC
-- No remediation, rollback, or recovery
-- No network or telemetry
-- No interactive prompts
+## Safety (current phase)
+No registry/service/task/package/policy changes · no elevation · no remediation · no interactive UI · no product telemetry
 
 ## Solution projects
 | Project | Role |
 |---------|------|
-| Models | Data + ManagedObjectCatalog + ObservationSummary |
-| Core | OperationResult, paths |
+| Models | Data, ManagedObjectCatalog, ObservationSummary |
+| Core | Shared primitives |
 | Logging | AuditLogger |
-| KnowledgeBase | In-memory repository |
+| KnowledgeBase | In-memory store |
 | Scanner | Collectors + InventoryStateBinder |
 | Validator | SchemaValidator (batch) |
-| CLI | Pipeline entry + report |
+| CLI | Pipeline + report |
 
-## Next focus
-1. Verify v0.6 on hardware.
-2. Optional relationship metadata.
-3. CapabilityCollector follow-up if still 0.
-4. Only later: controlled change design, then terminal UI.
+Note: files under `bin/` are **build outputs** (compiled DLLs from these projects), not separate hand-written sources.
 
-See `Status/` for handoff and architecture documents.
+## Future focus (see `Status/AI_Handoff.md` for full detail)
+1. **Product domain taxonomy** (Firewall, Defender, Update, App privacy, Telemetry, …) for navigation  
+2. **Effective layer resolution** (GPO vs Settings/ConsentStore vs alternate policy paths; show conflicts)  
+3. Expand discovery **domain by domain** (Firewall collector next among gaps) with human-readable policy names — not full gpedit import  
+4. Optional compare-only baselines and a **transparent** risk-assessment feature  
+5. Relationships presentation  
+6. Controlled change **design only** until authorised; terminal UI only after report is clear  
+
+**Balance:** broad privacy/security coverage without a self-strangling all-ADMX model.
+
+## Authoritative docs
+- `Status/AI_Handoff.md` — continuity + detailed future steps and insertion points  
+- `Status/Current_Status.md` — verified state  
+- `Status/Prototype_v0.1_Implementation_Map.md` — file/pipeline map  
