@@ -2,109 +2,38 @@
 ## Roadmap
 
 **Last updated:** 2026-07-24  
-**Current completed milestone:** Prototype **v0.9.5**  
-**Document role:** Ordered priorities, not calendar commitments. Preserve product identity on every horizon.
+**Current completed milestone:** **Version 1.0**
 
 ---
 
-## Permanent constraints (all horizons)
+## Permanent constraints
 
-- Read-only exploration until a **separate**, explicitly authorized controlled-change design exists.  
-- No registry/service/task/firewall/policy writes in the current pipeline.  
-- No elevation requirement for understanding mode.  
-- No privacy/security **score** as a product feature.  
-- No fear-based or “optimizer” language.  
-- Unknown remains valid. Evidence over assumption.  
-- Catalog-first: understand domain → catalog + ValueSemantics + explanation → collector → relationships.  
-- **Windows meaning lives in catalog maps, not resolvers/CLI/UI.**  
+- Read-only until a separate controlled-change design is authorized  
+- No scores  
+- Meanings live in catalog ValueSemantics  
+- Presentation contains no Windows logic  
 
 ---
 
-## Completed: v0.9 — Knowledge semantics foundation
+## Completed milestones
 
-Shipped (see `Status/History/v0.9.md`):
-
-- ValueSemantics + ValueSemanticsInterpreter  
-- Educational resolution / confidence reasons  
-- Resolver free of hardcoded numeric semantic maps (verified)  
-- Provenance on Privacy/Policy binders  
-- Expanded relationship kinds  
-- Catalog WhenIgnored / CommonMisconception scaffolding  
+- v0.9 — ValueSemantics foundation  
+- v0.9.5 — Knowledge maturity  
+- **v1.0** — Professional WPF desktop host on frozen backend (see `History/v1.0.md`)  
 
 ---
 
-## Completed: v0.9.5 — Knowledge maturity
+## Next (post-1.0)
 
-Shipped (see `Status/History/v0.9.5.md`):
-
-- Catalog aligned with full PolicyCollector probe set + expanded ConsentStore  
-- ValueSemantics for AUOptions, DODownloadMode, MAPS, samples, Edge tracking, binary policies  
-- Full AppPrivacy–ConsentStore relationship graph (14 pairs)  
-- Additional Defender / Update / Search / Location edges  
-- SchemaValidator unique-ObjectId batch guard  
-- SchemaVersion 0.9.5  
-
----
-
-## Next — presentation and depth
-
-**Theme:** Make knowledge visible; deepen selected domains; still read-only.
-
-### 1. Surface semantics and evidence in UI
-
-- TUI/CLI detail cards: SemanticValue, ConfidenceReason, EvidenceSource, WhenIgnored  
-- Conflict cards already educational; keep consistent  
-
-### 2. Relationship exploration API
-
-- Query shapes on SettingsQuery / StructuredRelationships (“everything affecting microphone”)  
-- Still curated edges  
-
-### 3. Machine understanding
-
-- Best-effort Secure Boot / TPM / BitLocker / Defender visibility when read-only sources exist  
-- Always label confidence and Unknown reasons  
-
-### 4. Domain depth (careful)
-
-- Microsoft Defender (deeper platform info)  
-- Windows Update (deeper)  
-- Firewall **rule inventory** (read-only)  
-- Services / tasks understanding-oriented  
-
-### 5. GUI preparation
-
-- Strengthen detail-view contract only; no large GUI required yet  
-
-### 6. Comparison (design / light scaffolding)
-
-- Scan history / compare-only diffs — design notes before heavy implementation  
-
----
-
-## v1.0 vision
-
-Stable, trustworthy **read-only** Windows privacy and security **knowledge product**: curated catalog, honest effective-layer reasoning, clear provenance and Unknowns, navigable TUI and/or thin GUI — no scores, no silent writes.
+1. Dark mode / high-contrast themes  
+2. Richer SemanticValue / ConfidenceReason surfaces everywhere  
+3. Relationship query helpers (“everything affecting X”)  
+4. Careful domain depth (Defender platform, Update, firewall rules)  
+5. Optional export of reports (read-only)  
+6. Design notes for comparison / history  
 
 ---
 
 ## Far future (design-doc only until authorized)
 
-Controlled, reversible change as a **separate** architecture pass.
-
----
-
-## Explicit non-goals (near term)
-
-Bulk ADMX; ML relationship inference; scoring dashboards; one-click harden; product telemetry; feature count for its own sake.
-
----
-
-## How to pick the next code change
-
-1. Does it improve understanding, trust, evidence quality, or maintainability?  
-2. Does it preserve read-only and one-way dependencies?  
-3. Are meanings in catalog ValueSemantics, not resolver switches?  
-4. Will a future session understand it from Status docs alone?  
-
-If any answer is no, rethink before coding.
+Controlled reversible change as a separate architecture pass.
