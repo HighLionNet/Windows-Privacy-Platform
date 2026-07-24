@@ -75,7 +75,7 @@ namespace WindowsPrivacyPlatform.CLI
             // 3. Validate first catalog object as structural smoke check
             if (catalog.Count > 0)
             {
-                var firstEntry = knowledgeBase.Get(catalog[0].ObjectId);
+                var firstEntry = knowledgeBase.GetByObjectId(catalog[0].ObjectId);
                 if (firstEntry is not null)
                 {
                     var validationResult = validator.Validate(firstEntry);
