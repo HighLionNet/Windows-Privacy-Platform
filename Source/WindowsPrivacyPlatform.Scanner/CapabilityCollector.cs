@@ -11,7 +11,7 @@ namespace WindowsPrivacyPlatform.Scanner
     /// Read-only collector for Windows capabilities.
     /// Primary: PowerShell Get-WindowsCapability -Online (structured, locale-independent).
     /// Fallback: DISM /online /get-capabilities /English via System32 path.
-    /// Query only. Never elevates. Never writes.
+    /// Query only. Never elevates. Never writes. Fail-soft.
     /// </summary>
     public sealed class CapabilityCollector : IInventoryCollector
     {
@@ -24,7 +24,12 @@ namespace WindowsPrivacyPlatform.Scanner
 
             try
             {
-                if (TryCollectViaPowerShell(snapshot))
+                // Prefer installed capabilities first (most useful, often works without elevation).
+                if (TryCollectViaPowerShell(snapshot, installedOnly: true))
+                    return;
+
+                // Broader query if installed-only returned nothing.
+                if (TryCollectViaPowerShell(snapshot, installedOnly: false))
                     return;
 
                 TryCollectViaDism(snapshot);
@@ -39,16 +44,22 @@ namespace WindowsPrivacyPlatform.Scanner
         /// Preferred path. Get-WindowsCapability returns structured Name values
         /// without depending on localized DISM labels.
         /// </summary>
-        private static bool TryCollectViaPowerShell(InventorySnapshot snapshot)
+        private static bool TryCollectViaPowerShell(InventorySnapshot snapshot, bool installedOnly)
         {
             try
             {
+                // Fixed argument strings only — no user-controlled injection.
+                // -ErrorAction SilentlyContinue avoids terminating errors on restricted hosts.
+                var filter = installedOnly
+                    ? "Get-WindowsCapability -Online -ErrorAction SilentlyContinue | Where-Object { $_.State -eq 'Installed' } | Select-Object -ExpandProperty Name"
+                    : "Get-WindowsCapability -Online -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name";
+
                 var psi = new ProcessStartInfo
                 {
                     FileName = "powershell.exe",
                     Arguments =
-                        "-NoProfile -NonInteractive -Command " +
-                        "\"Get-WindowsCapability -Online | Select-Object -ExpandProperty Name\"",
+                        "-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command " +
+                        $"\"{filter}\"",
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
@@ -61,7 +72,9 @@ namespace WindowsPrivacyPlatform.Scanner
                     return false;
 
                 var output = process.StandardOutput.ReadToEnd();
-                process.WaitForExit(30000);
+                // Drain stderr so the process can exit cleanly; do not surface as data.
+                _ = process.StandardError.ReadToEnd();
+                process.WaitForExit(45000);
 
                 if (process.ExitCode != 0 && string.IsNullOrWhiteSpace(output))
                     return false;
@@ -75,11 +88,22 @@ namespace WindowsPrivacyPlatform.Scanner
 
                     // Skip PowerShell error/noise lines.
                     if (name.StartsWith("Get-WindowsCapability", StringComparison.OrdinalIgnoreCase) ||
-                        name.StartsWith("At line", StringComparison.OrdinalIgnoreCase))
+                        name.StartsWith("At line", StringComparison.OrdinalIgnoreCase) ||
+                        name.StartsWith("+", StringComparison.Ordinal) ||
+                        name.StartsWith("CategoryInfo", StringComparison.OrdinalIgnoreCase) ||
+                        name.StartsWith("FullyQualifiedErrorId", StringComparison.OrdinalIgnoreCase) ||
+                        name.StartsWith("Where-Object", StringComparison.OrdinalIgnoreCase))
                         continue;
 
-                    snapshot.InstalledCapabilities.Add(name);
-                    added++;
+                    // Capability names are typically Identity~~~~version
+                    if (name.Length < 3)
+                        continue;
+
+                    if (!snapshot.InstalledCapabilities.Contains(name, StringComparer.OrdinalIgnoreCase))
+                    {
+                        snapshot.InstalledCapabilities.Add(name);
+                        added++;
+                    }
                 }
 
                 return added > 0;
@@ -110,8 +134,7 @@ namespace WindowsPrivacyPlatform.Scanner
                     RedirectStandardError = true,
                     UseShellExecute = false,
                     CreateNoWindow = true,
-                    // DISM frequently emits OEM code page; UTF-8 can drop characters.
-                    // Default encoding is safer for label matching when /English is used.
+                    // DISM frequently emits OEM code page; default encoding is safer with /English.
                     StandardOutputEncoding = Encoding.Default
                 };
 
@@ -120,7 +143,8 @@ namespace WindowsPrivacyPlatform.Scanner
                     return;
 
                 var output = process.StandardOutput.ReadToEnd();
-                process.WaitForExit(30000);
+                _ = process.StandardError.ReadToEnd();
+                process.WaitForExit(45000);
 
                 // Parse lines of the form:  Capability Identity : Name~~~~0.0.1.0
                 foreach (var line in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
@@ -134,7 +158,10 @@ namespace WindowsPrivacyPlatform.Scanner
                         continue;
 
                     var identity = parts[1].Trim();
-                    if (!string.IsNullOrWhiteSpace(identity))
+                    if (string.IsNullOrWhiteSpace(identity))
+                        continue;
+
+                    if (!snapshot.InstalledCapabilities.Contains(identity, StringComparer.OrdinalIgnoreCase))
                         snapshot.InstalledCapabilities.Add(identity);
                 }
             }
