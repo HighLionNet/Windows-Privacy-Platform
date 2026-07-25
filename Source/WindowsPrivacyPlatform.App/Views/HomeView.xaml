@@ -3,17 +3,17 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <StackPanel>
     <TextBlock Text="Machine Overview" Style="{StaticResource SectionTitle}" />
-    <TextBlock Text="Observed platform information — not a security score."
+    <TextBlock Text="Local platform identity and observed posture. Not a score."
                Style="{StaticResource SectionSubtitle}" />
     <Border Style="{StaticResource HeaderRule}" />
 
     <!-- Attention only when conflicts exist -->
-    <Border x:Name="ConflictsCard" Style="{StaticResource CardConflict}" Visibility="Collapsed" Margin="0,0,0,10">
+    <Border x:Name="ConflictsCard" Style="{StaticResource CardConflict}" Visibility="Collapsed" Margin="0,0,0,14">
       <DockPanel LastChildFill="True">
         <StackPanel DockPanel.Dock="Left">
-          <TextBlock Text="Attention" FontWeight="SemiBold" FontSize="12"
+          <TextBlock Text="Attention" FontWeight="SemiBold" FontSize="13"
                      Foreground="{StaticResource BrushConflict}" />
-          <TextBlock x:Name="ConflictsText" Style="{StaticResource ValueText}" Margin="0,2,0,0" />
+          <TextBlock x:Name="ConflictsText" Style="{StaticResource ValueText}" Margin="0,3,0,0" />
         </StackPanel>
         <Button x:Name="OpenConflictsBtn" Content="Open Conflicts" Style="{StaticResource SecondaryButton}"
                 HorizontalAlignment="Right" VerticalAlignment="Center" Visibility="Collapsed" />
@@ -29,7 +29,7 @@
         </Border>
         <Grid Margin="0,2,0,2">
           <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="140" />
+            <ColumnDefinition Width="150" />
             <ColumnDefinition Width="*" />
           </Grid.ColumnDefinitions>
           <Grid.RowDefinitions>
@@ -67,7 +67,7 @@
         </Border>
         <Grid Margin="0,2,0,2">
           <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="140" />
+            <ColumnDefinition Width="150" />
             <ColumnDefinition Width="*" />
           </Grid.ColumnDefinitions>
           <Grid.RowDefinitions>
@@ -103,22 +103,22 @@
           <TextBlock Text="Scan" FontWeight="SemiBold" FontSize="12"
                      Foreground="{StaticResource BrushTextSecondary}" />
         </Border>
-        <TextBlock x:Name="ScanMetaText" Style="{StaticResource SheetValue}" Margin="10,6,10,8" />
+        <TextBlock x:Name="ScanMetaText" Style="{StaticResource SheetValue}" Margin="12,8,12,10" />
       </StackPanel>
     </Border>
 
     <Expander Header="Identity collection notes" Style="{StaticResource DetailExpander}" IsExpanded="False">
       <TextBlock x:Name="IdentityNotesText" Style="{StaticResource ValueText}"
-                 Foreground="{StaticResource BrushTextSecondary}" Margin="4,4,0,0" />
+                 Foreground="{StaticResource BrushTextSecondary}" Margin="4,6,0,0" />
     </Expander>
 
     <Expander Header="Observation summary" Style="{StaticResource DetailExpander}" IsExpanded="False">
-      <TextBlock x:Name="SummaryText" Style="{StaticResource ValueText}" Margin="4,4,0,0" />
+      <TextBlock x:Name="SummaryText" Style="{StaticResource ValueText}" Margin="4,6,0,0" />
     </Expander>
 
     <Border Style="{StaticResource SectionRule}" />
 
-    <TextBlock Text="Domains" Style="{StaticResource GroupHeader}" Margin="0,0,0,6" />
+    <TextBlock Text="Domains" Style="{StaticResource GroupHeader}" Margin="0,0,0,8" />
     <WrapPanel x:Name="QuickNavPanel" />
   </StackPanel>
 </UserControl>
