@@ -55,10 +55,10 @@ public partial class DomainView : UserControl
                     Padding = new Thickness(10, 4, 10, 4),
                     Child = new TextBlock
                     {
-                        Text = sub,
+                        Text = sub.ToUpperInvariant(),
                         FontWeight = FontWeights.SemiBold,
-                        FontSize = 11,
-                        Foreground = (Brush)FindResource("BrushTextSecondary")
+                        FontSize = 10,
+                        Foreground = (Brush)FindResource("BrushTextMuted")
                     }
                 });
             }
@@ -77,9 +77,9 @@ public partial class DomainView : UserControl
             };
 
             var grid = new Grid();
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(2.2, GridUnitType.Star) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(88) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(90) });
 
             var left = new StackPanel();
             left.Children.Add(new TextBlock
@@ -93,7 +93,7 @@ public partial class DomainView : UserControl
             {
                 Text = mo.ObjectId,
                 Style = (Style)FindResource("MetaText"),
-                Margin = new Thickness(0, 2, 0, 0)
+                Margin = new Thickness(0, 1, 0, 0)
             });
             Grid.SetColumn(left, 0);
             grid.Children.Add(left);
@@ -111,7 +111,7 @@ public partial class DomainView : UserControl
                 FontSize = 12,
                 VerticalAlignment = VerticalAlignment.Top,
                 Foreground = (Brush)FindResource("BrushTextSecondary"),
-                LineHeight = 17
+                LineHeight = 16
             };
             Grid.SetColumn(stateBlock, 1);
             grid.Children.Add(stateBlock);

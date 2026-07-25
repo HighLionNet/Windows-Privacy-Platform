@@ -10,13 +10,13 @@
         <Border Style="{StaticResource ListHeader}">
           <Grid>
             <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="2*" />
+              <ColumnDefinition Width="2.2*" />
               <ColumnDefinition Width="*" />
-              <ColumnDefinition Width="88" />
+              <ColumnDefinition Width="90" />
             </Grid.ColumnDefinitions>
             <TextBlock Text="Setting" FontWeight="SemiBold" FontSize="11"
                        Foreground="{StaticResource BrushTextSecondary}" />
-            <TextBlock Grid.Column="1" Text="Observed / effective" FontWeight="SemiBold" FontSize="11"
+            <TextBlock Grid.Column="1" Text="Observed → effective" FontWeight="SemiBold" FontSize="11"
                        Foreground="{StaticResource BrushTextSecondary}" />
             <TextBlock Grid.Column="2" Text="Status" FontWeight="SemiBold" FontSize="11"
                        Foreground="{StaticResource BrushTextSecondary}" HorizontalAlignment="Right" />

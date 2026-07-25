@@ -7,7 +7,7 @@ using WindowsPrivacyPlatform.Models;
 namespace WindowsPrivacyPlatform.App.Views;
 
 /// <summary>
-/// Property-sheet style detail surface. Consumes SettingDetailView only.
+/// Property-sheet detail surface. Consumes SettingDetailView only.
 /// </summary>
 public partial class SettingDetailPage : UserControl
 {
@@ -31,7 +31,8 @@ public partial class SettingDetailPage : UserControl
         WhyText.Text = detail.Explanation.WhyItMatters;
 
         ObservedText.Text = detail.CurrentStateDisplay ?? "Unknown";
-        EffectiveText.Text = $"{detail.EffectiveValueDisplay ?? "Unknown"}  [{detail.EffectiveSourceDisplay ?? "Unknown"}]";
+        EffectiveText.Text = detail.EffectiveValueDisplay ?? "Unknown";
+        SourceText.Text = detail.EffectiveSourceDisplay ?? "Unknown";
         ConfidenceText.Text = detail.Confidence.ToString();
         ReasonText.Text = string.IsNullOrWhiteSpace(detail.ResolutionReason)
             ? "No resolution reason available on the current scan."

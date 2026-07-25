@@ -4,14 +4,17 @@
   <StackPanel>
     <TextBlock x:Name="TitleText" Style="{StaticResource SectionTitle}" />
     <TextBlock x:Name="DomainPathText" Style="{StaticResource SectionSubtitle}" />
-    <StackPanel x:Name="BadgeRow" Orientation="Horizontal" Margin="0,0,0,6" />
+    <StackPanel x:Name="BadgeRow" Orientation="Horizontal" Margin="0,6,0,4" />
     <Border Style="{StaticResource HeaderRule}" />
 
-    <!-- Primary configuration state — property sheet primary block -->
-    <Border Style="{StaticResource CardAccent}">
+    <!-- Primary state: single property sheet, no nested cards -->
+    <Border Style="{StaticResource PropertySheet}">
       <StackPanel>
-        <TextBlock Text="Current configuration" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,6" />
-        <Grid>
+        <Border Style="{StaticResource PropertySheetHeader}">
+          <TextBlock Text="Configuration state" FontWeight="SemiBold" FontSize="12"
+                     Foreground="{StaticResource BrushTextSecondary}" />
+        </Border>
+        <Grid Margin="0,2,0,4">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="120" />
             <ColumnDefinition Width="*" />
@@ -21,60 +24,60 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
           </Grid.RowDefinitions>
-          <TextBlock Text="Raw / current" Style="{StaticResource PropLabel}" />
-          <TextBlock x:Name="ObservedText" Grid.Column="1" Style="{StaticResource PrimaryValue}" />
-          <TextBlock Grid.Row="1" Text="Effective" Style="{StaticResource PropLabel}" />
-          <TextBlock x:Name="EffectiveText" Grid.Row="1" Grid.Column="1" Style="{StaticResource PropValue}" />
-          <TextBlock Grid.Row="2" Text="Confidence" Style="{StaticResource PropLabel}" />
-          <TextBlock x:Name="ConfidenceText" Grid.Row="2" Grid.Column="1" Style="{StaticResource PropValue}" />
-          <TextBlock Grid.Row="3" Text="Reason" Style="{StaticResource PropLabel}" />
-          <TextBlock x:Name="ReasonText" Grid.Row="3" Grid.Column="1" Style="{StaticResource PropValue}"
+
+          <TextBlock Text="Observed" Style="{StaticResource SheetLabel}" />
+          <TextBlock x:Name="ObservedText" Grid.Column="1" Style="{StaticResource SheetValue}" FontWeight="SemiBold" />
+
+          <TextBlock Grid.Row="1" Text="Effective" Style="{StaticResource SheetLabel}" />
+          <TextBlock x:Name="EffectiveText" Grid.Row="1" Grid.Column="1" Style="{StaticResource SheetValue}" FontWeight="SemiBold" />
+
+          <TextBlock Grid.Row="2" Text="Source" Style="{StaticResource SheetLabel}" />
+          <TextBlock x:Name="SourceText" Grid.Row="2" Grid.Column="1" Style="{StaticResource SheetValue}" />
+
+          <TextBlock Grid.Row="3" Text="Confidence" Style="{StaticResource SheetLabel}" />
+          <TextBlock x:Name="ConfidenceText" Grid.Row="3" Grid.Column="1" Style="{StaticResource SheetValue}" />
+
+          <TextBlock Grid.Row="4" Text="Reason" Style="{StaticResource SheetLabel}" />
+          <TextBlock x:Name="ReasonText" Grid.Row="4" Grid.Column="1" Style="{StaticResource SheetValue}"
                      Foreground="{StaticResource BrushTextSecondary}" />
         </Grid>
       </StackPanel>
     </Border>
 
-    <TextBlock Text="What this controls" Style="{StaticResource GroupHeader}" Margin="0,6,0,4" />
-    <Border Style="{StaticResource PropertyGroup}">
-      <TextBlock x:Name="WhatText" Style="{StaticResource ValueText}" />
-    </Border>
+    <!-- Documentation: plain sections, no boxes around every paragraph -->
+    <TextBlock Text="What this controls" Style="{StaticResource GroupHeader}" Margin="0,4,0,2" />
+    <TextBlock x:Name="WhatText" Style="{StaticResource ValueText}" Margin="0,0,0,6" />
 
-    <TextBlock Text="Why Windows has this" Style="{StaticResource GroupHeader}" Margin="0,2,0,4" />
-    <Border Style="{StaticResource PropertyGroup}">
-      <TextBlock x:Name="WhyText" Style="{StaticResource ValueText}" />
-    </Border>
+    <TextBlock Text="Why Windows has this" Style="{StaticResource GroupHeader}" Margin="0,2,0,2" />
+    <TextBlock x:Name="WhyText" Style="{StaticResource ValueText}" Margin="0,0,0,6" />
 
-    <TextBlock Text="Impact" Style="{StaticResource GroupHeader}" Margin="0,2,0,4" />
-    <Border Style="{StaticResource PropertyGroup}">
-      <StackPanel>
-        <TextBlock x:Name="ImpactText" Style="{StaticResource ValueText}" />
-        <Expander Header="User · enterprise · misconceptions" Style="{StaticResource DetailExpander}" IsExpanded="False" Margin="0,6,0,0">
-          <StackPanel Margin="0,4,0,0">
-            <TextBlock x:Name="UserImpactText" Style="{StaticResource ValueText}" />
-            <TextBlock x:Name="EnterpriseText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
-            <TextBlock x:Name="MisconceptionText" Style="{StaticResource ValueText}" Margin="0,4,0,0"
-                       Foreground="{StaticResource BrushWarning}" />
-            <TextBlock x:Name="UnknownsText" Style="{StaticResource ValueText}" Margin="0,4,0,0"
-                       Foreground="{StaticResource BrushTextMuted}" />
-          </StackPanel>
-        </Expander>
+    <TextBlock Text="Impact" Style="{StaticResource GroupHeader}" Margin="0,2,0,2" />
+    <TextBlock x:Name="ImpactText" Style="{StaticResource ValueText}" Margin="0,0,0,2" />
+
+    <Expander Header="User · enterprise · misconceptions · limits" Style="{StaticResource DetailExpander}" IsExpanded="False">
+      <StackPanel Margin="4,4,0,0">
+        <TextBlock x:Name="UserImpactText" Style="{StaticResource ValueText}" />
+        <TextBlock x:Name="EnterpriseText" Style="{StaticResource ValueText}" Margin="0,4,0,0" />
+        <TextBlock x:Name="MisconceptionText" Style="{StaticResource ValueText}" Margin="0,4,0,0"
+                   Foreground="{StaticResource BrushWarning}" />
+        <TextBlock x:Name="UnknownsText" Style="{StaticResource ValueText}" Margin="0,4,0,0"
+                   Foreground="{StaticResource BrushTextMuted}" />
       </StackPanel>
-    </Border>
-
-    <Expander Header="Observed layers (evidence)" Style="{StaticResource DetailExpander}" IsExpanded="False" Margin="0,4,0,0">
-      <Border Style="{StaticResource PropertyGroup}" Margin="0,4,0,0">
-        <ItemsControl x:Name="LayersList" />
-      </Border>
     </Expander>
 
-    <TextBlock Text="Related settings" Style="{StaticResource GroupHeader}" Margin="0,6,0,4" />
+    <Expander Header="Observed layers (evidence)" Style="{StaticResource DetailExpander}" IsExpanded="False">
+      <ItemsControl x:Name="LayersList" Margin="4,4,0,0" />
+    </Expander>
+
+    <TextBlock Text="Related settings" Style="{StaticResource GroupHeader}" Margin="0,8,0,4" />
     <Border Style="{StaticResource ListContainer}">
       <ItemsControl x:Name="RelatedList" />
     </Border>
 
     <Border Style="{StaticResource SectionRule}" />
-    <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+    <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
       <TextBlock x:Name="ObjectIdText" Style="{StaticResource MetaText}" VerticalAlignment="Center" />
       <Button x:Name="CopyIdButton" Content="Copy ObjectId" Style="{StaticResource LinkButton}"
               Margin="10,0,0,0" Click="CopyIdButton_Click"

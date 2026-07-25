@@ -28,7 +28,7 @@ public partial class ConflictsView : UserControl
             return;
         }
 
-        SubtitleText.Text = $"{conflicts.Count} setting(s)";
+        SubtitleText.Text = $"{conflicts.Count} setting(s) with layer disagreement";
 
         foreach (var mo in conflicts.OrderBy(m => m.ProductDomain).ThenBy(m => m.ObjectName))
         {
@@ -48,16 +48,17 @@ public partial class ConflictsView : UserControl
             {
                 Text = card.DomainPath,
                 Style = (Style)FindResource("MetaText"),
-                Margin = new Thickness(0, 2, 0, 0)
+                Margin = new Thickness(0, 1, 0, 0)
             });
 
             var effective = card.EffectiveValueDisplay ?? "Unknown";
+            var source = card.EffectiveSourceDisplay ?? "Unknown";
             panel.Children.Add(new TextBlock
             {
-                Text = $"Effective: {effective}",
+                Text = $"Effective: {effective}  [{source}]",
                 FontSize = 12,
                 FontWeight = FontWeights.SemiBold,
-                Margin = new Thickness(0, 6, 0, 0),
+                Margin = new Thickness(0, 5, 0, 0),
                 Foreground = (Brush)FindResource("BrushTextPrimary")
             });
 
@@ -68,9 +69,9 @@ public partial class ConflictsView : UserControl
                     Text = card.ResolutionReason,
                     TextWrapping = TextWrapping.Wrap,
                     FontSize = 12,
-                    Margin = new Thickness(0, 4, 0, 0),
+                    Margin = new Thickness(0, 3, 0, 0),
                     Foreground = (Brush)FindResource("BrushTextSecondary"),
-                    LineHeight = 18
+                    LineHeight = 17
                 });
             }
 
