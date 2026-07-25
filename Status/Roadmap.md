@@ -2,7 +2,7 @@
 ## Roadmap
 
 **Last updated:** 2026-07-25  
-**Current completed milestone:** **Version 1.1** (presentation hardening)
+**Current completed milestone:** **Version 1.2** (enterprise GUI refinement)
 
 ---
 
@@ -20,7 +20,8 @@
 - v0.9 — ValueSemantics foundation  
 - v0.9.5 — Knowledge maturity  
 - v1.0 — WPF desktop host + management-console direction  
-- **v1.1** — Kill stacked-card presentation; MMC-style property sheets; stronger nav hierarchy  
+- v1.1 — Kill stacked-card presentation; MMC-style property sheets; stronger nav hierarchy  
+- **v1.2** — Enterprise refinement: typography, progressive disclosure on detail, scalable information architecture  
 
 ---
 
