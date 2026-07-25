@@ -13,7 +13,7 @@
         </Border>
         <Grid Margin="0,2,0,4">
           <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="120" />
+            <ColumnDefinition Width="130" />
             <ColumnDefinition Width="*" />
           </Grid.ColumnDefinitions>
           <Grid.RowDefinitions>
@@ -25,7 +25,7 @@
 
           <TextBlock Text="Name" Style="{StaticResource SheetLabel}" />
           <TextBlock Grid.Column="1" Style="{StaticResource SheetValue}" FontWeight="SemiBold"
-                     Text="Windows Privacy Platform 1.1" />
+                     Text="Windows Privacy Platform 1.2" />
 
           <TextBlock Grid.Row="1" Text="Purpose" Style="{StaticResource SheetLabel}" />
           <TextBlock Grid.Row="1" Grid.Column="1" Style="{StaticResource SheetValue}"
@@ -48,7 +48,7 @@
           <TextBlock Text="Keyboard" FontWeight="SemiBold" FontSize="12"
                      Foreground="{StaticResource BrushTextSecondary}" />
         </Border>
-        <TextBlock Style="{StaticResource SheetValue}" Margin="10,6,10,8"
+        <TextBlock Style="{StaticResource SheetValue}" Margin="12,8,12,10"
                    Text="F5 / Ctrl+R — scan&#10;Ctrl+F — search&#10;Esc — clear search" />
       </StackPanel>
     </Border>
@@ -59,7 +59,7 @@
           <TextBlock Text="Project" FontWeight="SemiBold" FontSize="12"
                      Foreground="{StaticResource BrushTextSecondary}" />
         </Border>
-        <TextBlock Style="{StaticResource SheetValue}" Margin="10,6,10,8"
+        <TextBlock Style="{StaticResource SheetValue}" Margin="12,8,12,10"
                    Text="https://github.com/HighLionNet/Windows-Privacy-Platform&#10;.NET 8 · Windows 11 · 2026-07-25" />
       </StackPanel>
     </Border>
