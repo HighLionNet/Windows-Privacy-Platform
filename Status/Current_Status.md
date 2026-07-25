@@ -1,11 +1,11 @@
 # Windows Privacy Platform
-## Current Status — Version 1.1
+## Current Status — Version 1.2
 
 **Document role:** Authoritative live snapshot.
 
 **Last updated:** 2026-07-25  
-**Current development version:** **1.1** (management-console presentation hardened)  
-**Previous archived milestone:** Version 1.0  
+**Current development version:** **1.2** (enterprise GUI refinement)  
+**Previous archived milestone:** Version 1.1  
 **Runtime target:** Windows 11; Scanner / CLI / App target `net8.0-windows`  
 **Safety posture:** Strictly read-only. No writes. No elevation. No remediation. No scores.  
 
@@ -17,7 +17,7 @@ Windows Privacy Platform is a **local, read-only Windows privacy and security kn
 
 Philosophy: **Understand first. Change later.**
 
-Presentation standard: first-party Windows management console (Event Viewer / Device Manager / GPO / Services) — property sheets and dense lists, not stacked cards.
+Presentation standard: enterprise management console (Event Viewer / Device Manager / Services / XDR console family) — property sheets, dense lists, progressive disclosure.
 
 ---
 
@@ -30,11 +30,11 @@ Models → Core → Logging → KnowledgeBase → Validator → Scanner → CLI
                                                               ↘ App (WPF presentation)
 ```
 
-Backend architecture remains frozen. v1.1 is presentation-only.
+Backend architecture remains frozen. v1.2 is presentation-only.
 
 ---
 
-## 3. Version 1.1 presentation
+## 3. Version 1.2 presentation
 
 ### Shell
 
@@ -44,15 +44,22 @@ Backend architecture remains frozen. v1.1 is presentation-only.
 - Left-accent selection; dark section rules  
 - Clickable breadcrumbs; full-width workspace  
 - Status bar: Objects, Conflicts, Validation, Inspect · Read-only  
+- Version **v1.2**  
 
 ### Views
 
 - **Machine Overview** — attention (conflicts only), Identity + Security + Scan as **property sheets**, domain tiles  
 - **Domain** — column list (Setting / Observed→effective / Status), subcategory headers  
 - **Conflicts** — single-column rows (title, path, Effective [source], reason)  
-- **Setting Detail** — one primary property sheet (Observed / Effective / Source / Confidence / Reason); documentation as plain sections; expanders for secondary  
+- **Setting Detail** — Effective state first (large); short Summary always visible; Why/Impact, Knowledge, Layers, Related behind expanders  
 - **Knowledge / Search** — dense list pattern  
 - **About** — property-sheet product facts  
+
+### Typography & density
+
+- Page titles 20px; primary values 15px; body 13px with line-height  
+- Comfortable row and sheet padding for long sessions  
+- Progressive disclosure so detail pages stay short as catalog grows  
 
 ---
 
