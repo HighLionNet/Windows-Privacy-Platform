@@ -17,20 +17,25 @@ public partial class HomeView : UserControl
         if (o is null) return;
 
         OsText.Text = $"{Disp(o.WindowsVersion)} · {Disp(o.WindowsEdition)} · Build {o.BuildNumber}";
-        ArchText.Text = $"Architecture: {Disp(o.Architecture)}";
-        DeviceText.Text = $"{Disp(o.DeviceManufacturer)} {Disp(o.DeviceModel)}".Trim();
-        CpuText.Text = $"Processor: {Disp(o.Processor)}";
-        MemText.Text = o.TotalPhysicalMemoryMiB > 0
-            ? $"Memory: {o.TotalPhysicalMemoryMiB} MiB"
-            : "Memory: Unknown";
+        ArchText.Text = Disp(o.Architecture);
 
-        SecureBootText.Text = $"Secure Boot: {Disp(o.SecureBootState)}";
-        TpmText.Text = $"TPM: {Disp(o.TpmPresent)} / {Disp(o.TpmVersion)}";
-        BitLockerText.Text = $"BitLocker: {Disp(o.BitLockerProtectionStatus)}";
+        var device = $"{Disp(o.DeviceManufacturer)} {Disp(o.DeviceModel)}".Trim();
+        DeviceText.Text = string.IsNullOrWhiteSpace(device) || device == "Unknown Unknown"
+            ? "Unknown"
+            : device;
 
-        FirewallText.Text = $"Firewall: {Disp(o.FirewallServiceState)} · {Disp(o.FirewallProfilesSummary)}";
-        DefenderText.Text = $"Defender: {Disp(o.DefenderServiceState)}";
-        DomainText.Text = $"Domain: {Disp(o.DomainMembership)} · Entra: {Disp(o.AzureAdJoined)}";
+        var mem = o.TotalPhysicalMemoryMiB > 0
+            ? $"{o.TotalPhysicalMemoryMiB} MiB"
+            : "Unknown";
+        HwText.Text = $"{Disp(o.Processor)} · {mem}";
+
+        DomainText.Text = $"{Disp(o.DomainMembership)} · Entra: {Disp(o.AzureAdJoined)}";
+
+        SecureBootText.Text = Disp(o.SecureBootState);
+        TpmText.Text = $"{Disp(o.TpmPresent)} / {Disp(o.TpmVersion)}";
+        BitLockerText.Text = Disp(o.BitLockerProtectionStatus);
+        FirewallText.Text = $"{Disp(o.FirewallServiceState)} · {Disp(o.FirewallProfilesSummary)}";
+        DefenderText.Text = Disp(o.DefenderServiceState);
 
         ScanMetaText.Text =
             $"{o.LastScanUtc:yyyy-MM-dd HH:mm:ss} UTC · Catalog {o.CatalogVersion} · Knowledge {o.KnowledgeBaseVersion} · Identity confidence: {o.IdentityConfidence}";
@@ -57,34 +62,32 @@ public partial class HomeView : UserControl
         if (conflictCount > 0)
         {
             ConflictsCard.Visibility = Visibility.Visible;
-            ConflictsCard.Style = (Style)FindResource("CardConflict");
             ConflictsText.Text = $"{conflictCount} setting(s) report a layer conflict.";
             OpenConflictsBtn.Visibility = Visibility.Visible;
             if (openConflicts is not null)
                 OpenConflictsBtn.Click += (_, _) => openConflicts();
         }
 
-        void AddQuick(string label, ProductDomain domain)
+        void AddTile(string label, ProductDomain domain)
         {
             var btn = new Button
             {
                 Content = label,
-                Style = (Style)FindResource("SecondaryButton"),
-                Margin = new Thickness(0, 0, 6, 4),
-                Padding = new Thickness(8, 3, 8, 3),
+                Style = (Style)FindResource("DomainTile"),
                 ToolTip = $"Open {label}"
             };
             btn.Click += (_, _) => navigateDomain(domain);
             QuickNavPanel.Children.Add(btn);
         }
 
-        AddQuick("App permissions", ProductDomain.ConsentStore);
-        AddQuick("Telemetry", ProductDomain.Telemetry);
-        AddQuick("Firewall", ProductDomain.Firewall);
-        AddQuick("Microsoft Defender", ProductDomain.Defender);
-        AddQuick("Windows Update", ProductDomain.WindowsUpdate);
-        AddQuick("Location", ProductDomain.Location);
-        AddQuick("Activity History", ProductDomain.ActivityHistory);
+        AddTile("App permissions", ProductDomain.ConsentStore);
+        AddTile("Telemetry", ProductDomain.Telemetry);
+        AddTile("Firewall", ProductDomain.Firewall);
+        AddTile("Microsoft Defender", ProductDomain.Defender);
+        AddTile("Windows Update", ProductDomain.WindowsUpdate);
+        AddTile("Location", ProductDomain.Location);
+        AddTile("Activity History", ProductDomain.ActivityHistory);
+        AddTile("Advertising", ProductDomain.Advertising);
     }
 
     private static string Disp(string? v) =>
