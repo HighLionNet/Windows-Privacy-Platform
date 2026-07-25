@@ -38,7 +38,7 @@
 
     <!-- Toolbar -->
     <Border DockPanel.Dock="Top" Background="{StaticResource BrushBgContent}"
-            BorderBrush="{StaticResource BrushBorderStrong}" BorderThickness="0,0,0,1" Padding="10,6">
+            BorderBrush="{StaticResource BrushBorderStrong}" BorderThickness="0,0,0,1" Padding="12,8">
       <Grid>
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="*" />
@@ -47,20 +47,20 @@
         </Grid.ColumnDefinitions>
 
         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-          <Border Width="28" Height="28" Background="{StaticResource BrushAccent}" Margin="0,0,10,0"
+          <Border Width="30" Height="30" Background="{StaticResource BrushAccent}" Margin="0,0,12,0"
                   VerticalAlignment="Center">
             <TextBlock Text="WPP" Foreground="White" FontWeight="Bold" FontSize="9"
                        HorizontalAlignment="Center" VerticalAlignment="Center" />
           </Border>
           <StackPanel VerticalAlignment="Center">
-            <TextBlock Text="Windows Privacy Platform" FontSize="15" FontWeight="SemiBold"
+            <TextBlock Text="Windows Privacy Platform" FontSize="16" FontWeight="SemiBold"
                        Foreground="{StaticResource BrushTextPrimary}" />
             <TextBlock x:Name="ScanTimeLabel" Text="" FontSize="11"
                        Foreground="{StaticResource BrushTextMuted}" />
           </StackPanel>
-          <TextBlock Text="v1.1" Margin="12,0,0,0" VerticalAlignment="Center"
-                     Foreground="{StaticResource BrushTextMuted}" FontSize="11" />
-          <Border Margin="14,0,0,0" Padding="8,3" BorderBrush="{StaticResource BrushBorderStrong}"
+          <TextBlock Text="v1.2" Margin="14,0,0,0" VerticalAlignment="Center"
+                     Foreground="{StaticResource BrushTextMuted}" FontSize="12" FontWeight="SemiBold" />
+          <Border Margin="16,0,0,0" Padding="8,3" BorderBrush="{StaticResource BrushBorderStrong}"
                   BorderThickness="1" Background="{StaticResource BrushBgHeader}" VerticalAlignment="Center">
             <StackPanel Orientation="Horizontal">
               <TextBlock Text="Mode" FontSize="11" Foreground="{StaticResource BrushTextMuted}"
@@ -75,21 +75,21 @@
           </Border>
         </StackPanel>
 
-        <TextBox x:Name="SearchBox" Grid.Column="1" Width="260" Height="26"
-                 VerticalContentAlignment="Center" Padding="6,0" Margin="0,0,8,0"
+        <TextBox x:Name="SearchBox" Grid.Column="1" Width="280" Height="28"
+                 VerticalContentAlignment="Center" Padding="8,0" Margin="0,0,10,0"
                  ToolTip="Search (Ctrl+F). Enter to run. Esc clears."
                  KeyDown="SearchBox_KeyDown" />
 
         <Button x:Name="ScanButton" Grid.Column="2" Content="Scan"
                 Style="{StaticResource PrimaryButton}" Click="ScanButton_Click"
-                MinWidth="72"
+                MinWidth="80"
                 ToolTip="Scan (F5)" />
       </Grid>
     </Border>
 
     <!-- Status bar -->
     <Border DockPanel.Dock="Bottom" Background="{StaticResource BrushBgSidebar}"
-            BorderBrush="{StaticResource BrushBorderStrong}" BorderThickness="0,1,0,0" Padding="10,3">
+            BorderBrush="{StaticResource BrushBorderStrong}" BorderThickness="0,1,0,0" Padding="12,4">
       <Grid>
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="*" />
@@ -101,11 +101,11 @@
         <StackPanel Grid.Column="1" Orientation="Horizontal">
           <TextBlock x:Name="CatalogCountLabel" Text="Objects: —" Margin="8,0,0,0"
                      Foreground="{StaticResource BrushTextMuted}" FontSize="11" />
-          <TextBlock x:Name="ConflictCountLabel" Text="Conflicts: —" Margin="10,0,0,0"
+          <TextBlock x:Name="ConflictCountLabel" Text="Conflicts: —" Margin="12,0,0,0"
                      Foreground="{StaticResource BrushTextMuted}" FontSize="11" />
-          <TextBlock x:Name="ValidationLabel" Text="Validation: —" Margin="10,0,0,0"
+          <TextBlock x:Name="ValidationLabel" Text="Validation: —" Margin="12,0,0,0"
                      Foreground="{StaticResource BrushTextMuted}" FontSize="11" />
-          <TextBlock Text="Inspect · Read-only" Margin="12,0,0,0"
+          <TextBlock Text="Inspect · Read-only" Margin="14,0,0,0"
                      Foreground="{StaticResource BrushAccent}" FontSize="11" FontWeight="SemiBold" />
         </StackPanel>
       </Grid>
@@ -122,12 +122,12 @@
       <Border Grid.Column="0" Background="{StaticResource BrushBgSidebar}"
               BorderBrush="{StaticResource BrushBorderStrong}" BorderThickness="0,0,1,0">
         <ScrollViewer VerticalScrollBarVisibility="Auto" x:Name="NavScroll">
-          <StackPanel Margin="0,4,0,8" x:Name="NavPanel">
+          <StackPanel Margin="0,6,0,10" x:Name="NavPanel">
             <TextBlock Text="MACHINE" Style="{StaticResource SidebarGroupLabel}" Margin="12,4,8,2" />
             <Button x:Name="NavHome" Content="Machine Overview" Style="{StaticResource SidebarButtonSelected}"
                     Click="Nav_Click" Tag="home" />
 
-            <Border Style="{StaticResource SectionRule}" Margin="10,6,10,2" />
+            <Border Style="{StaticResource SectionRule}" Margin="10,8,10,2" />
             <TextBlock Text="PRIVACY" Style="{StaticResource SidebarGroupLabel}" Foreground="{StaticResource BrushDomainPrivacy}" />
             <Button Content="App permissions" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:ConsentStore" />
             <Button Content="App policy overrides" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:AppPrivacy" />
@@ -137,31 +137,31 @@
             <Button Content="Activity History" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:ActivityHistory" />
             <Button Content="Cloud content" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:CloudContent" />
 
-            <Border Style="{StaticResource SectionRule}" Margin="10,6,10,2" />
+            <Border Style="{StaticResource SectionRule}" Margin="10,8,10,2" />
             <TextBlock Text="SECURITY" Style="{StaticResource SidebarGroupLabel}" Foreground="{StaticResource BrushDomainSecurity}" />
             <Button Content="Microsoft Defender" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Defender" />
             <Button Content="Firewall" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Firewall" />
             <Button Content="Biometrics" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Biometrics" />
 
-            <Border Style="{StaticResource SectionRule}" Margin="10,6,10,2" />
+            <Border Style="{StaticResource SectionRule}" Margin="10,8,10,2" />
             <TextBlock Text="WINDOWS" Style="{StaticResource SidebarGroupLabel}" Foreground="{StaticResource BrushDomainWindows}" />
             <Button Content="Windows Update" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:WindowsUpdate" />
             <Button Content="Search" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Search" />
             <Button Content="Speech" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Speech" />
             <Button Content="Device" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Device" />
 
-            <Border Style="{StaticResource SectionRule}" Margin="10,6,10,2" />
+            <Border Style="{StaticResource SectionRule}" Margin="10,8,10,2" />
             <TextBlock Text="APPLICATIONS" Style="{StaticResource SidebarGroupLabel}" Foreground="{StaticResource BrushDomainApps}" />
             <Button Content="Microsoft Edge" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Edge" />
 
-            <Border Style="{StaticResource SectionRule}" Margin="10,6,10,2" />
+            <Border Style="{StaticResource SectionRule}" Margin="10,8,10,2" />
             <TextBlock Text="KNOWLEDGE" Style="{StaticResource SidebarGroupLabel}" Foreground="{StaticResource BrushDomainKnowledge}" />
             <Button x:Name="NavConflicts" Content="Conflicts" Style="{StaticResource SidebarButton}"
                     Click="Nav_Click" Tag="conflicts" />
             <Button x:Name="NavKnowledge" Content="Knowledge Explorer" Style="{StaticResource SidebarButton}"
                     Click="Nav_Click" Tag="knowledge" />
 
-            <Border Style="{StaticResource SectionRule}" Margin="10,6,10,2" />
+            <Border Style="{StaticResource SectionRule}" Margin="10,8,10,2" />
             <TextBlock Text="ABOUT" Style="{StaticResource SidebarGroupLabel}" />
             <Button Content="About" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="about" />
           </StackPanel>
@@ -172,10 +172,10 @@
       <DockPanel Grid.Column="1" Background="{StaticResource BrushBgWindow}">
         <Border DockPanel.Dock="Top" Background="{StaticResource BrushBgContent}"
                 BorderBrush="{StaticResource BrushBorderStrong}" BorderThickness="0,0,0,1"
-                Padding="12,5">
+                Padding="16,6">
           <StackPanel x:Name="BreadcrumbPanel" Orientation="Horizontal" />
         </Border>
-        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="14,10,14,14"
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="18,14,18,18"
                       HorizontalScrollBarVisibility="Disabled">
           <ContentControl x:Name="ContentHost" HorizontalAlignment="Stretch" />
         </ScrollViewer>
