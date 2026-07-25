@@ -399,7 +399,7 @@ public partial class MainWindow : Window
         if (ModeCombo.SelectedIndex == 1)
         {
             MessageBox.Show(
-                "Modify mode is not available in version 1.0.\n\n" +
+                "Modify mode is not available in this version.\n\n" +
                 "Inspect-only. No write functionality exists.",
                 "Modify mode",
                 MessageBoxButton.OK,
@@ -411,7 +411,7 @@ public partial class MainWindow : Window
     private void ToggleSidebar_Click(object sender, RoutedEventArgs e)
     {
         _sidebarCollapsed = !_sidebarCollapsed;
-        SidebarColumn.Width = _sidebarCollapsed ? new GridLength(0) : new GridLength(220);
+        SidebarColumn.Width = _sidebarCollapsed ? new GridLength(0) : new GridLength(240);
         NavPanel.Visibility = _sidebarCollapsed ? Visibility.Collapsed : Visibility.Visible;
     }
 
