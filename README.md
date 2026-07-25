@@ -1,7 +1,7 @@
 # Windows Privacy Platform
 
-**Current milestone:** Version **1.1**  
-**Previous:** v1.0 (WPF host) → v0.9.5 → v0.9 → v0.8 → …
+**Current milestone:** Version **1.2**  
+**Previous:** v1.1 → v1.0 (WPF host) → v0.9.5 → …
 
 Local, **read-only** privacy and security **knowledge explorer** for Windows.
 
@@ -11,7 +11,7 @@ Windows Privacy Platform helps people see *what* is configured, *which layer* ap
 
 It is not a registry cleaner, optimizer, tweaker, score engine, compliance suite, or one-click hardener.
 
-Presentation target: a serious Windows management console (Event Viewer / Services / MMC family) — property sheets and dense lists, not marketing dashboards.
+Presentation target: a serious Windows / enterprise management console (Event Viewer / Services / MMC / XDR console family) — property sheets, dense lists, progressive disclosure.
 
 ---
 
@@ -39,15 +39,14 @@ Models → Core → Logging → KnowledgeBase → Validator → Scanner → CLI
 
 ---
 
-## What v1.1 changes
+## What v1.2 changes
 
-Presentation hardening only:
+Enterprise GUI refinement (presentation only):
 
-- Machine Overview uses **property sheets** (Identity, Security, Scan) instead of nested card columns  
-- Setting detail is a single primary state grid (Observed / Effective / Source / Confidence / Reason)  
-- Documentation text is plain sections — no box-per-paragraph  
-- Domain tiles on Home are flat with left accent  
-- Sidebar group labels use domain color identity  
+- Stronger typography hierarchy (page titles, primary values, body)  
+- Setting detail uses progressive disclosure: Effective state first, short Summary visible, knowledge/evidence behind expanders  
+- Comfortable spacing for long reading sessions  
+- Information architecture that scales as the catalog grows  
 - Backend frozen  
 
 ---
