@@ -1,10 +1,10 @@
 # Windows Privacy Platform
 ## AI / Engineer Handoff Document
 
-**Applies to:** **Version 1.1** (management-console presentation hardened)  
+**Applies to:** **Version 1.2** (enterprise GUI refinement)  
 **Last updated:** 2026-07-25  
 
-**Read this file, then `Status/Current_Status.md`, `Status/Architecture.md`, `Status/Roadmap.md`, and `Status/History/v1.1.md` before changing code.**
+**Read this file, then `Status/Current_Status.md`, `Status/Architecture.md`, `Status/Roadmap.md`, and `Status/History/v1.2.md` before changing code.**
 
 ---
 
@@ -14,7 +14,7 @@ Help humans **understand** Windows privacy and security configuration through tr
 
 **Understand first. Change later.**
 
-Presentation standard: first-party Windows management console (Event Viewer / Device Manager / Services / GPO family) — **property sheets and dense lists**, not stacked cards or marketing dashboards.
+Presentation standard: enterprise management console (Event Viewer / Device Manager / Services / XDR console family) — **property sheets, dense lists, progressive disclosure**.
 
 ---
 
@@ -30,7 +30,8 @@ Presentation standard: first-party Windows management console (Event Viewer / De
 8. Never invent Enabled/disabled from Unknown.  
 9. Never add a privacy/security score.  
 10. Update Status after verification; History append-only.  
-11. Do not reintroduce nested `PropertyGroup`/`Card` stacks around every paragraph. Prefer `PropertySheet` + plain section text.  
+11. Do not reintroduce nested `PropertyGroup`/`Card` stacks around every paragraph. Prefer `PropertySheet` + plain section text + expanders for secondary detail.  
+12. Detail pages must use progressive disclosure so they remain usable as the catalog grows.  
 
 ---
 
@@ -51,23 +52,25 @@ App is a WPF presentation host. `ScanService` composes the same pipeline as CLI.
 |---------|------|
 | v0.9.5 | Knowledge maturity |
 | v1.0 | Desktop GUI + management-console direction — see `History/v1.0.md` |
-| **1.1** | Kill stacked-card UI; MMC property sheets; stronger nav hierarchy — see `History/v1.1.md` |
+| v1.1 | Kill stacked-card UI; MMC property sheets — see `History/v1.1.md` |
+| **1.2** | Enterprise refinement: typography, progressive disclosure, scalable IA — see `History/v1.2.md` |
 | Next (v1.5) | Themes, export/snapshots design, deeper domain knowledge |
 
 ---
 
-## 5. Presentation notes (1.1)
+## 5. Presentation notes (1.2)
 
 - Classic **File / View / Tools / Help** menu bar.  
 - Content host is **full width**.  
 - Separators use dark rules (`BrushBorderStrong` / `#6D6D6D`).  
 - Sidebar 240px; group labels use domain color identity; left accent selection.  
 - Breadcrumbs: Home and domain segments navigate.  
-- **Home:** Identity / Security / Scan as single `PropertySheet` tables — not multi-column card grids.  
-- **Detail:** one primary Configuration state sheet (Observed / Effective / Source / Confidence / Reason). What/Why/Impact are plain text.  
+- **Home:** Identity / Security / Scan as single `PropertySheet` tables.  
+- **Detail:** Effective state first and prominent; short Summary always visible; Why/Impact, knowledge, layers, related behind expanders.  
 - **Conflicts:** single-column rows only.  
 - Domain entry tiles on Home: `DomainTile` (left accent, flat).  
-- Do not reintroduce card stacks without explicit product decision.  
+- Typography: page titles ~20px, primary values ~15px, body ~13px.  
+- Do not reintroduce card stacks or dump all knowledge on the detail page without disclosure.  
 
 ---
 
