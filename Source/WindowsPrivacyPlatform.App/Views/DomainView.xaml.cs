@@ -82,9 +82,14 @@ public partial class DomainView : UserControl
         var effective = mo.Observation?.Resolution?.EffectiveValue
                         ?? mo.Observation?.Effective?.EffectiveValue
                         ?? observed;
-        var source = mo.Observation?.Resolution?.EffectiveSource?.ToString()
-                     ?? mo.Observation?.Effective?.EffectiveSource?.ToString()
-                     ?? "—";
+
+        // ConfigurationLayer is a non-nullable enum — cannot use ?.
+        string source = "—";
+        if (mo.Observation?.Resolution is not null)
+            source = mo.Observation.Resolution.EffectiveSource.ToString();
+        else if (mo.Observation?.Effective is not null)
+            source = mo.Observation.Effective.EffectiveSource.ToString();
+
         var reason = mo.Observation?.Resolution?.ResolutionReason
                      ?? mo.Observation?.Effective?.Explanation;
 
