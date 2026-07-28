@@ -106,19 +106,5 @@
         <TextBlock x:Name="ScanMetaText" Style="{StaticResource SheetValue}" Margin="12,8,12,10" />
       </StackPanel>
     </Border>
-
-    <Expander Header="Identity collection notes" Style="{StaticResource DetailExpander}" IsExpanded="False">
-      <TextBlock x:Name="IdentityNotesText" Style="{StaticResource ValueText}"
-                 Foreground="{StaticResource BrushTextSecondary}" Margin="4,6,0,0" />
-    </Expander>
-
-    <Expander Header="Observation summary" Style="{StaticResource DetailExpander}" IsExpanded="False">
-      <TextBlock x:Name="SummaryText" Style="{StaticResource ValueText}" Margin="4,6,0,0" />
-    </Expander>
-
-    <Border Style="{StaticResource SectionRule}" />
-
-    <TextBlock Text="Domains" Style="{StaticResource GroupHeader}" Margin="0,0,0,8" />
-    <WrapPanel x:Name="QuickNavPanel" />
   </StackPanel>
 </UserControl>

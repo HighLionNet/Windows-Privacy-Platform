@@ -40,24 +40,6 @@ public partial class HomeView : UserControl
         ScanMetaText.Text =
             $"{o.LastScanUtc:yyyy-MM-dd HH:mm:ss} UTC · Catalog {o.CatalogVersion} · Knowledge {o.KnowledgeBaseVersion} · Identity confidence: {o.IdentityConfidence}";
 
-        IdentityNotesText.Text = string.IsNullOrWhiteSpace(o.IdentityCollectionNotes)
-            ? "No additional identity collection notes."
-            : o.IdentityCollectionNotes;
-
-        var s = scan.Summary;
-        if (s is not null)
-        {
-            SummaryText.Text =
-                $"Catalog: {s.CatalogTotal} · Observed: {s.ObservedCount} · Not observed: {s.NotObservedCount}\n" +
-                $"Policy configured: {s.ConfiguredPolicyCount} · Not configured: {s.NotConfiguredPolicyCount}\n" +
-                $"Impact tags H/M/L: {s.HighRiskCount} / {s.MediumRiskCount} / {s.LowRiskCount}\n" +
-                $"Validation: passed={s.CatalogValidationPassed}, failed={s.CatalogValidationFailed}";
-        }
-        else
-        {
-            SummaryText.Text = "Observation summary unavailable for this scan.";
-        }
-
         var conflictCount = scan.Query?.GetConflicts().Count() ?? 0;
         if (conflictCount > 0)
         {
@@ -67,27 +49,6 @@ public partial class HomeView : UserControl
             if (openConflicts is not null)
                 OpenConflictsBtn.Click += (_, _) => openConflicts();
         }
-
-        void AddTile(string label, ProductDomain domain)
-        {
-            var btn = new Button
-            {
-                Content = label,
-                Style = (Style)FindResource("DomainTile"),
-                ToolTip = $"Open {label}"
-            };
-            btn.Click += (_, _) => navigateDomain(domain);
-            QuickNavPanel.Children.Add(btn);
-        }
-
-        AddTile("App permissions", ProductDomain.ConsentStore);
-        AddTile("Telemetry", ProductDomain.Telemetry);
-        AddTile("Firewall", ProductDomain.Firewall);
-        AddTile("Microsoft Defender", ProductDomain.Defender);
-        AddTile("Windows Update", ProductDomain.WindowsUpdate);
-        AddTile("Location", ProductDomain.Location);
-        AddTile("Activity History", ProductDomain.ActivityHistory);
-        AddTile("Advertising", ProductDomain.Advertising);
     }
 
     private static string Disp(string? v) =>
