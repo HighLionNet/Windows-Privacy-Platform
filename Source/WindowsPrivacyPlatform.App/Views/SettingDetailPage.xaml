@@ -9,51 +9,72 @@
     <StackPanel x:Name="BadgeRow" Orientation="Horizontal" Margin="0,8,0,6" />
     <Border Style="{StaticResource HeaderRule}" />
 
-    <!-- Primary effective state callout -->
-    <Border Style="{StaticResource PropertySheet}" Margin="0,0,0,14">
-      <StackPanel>
-        <Border Style="{StaticResource PropertySheetHeader}">
-          <TextBlock Text="Effective state" FontWeight="SemiBold" FontSize="12"
-                     Foreground="{StaticResource BrushTextSecondary}" />
-        </Border>
-        <Grid Margin="0,4,0,6">
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="130" />
-            <ColumnDefinition Width="*" />
-          </Grid.ColumnDefinitions>
-          <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-          </Grid.RowDefinitions>
+    <!-- Sketch layout: current + effective | options -->
+    <Grid Margin="0,0,0,14">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="1.5*" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
 
-          <TextBlock Text="Effective" Style="{StaticResource SheetLabel}" FontWeight="SemiBold" />
-          <TextBlock x:Name="EffectiveText" Grid.Column="1" Style="{StaticResource SheetValue}"
-                     FontSize="15" FontWeight="SemiBold" />
+      <!-- Left: current + effective -->
+      <Border Style="{StaticResource PropertySheet}" Margin="0,0,10,0">
+        <StackPanel>
+          <Border Style="{StaticResource PropertySheetHeader}">
+            <TextBlock Text="Observed state" FontWeight="SemiBold" FontSize="12"
+                       Foreground="{StaticResource BrushTextSecondary}" />
+          </Border>
+          <Grid Margin="0,4,0,6">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="120" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-          <TextBlock Grid.Row="1" Text="Observed" Style="{StaticResource SheetLabel}" />
-          <TextBlock x:Name="ObservedText" Grid.Row="1" Grid.Column="1" Style="{StaticResource SheetValue}" />
+            <TextBlock Text="Current" Style="{StaticResource SheetLabel}" />
+            <TextBlock x:Name="ObservedText" Grid.Column="1" Style="{StaticResource SheetValue}"
+                       FontFamily="Cascadia Code, Consolas, Segoe UI" />
 
-          <TextBlock Grid.Row="2" Text="Source" Style="{StaticResource SheetLabel}" />
-          <TextBlock x:Name="SourceText" Grid.Row="2" Grid.Column="1" Style="{StaticResource SheetValue}" />
+            <TextBlock Grid.Row="1" Text="Effective" Style="{StaticResource SheetLabel}" FontWeight="SemiBold" />
+            <TextBlock x:Name="EffectiveText" Grid.Row="1" Grid.Column="1" Style="{StaticResource SheetValue}"
+                       FontSize="15" FontWeight="SemiBold"
+                       FontFamily="Cascadia Code, Consolas, Segoe UI" />
 
-          <TextBlock Grid.Row="3" Text="Confidence" Style="{StaticResource SheetLabel}" />
-          <TextBlock x:Name="ConfidenceText" Grid.Row="3" Grid.Column="1" Style="{StaticResource SheetValue}" />
+            <TextBlock Grid.Row="2" Text="Source" Style="{StaticResource SheetLabel}" />
+            <TextBlock x:Name="SourceText" Grid.Row="2" Grid.Column="1" Style="{StaticResource SheetValue}" />
 
-          <TextBlock Grid.Row="4" Text="Reason" Style="{StaticResource SheetLabel}" />
-          <TextBlock x:Name="ReasonText" Grid.Row="4" Grid.Column="1" Style="{StaticResource SheetValue}"
-                     Foreground="{StaticResource BrushTextSecondary}" />
-        </Grid>
-      </StackPanel>
-    </Border>
+            <TextBlock Grid.Row="3" Text="Confidence" Style="{StaticResource SheetLabel}" />
+            <TextBlock x:Name="ConfidenceText" Grid.Row="3" Grid.Column="1" Style="{StaticResource SheetValue}" />
+
+            <TextBlock Grid.Row="4" Text="Reason" Style="{StaticResource SheetLabel}" />
+            <TextBlock x:Name="ReasonText" Grid.Row="4" Grid.Column="1" Style="{StaticResource SheetValue}"
+                       Foreground="{StaticResource BrushTextSecondary}" />
+          </Grid>
+        </StackPanel>
+      </Border>
+
+      <!-- Right: options table -->
+      <Border Grid.Column="1" Style="{StaticResource PropertySheet}">
+        <StackPanel>
+          <Border Style="{StaticResource PropertySheetHeader}">
+            <TextBlock Text="Options" FontWeight="SemiBold" FontSize="12"
+                       Foreground="{StaticResource BrushTextSecondary}" />
+          </Border>
+          <ItemsControl x:Name="OptionsList" Margin="8,6,8,8" />
+        </StackPanel>
+      </Border>
+    </Grid>
 
     <!-- Short summary always visible -->
     <TextBlock Text="Summary" Style="{StaticResource GroupHeader}" Margin="0,0,0,4" />
-    <TextBlock x:Name="WhatText" Style="{StaticResource ValueText}" Margin="0,0,0,4" />
+    <TextBlock x:Name="WhatText" Style="{StaticResource ValueText}" Margin="0,0,0,8" />
 
-    <!-- Progressive disclosure: technical and knowledge sections collapsed by default -->
+    <!-- Progressive disclosure for secondary knowledge -->
     <Expander Header="Why this exists and impact" Style="{StaticResource DetailExpander}" IsExpanded="False">
       <StackPanel Margin="4,8,0,4">
         <TextBlock Text="Why Windows has this" FontWeight="SemiBold" FontSize="12"

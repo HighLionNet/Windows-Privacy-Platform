@@ -8,6 +8,7 @@ namespace WindowsPrivacyPlatform.App.Views;
 
 /// <summary>
 /// Property-sheet detail surface. Consumes SettingDetailView only.
+/// v1.3: primary surface matches sketch — current/effective + options table.
 /// </summary>
 public partial class SettingDetailPage : UserControl
 {
@@ -32,11 +33,20 @@ public partial class SettingDetailPage : UserControl
 
         ObservedText.Text = detail.CurrentStateDisplay ?? "Unknown";
         EffectiveText.Text = detail.EffectiveValueDisplay ?? "Unknown";
+        if (detail.HasConflict)
+            EffectiveText.Foreground = (Brush)FindResource("BrushConflict");
+
         SourceText.Text = detail.EffectiveSourceDisplay ?? "Unknown";
         ConfidenceText.Text = detail.Confidence.ToString();
         ReasonText.Text = string.IsNullOrWhiteSpace(detail.ResolutionReason)
             ? "No resolution reason available on the current scan."
             : detail.ResolutionReason;
+
+        // Options from catalog ValueSemantics via the explanation / definition path
+        // SettingDetailView does not carry ValueSemantics; we show layers as fallback when empty.
+        // Options are populated from Layers + known display when available; primary map lives on ManagedObject.
+        // For v1.3 we surface layer values and any resolution reason as the options context.
+        PopulateOptions(detail);
 
         if (detail.Layers.Count == 0)
         {
@@ -57,7 +67,8 @@ public partial class SettingDetailPage : UserControl
                     TextWrapping = TextWrapping.Wrap,
                     Margin = new Thickness(0, 2, 0, 0),
                     Foreground = (Brush)FindResource("BrushTextSecondary"),
-                    FontSize = 12
+                    FontSize = 12,
+                    FontFamily = new FontFamily("Cascadia Code, Consolas, Segoe UI")
                 });
             }
         }
@@ -111,6 +122,36 @@ public partial class SettingDetailPage : UserControl
                 RelatedList.Items.Add(row);
             }
         }
+    }
+
+    private void PopulateOptions(SettingDetailView detail)
+    {
+        // Surface layer observations as the options/evidence table when present.
+        // Full ValueSemantics map is shown on the domain card; detail reinforces with live layers.
+        if (detail.Layers.Count > 0)
+        {
+            foreach (var layer in detail.Layers)
+            {
+                OptionsList.Items.Add(new TextBlock
+                {
+                    Text = $"{layer.LayerName}\n  {layer.ValueDisplay}",
+                    FontSize = 12,
+                    FontFamily = new FontFamily("Cascadia Code, Consolas, Segoe UI"),
+                    TextWrapping = TextWrapping.Wrap,
+                    Margin = new Thickness(0, 0, 0, 8),
+                    Foreground = (Brush)FindResource("BrushTextPrimary")
+                });
+            }
+            return;
+        }
+
+        OptionsList.Items.Add(new TextBlock
+        {
+            Text = "No value map or layer options recorded for this ObjectId.",
+            FontSize = 12,
+            Foreground = (Brush)FindResource("BrushTextMuted"),
+            TextWrapping = TextWrapping.Wrap
+        });
     }
 
     private void AddBadge(string? text, string styleKey, string foregroundKey)
