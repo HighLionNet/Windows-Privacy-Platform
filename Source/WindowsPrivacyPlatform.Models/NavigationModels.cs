@@ -43,6 +43,16 @@ public class SettingDetailView
     public bool HasConflict { get; set; }
     public List<LayerDisplay> Layers { get; set; } = new();
     public List<RelatedSettingDisplay> Related { get; set; } = new();
+
+    /// <summary>Catalog ValueSemantics mapped for the options table (trusted).</summary>
+    public List<OptionDisplay> Options { get; set; } = new();
+}
+
+public class OptionDisplay
+{
+    public string RawValue { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public string? Description { get; set; }
 }
 
 public class LayerDisplay
@@ -151,6 +161,20 @@ public static class NavigationBuilder
             Confidence = resolution?.Confidence ?? effective?.Confidence ?? EffectiveConfidence.Unknown,
             HasConflict = resolution?.HasConflict == true || effective?.HasConflict == true
         };
+
+        if (mo.ValueSemantics is { Count: > 0 })
+        {
+            foreach (var v in mo.ValueSemantics)
+            {
+                if (v is null) continue;
+                view.Options.Add(new OptionDisplay
+                {
+                    RawValue = v.RawValue ?? string.Empty,
+                    Label = string.IsNullOrWhiteSpace(v.DisplayLabel) ? v.Canonical : v.DisplayLabel,
+                    Description = string.IsNullOrWhiteSpace(v.Description) ? null : v.Description
+                });
+            }
+        }
 
         var layers = resolution?.RawObservations ?? mo.Observation?.Layers;
         if (layers is not null)

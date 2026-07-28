@@ -42,10 +42,6 @@ public partial class SettingDetailPage : UserControl
             ? "No resolution reason available on the current scan."
             : detail.ResolutionReason;
 
-        // Options from catalog ValueSemantics via the explanation / definition path
-        // SettingDetailView does not carry ValueSemantics; we show layers as fallback when empty.
-        // Options are populated from Layers + known display when available; primary map lives on ManagedObject.
-        // For v1.3 we surface layer values and any resolution reason as the options context.
         PopulateOptions(detail);
 
         if (detail.Layers.Count == 0)
@@ -126,28 +122,39 @@ public partial class SettingDetailPage : UserControl
 
     private void PopulateOptions(SettingDetailView detail)
     {
-        // Surface layer observations as the options/evidence table when present.
-        // Full ValueSemantics map is shown on the domain card; detail reinforces with live layers.
-        if (detail.Layers.Count > 0)
+        if (detail.Options.Count > 0)
         {
-            foreach (var layer in detail.Layers)
+            foreach (var opt in detail.Options)
             {
-                OptionsList.Items.Add(new TextBlock
+                var block = new StackPanel { Margin = new Thickness(0, 0, 0, 8) };
+                block.Children.Add(new TextBlock
                 {
-                    Text = $"{layer.LayerName}\n  {layer.ValueDisplay}",
+                    Text = $"{opt.RawValue}  ·  {opt.Label}",
                     FontSize = 12,
+                    FontWeight = FontWeights.SemiBold,
                     FontFamily = new FontFamily("Cascadia Code, Consolas, Segoe UI"),
                     TextWrapping = TextWrapping.Wrap,
-                    Margin = new Thickness(0, 0, 0, 8),
                     Foreground = (Brush)FindResource("BrushTextPrimary")
                 });
+                if (!string.IsNullOrWhiteSpace(opt.Description))
+                {
+                    block.Children.Add(new TextBlock
+                    {
+                        Text = opt.Description,
+                        FontSize = 11,
+                        TextWrapping = TextWrapping.Wrap,
+                        Foreground = (Brush)FindResource("BrushTextSecondary"),
+                        Margin = new Thickness(0, 2, 0, 0)
+                    });
+                }
+                OptionsList.Items.Add(block);
             }
             return;
         }
 
         OptionsList.Items.Add(new TextBlock
         {
-            Text = "No value map or layer options recorded for this ObjectId.",
+            Text = "No value map defined in catalog for this ObjectId.",
             FontSize = 12,
             Foreground = (Brush)FindResource("BrushTextMuted"),
             TextWrapping = TextWrapping.Wrap
