@@ -1,7 +1,7 @@
 # Windows Privacy Platform
 
-**Current milestone:** Version **1.2**  
-**Previous:** v1.1 → v1.0 (WPF host) → v0.9.5 → …
+**Current milestone:** Version **1.3**  
+**Previous:** v1.2 → v1.1 → v1.0 (WPF host) → v0.9.5 → …
 
 Local, **read-only** privacy and security **knowledge explorer** for Windows.
 
@@ -11,7 +11,7 @@ Windows Privacy Platform helps people see *what* is configured, *which layer* ap
 
 It is not a registry cleaner, optimizer, tweaker, score engine, compliance suite, or one-click hardener.
 
-Presentation target: a serious Windows / enterprise management console (Event Viewer / Services / MMC / XDR console family) — property sheets, dense lists, progressive disclosure.
+Presentation target: a serious Windows / enterprise management console (Event Viewer / Services / MMC / XDR console family) — property sheets, dense lists, progressive disclosure — with a mid-cyber visual density for legibility.
 
 ---
 
@@ -39,14 +39,14 @@ Models → Core → Logging → KnowledgeBase → Validator → Scanner → CLI
 
 ---
 
-## What v1.2 changes
+## What v1.3 changes
 
-Enterprise GUI refinement (presentation only):
+GUI-only refinement for human navigation:
 
-- Stronger typography hierarchy (page titles, primary values, body)  
-- Setting detail uses progressive disclosure: Effective state first, short Summary visible, knowledge/evidence behind expanders  
-- Comfortable spacing for long reading sessions  
-- Information architecture that scales as the catalog grows  
+- **Domain pages** show each setting as a card: current setting, effective state, options (from ValueSemantics), left accent colored by conflict / unknown / normal  
+- **Setting detail** primary surface matches the sketch layout: current + effective on the left, options table on the right; secondary knowledge stays in expanders  
+- **Home** decluttered: removed domain tiles and expanders; Identity / Security / Scan property sheets + conflict attention only  
+- Mid-cyber palette and monospace values for denser, cooler legibility without game aesthetics  
 - Backend frozen  
 
 ---

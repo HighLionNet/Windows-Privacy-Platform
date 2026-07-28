@@ -1,10 +1,10 @@
 # Windows Privacy Platform
 ## AI / Engineer Handoff Document
 
-**Applies to:** **Version 1.2** (enterprise GUI refinement)  
-**Last updated:** 2026-07-25  
+**Applies to:** **Version 1.3** (GUI navigation clarity + mid-cyber presentation)  
+**Last updated:** 2026-07-28  
 
-**Read this file, then `Status/Current_Status.md`, `Status/Architecture.md`, `Status/Roadmap.md`, and `Status/History/v1.2.md` before changing code.**
+**Read this file, then `Status/Current_Status.md`, `Status/Architecture.md`, `Status/Roadmap.md`, and prior `Status/History/v1.2.md` before changing code.**
 
 ---
 
@@ -14,7 +14,7 @@ Help humans **understand** Windows privacy and security configuration through tr
 
 **Understand first. Change later.**
 
-Presentation standard: enterprise management console (Event Viewer / Device Manager / Services / XDR console family) — **property sheets, dense lists, progressive disclosure**.
+Presentation standard: enterprise management console with mid-cyber density — **property sheets, setting cards, progressive disclosure**. Navigation is page-based (no expanders for primary discovery).
 
 ---
 
@@ -29,9 +29,10 @@ Presentation standard: enterprise management console (Event Viewer / Device Mana
 7. CLI / TUI / **App** are presentation-only.  
 8. Never invent Enabled/disabled from Unknown.  
 9. Never add a privacy/security score.  
-10. Update Status after verification; History append-only.  
-11. Do not reintroduce nested `PropertyGroup`/`Card` stacks around every paragraph. Prefer `PropertySheet` + plain section text + expanders for secondary detail.  
+10. Update Status after verification; History append-only when a new History file is authorized.  
+11. Do not reintroduce nested `PropertyGroup`/`Card` stacks around every paragraph. Prefer setting cards + PropertySheet + expanders for secondary detail.  
 12. Detail pages must use progressive disclosure so they remain usable as the catalog grows.  
+13. Prefer page navigation over expanders for primary discovery (v1.3).  
 
 ---
 
@@ -42,7 +43,7 @@ Models → Core → Logging → KnowledgeBase → Validator → Scanner → CLI
                                                               ↘ App
 ```
 
-App is a WPF presentation host. `ScanService` composes the same pipeline as CLI. Backend is frozen.
+App is a WPF presentation host. `ScanService` composes the same pipeline as CLI. Backend is frozen. v1.3 added `OptionDisplay` on `SettingDetailView` (presentation data only).
 
 ---
 
@@ -53,24 +54,24 @@ App is a WPF presentation host. `ScanService` composes the same pipeline as CLI.
 | v0.9.5 | Knowledge maturity |
 | v1.0 | Desktop GUI + management-console direction — see `History/v1.0.md` |
 | v1.1 | Kill stacked-card UI; MMC property sheets — see `History/v1.1.md` |
-| **1.2** | Enterprise refinement: typography, progressive disclosure, scalable IA — see `History/v1.2.md` |
+| v1.2 | Enterprise refinement: typography, progressive disclosure — see `History/v1.2.md` |
+| **1.3** | Domain setting cards + sketch-aligned detail + Home declutter + mid-cyber styling |
 | Next (v1.5) | Themes, export/snapshots design, deeper domain knowledge |
 
 ---
 
-## 5. Presentation notes (1.2)
+## 5. Presentation notes (1.3)
 
 - Classic **File / View / Tools / Help** menu bar.  
 - Content host is **full width**.  
-- Separators use dark rules (`BrushBorderStrong` / `#6D6D6D`).  
+- Separators use dark rules (`BrushBorderStrong`).  
 - Sidebar 240px; group labels use domain color identity; left accent selection.  
 - Breadcrumbs: Home and domain segments navigate.  
-- **Home:** Identity / Security / Scan as single `PropertySheet` tables.  
-- **Detail:** Effective state first and prominent; short Summary always visible; Why/Impact, knowledge, layers, related behind expanders.  
-- **Conflicts:** single-column rows only.  
-- Domain entry tiles on Home: `DomainTile` (left accent, flat).  
-- Typography: page titles ~20px, primary values ~15px, body ~13px.  
-- Do not reintroduce card stacks or dump all knowledge on the detail page without disclosure.  
+- **Home:** Identity / Security / Scan property sheets only; conflict attention when present. No domain tiles, no expanders.  
+- **Domain:** stacked setting cards (current, effective, options from ValueSemantics, left accent by conflict/unknown). Subcategory headers when present. Click opens detail.  
+- **Detail:** left = current + effective + source/confidence/reason; right = options table; Summary visible; secondary knowledge in expanders.  
+- Cascadia Code / Consolas for raw values.  
+- Mid-cyber palette: stronger borders/headers, higher contrast, still enterprise.  
 
 ---
 

@@ -1,11 +1,11 @@
 # Windows Privacy Platform
-## Current Status — Version 1.2
+## Current Status — Version 1.3
 
 **Document role:** Authoritative live snapshot.
 
-**Last updated:** 2026-07-25  
-**Current development version:** **1.2** (enterprise GUI refinement)  
-**Previous archived milestone:** Version 1.1  
+**Last updated:** 2026-07-28  
+**Current development version:** **1.3** (GUI navigation clarity + mid-cyber presentation)  
+**Previous archived milestone:** Version 1.2  
 **Runtime target:** Windows 11; Scanner / CLI / App target `net8.0-windows`  
 **Safety posture:** Strictly read-only. No writes. No elevation. No remediation. No scores.  
 
@@ -17,7 +17,7 @@ Windows Privacy Platform is a **local, read-only Windows privacy and security kn
 
 Philosophy: **Understand first. Change later.**
 
-Presentation standard: enterprise management console (Event Viewer / Device Manager / Services / XDR console family) — property sheets, dense lists, progressive disclosure.
+Presentation standard: enterprise management console (Event Viewer / Device Manager / Services / XDR console family) with mid-cyber density for legibility — property sheets, setting cards, progressive disclosure.
 
 ---
 
@@ -30,36 +30,34 @@ Models → Core → Logging → KnowledgeBase → Validator → Scanner → CLI
                                                               ↘ App (WPF presentation)
 ```
 
-Backend architecture remains frozen. v1.2 is presentation-only.
+Backend architecture remains frozen. v1.3 is presentation-only (plus a small presentation-data addition on SettingDetailView for options).
 
 ---
 
-## 3. Version 1.2 presentation
+## 3. Version 1.3 presentation
 
 ### Shell
 
 - Classic File / View / Tools / Help menu bar  
 - Toolbar: WPP tile, title, scan time, Mode, search, Scan  
 - Sidebar 240px; group labels with domain color identity  
-- Left-accent selection; dark section rules  
+- Left-accent selection; darker section rules  
 - Clickable breadcrumbs; full-width workspace  
 - Status bar: Objects, Conflicts, Validation, Inspect · Read-only  
-- Version **v1.2**  
+- Version **v1.3**  
 
 ### Views
 
-- **Machine Overview** — attention (conflicts only), Identity + Security + Scan as **property sheets**, domain tiles  
-- **Domain** — column list (Setting / Observed→effective / Status), subcategory headers  
-- **Conflicts** — single-column rows (title, path, Effective [source], reason)  
-- **Setting Detail** — Effective state first (large); short Summary always visible; Why/Impact, Knowledge, Layers, Related behind expanders  
-- **Knowledge / Search** — dense list pattern  
-- **About** — property-sheet product facts  
+- **Machine Overview** — Identity + Security + Scan property sheets only; conflict attention when present; no domain tiles, no expanders  
+- **Domain** — stacked setting cards: name, current setting, effective state, options table (ValueSemantics), left accent by conflict/unknown/normal; subcategory headers when present  
+- **Setting Detail** — sketch layout: current + effective (left) + options table (right); Summary always visible; secondary knowledge in expanders  
+- **Conflicts / Knowledge / About** — unchanged pattern  
 
 ### Typography & density
 
-- Page titles 20px; primary values 15px; body 13px with line-height  
-- Comfortable row and sheet padding for long sessions  
-- Progressive disclosure so detail pages stay short as catalog grows  
+- Page titles 20px; primary values 15px; body 13px  
+- Cascadia Code / Consolas for raw values and options  
+- Stronger borders and header contrast (mid-cyber, not game)  
 
 ---
 
