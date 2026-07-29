@@ -1,11 +1,11 @@
 # Windows Privacy Platform
-## Current Status — Version 1.3
+## Current Status — Version 1.4
 
 **Document role:** Authoritative live snapshot.
 
-**Last updated:** 2026-07-28  
-**Current development version:** **1.3** (GUI navigation clarity + mid-cyber presentation)  
-**Previous archived milestone:** Version 1.2  
+**Last updated:** 2026-07-29  
+**Current development version:** **1.4** (GUI information architecture + list-oriented indexes)  
+**Previous archived milestone:** Version 1.3  
 **Runtime target:** Windows 11; Scanner / CLI / App target `net8.0-windows`  
 **Safety posture:** Strictly read-only. No writes. No elevation. No remediation. No scores.  
 
@@ -17,7 +17,7 @@ Windows Privacy Platform is a **local, read-only Windows privacy and security kn
 
 Philosophy: **Understand first. Change later.**
 
-Presentation standard: enterprise management console (Event Viewer / Device Manager / Services / XDR console family) with mid-cyber density for legibility — property sheets, setting cards, progressive disclosure.
+Presentation standard: enterprise management console (Event Viewer / Device Manager / Services / XDR console family) — property sheets, dense list indexes, page hierarchy. Not a card dashboard.
 
 ---
 
@@ -30,11 +30,20 @@ Models → Core → Logging → KnowledgeBase → Validator → Scanner → CLI
                                                               ↘ App (WPF presentation)
 ```
 
-Backend architecture remains frozen. v1.3 is presentation-only (plus a small presentation-data addition on SettingDetailView for options).
+Backend architecture remains frozen. v1.4 is presentation-only.
 
 ---
 
-## 3. Version 1.3 presentation
+## 3. Version 1.4 presentation
+
+### Information hierarchy
+
+```
+Home
+ └── Domain          (category index)
+      └── Category   (setting list)
+           └── Setting detail
+```
 
 ### Shell
 
@@ -42,22 +51,24 @@ Backend architecture remains frozen. v1.3 is presentation-only (plus a small pre
 - Toolbar: WPP tile, title, scan time, Mode, search, Scan  
 - Sidebar 240px; group labels with domain color identity  
 - Left-accent selection; darker section rules  
-- Clickable breadcrumbs; full-width workspace  
+- Clickable breadcrumbs including Domain and Category  
 - Status bar: Objects, Conflicts, Validation, Inspect · Read-only  
-- Version **v1.3**  
+- Version **v1.4**  
 
 ### Views
 
-- **Machine Overview** — Identity + Security + Scan property sheets only; conflict attention when present; no domain tiles, no expanders  
-- **Domain** — stacked setting cards: name, current setting, effective state, options table (ValueSemantics), left accent by conflict/unknown/normal; subcategory headers when present  
-- **Setting Detail** — sketch layout: current + effective (left) + options table (right); Summary always visible; secondary knowledge in expanders  
-- **Conflicts / Knowledge / About** — unchanged pattern  
+- **Machine Overview** — Identity + Security + Scan property sheets; conflict attention when present  
+- **Domain** — category index (Category / Settings / Attention). No setting cards.  
+- **Category** — setting list (Setting / Current / Effective / Status). No options, no repeated labels.  
+- **Setting Detail** — State property sheet; Available values when present; Summary; secondary knowledge in expanders  
+- **Conflicts / Knowledge / About** — list / property-sheet pattern  
 
 ### Typography & density
 
 - Page titles 20px; primary values 15px; body 13px  
-- Cascadia Code / Consolas for raw values and options  
-- Stronger borders and header contrast (mid-cyber, not game)  
+- Cascadia Code / Consolas for raw values  
+- List rows with column headers; alternating row background on category lists  
+- Borders for grouping and selection only — not around every value  
 
 ---
 
@@ -74,6 +85,7 @@ Unchanged: no writes; no elevation; no remediation; no scores; no product teleme
 3. Firewall profile-level  
 4. No scan history / comparison / export  
 5. MDM/baseline incomplete  
+6. Visual verification of WPF requires a Windows host (this agent environment is Linux)  
 
 ---
 

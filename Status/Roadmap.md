@@ -1,8 +1,8 @@
 # Windows Privacy Platform
 ## Roadmap
 
-**Last updated:** 2026-07-25  
-**Current completed milestone:** **Version 1.2** (enterprise GUI refinement)
+**Last updated:** 2026-07-29  
+**Current completed milestone:** **Version 1.4** (GUI information architecture)
 
 ---
 
@@ -12,6 +12,7 @@
 - No scores  
 - Meanings live in catalog ValueSemantics  
 - Presentation contains no Windows logic  
+- Do not reintroduce stacked setting cards on index pages  
 
 ---
 
@@ -21,7 +22,9 @@
 - v0.9.5 — Knowledge maturity  
 - v1.0 — WPF desktop host + management-console direction  
 - v1.1 — Kill stacked-card presentation; MMC-style property sheets; stronger nav hierarchy  
-- **v1.2** — Enterprise refinement: typography, progressive disclosure on detail, scalable information architecture  
+- v1.2 — Enterprise refinement: typography, progressive disclosure on detail  
+- v1.3 — Domain setting cards + sketch detail + Home declutter + mid-cyber  
+- **v1.4** — Domain→Category→Setting hierarchy; list indexes; remove setting cards from indexes  
 
 ---
 

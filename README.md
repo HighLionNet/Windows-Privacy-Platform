@@ -1,7 +1,7 @@
 # Windows Privacy Platform
 
-**Current milestone:** Version **1.3**  
-**Previous:** v1.2 → v1.1 → v1.0 (WPF host) → v0.9.5 → …
+**Current milestone:** Version **1.4**  
+**Previous:** v1.3 → v1.2 → v1.1 → v1.0 (WPF host) → v0.9.5 → …
 
 Local, **read-only** privacy and security **knowledge explorer** for Windows.
 
@@ -11,7 +11,7 @@ Windows Privacy Platform helps people see *what* is configured, *which layer* ap
 
 It is not a registry cleaner, optimizer, tweaker, score engine, compliance suite, or one-click hardener.
 
-Presentation target: a serious Windows / enterprise management console (Event Viewer / Services / MMC / XDR console family) — property sheets, dense lists, progressive disclosure — with a mid-cyber visual density for legibility.
+Presentation target: a serious Windows / enterprise management console (Event Viewer / Services / MMC / XDR console family) — property sheets, dense lists, page-based hierarchy — with a mid-cyber visual density for legibility.
 
 ---
 
@@ -39,14 +39,16 @@ Models → Core → Logging → KnowledgeBase → Validator → Scanner → CLI
 
 ---
 
-## What v1.3 changes
+## What v1.4 changes
 
-GUI-only refinement for human navigation:
+GUI-only information architecture correction:
 
-- **Domain pages** show each setting as a card: current setting, effective state, options (from ValueSemantics), left accent colored by conflict / unknown / normal  
-- **Setting detail** primary surface matches the sketch layout: current + effective on the left, options table on the right; secondary knowledge stays in expanders  
-- **Home** decluttered: removed domain tiles and expanders; Identity / Security / Scan property sheets + conflict attention only  
-- Mid-cyber palette and monospace values for denser, cooler legibility without game aesthetics  
+- **Hierarchy:** Home → Domain (category index) → Category (setting list) → Setting detail  
+- **Domain pages** are category indexes — not stacks of setting cards  
+- **Category pages** are scannable setting lists (Name / Current / Effective / Status columns)  
+- **Setting detail** is the only place for options, provenance, and educational expanders  
+- Removed per-setting cards, repeated state labels, and options tables from index pages  
+- Breadcrumbs include Domain and Category segments  
 - Backend frozen  
 
 ---

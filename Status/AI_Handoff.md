@@ -1,10 +1,10 @@
 # Windows Privacy Platform
 ## AI / Engineer Handoff Document
 
-**Applies to:** **Version 1.3** (GUI navigation clarity + mid-cyber presentation)  
-**Last updated:** 2026-07-28  
+**Applies to:** **Version 1.4** (GUI information architecture + list-oriented indexes)  
+**Last updated:** 2026-07-29  
 
-**Read this file, then `Status/Current_Status.md`, `Status/Architecture.md`, `Status/Roadmap.md`, and prior `Status/History/v1.2.md` before changing code.**
+**Read this file, then `Status/Current_Status.md`, `Status/Architecture.md`, `Status/Roadmap.md`, and prior `Status/History/v1.3` notes / `v1.2.md` before changing code.**
 
 ---
 
@@ -14,7 +14,7 @@ Help humans **understand** Windows privacy and security configuration through tr
 
 **Understand first. Change later.**
 
-Presentation standard: enterprise management console with mid-cyber density — **property sheets, setting cards, progressive disclosure**. Navigation is page-based (no expanders for primary discovery).
+Presentation standard: enterprise management console — **property sheets, list indexes, page hierarchy**. Navigation is page-based. Do **not** reintroduce stacked setting cards on domain or category pages.
 
 ---
 
@@ -30,9 +30,10 @@ Presentation standard: enterprise management console with mid-cyber density — 
 8. Never invent Enabled/disabled from Unknown.  
 9. Never add a privacy/security score.  
 10. Update Status after verification; History append-only when a new History file is authorized.  
-11. Do not reintroduce nested `PropertyGroup`/`Card` stacks around every paragraph. Prefer setting cards + PropertySheet + expanders for secondary detail.  
-12. Detail pages must use progressive disclosure so they remain usable as the catalog grows.  
-13. Prefer page navigation over expanders for primary discovery (v1.3).  
+11. **Do not reintroduce stacked setting cards** on Domain or Category pages. Indexes are list rows; detail is property-sheet.  
+12. Detail pages use progressive disclosure for secondary knowledge only.  
+13. Preferred hierarchy: **Home → Domain → Category → Setting detail**.  
+14. Column headers carry meaning on list pages — do not repeat "Current setting:" / "Effective state:" labels inside every row.  
 
 ---
 
@@ -43,7 +44,9 @@ Models → Core → Logging → KnowledgeBase → Validator → Scanner → CLI
                                                               ↘ App
 ```
 
-App is a WPF presentation host. `ScanService` composes the same pipeline as CLI. Backend is frozen. v1.3 added `OptionDisplay` on `SettingDetailView` (presentation data only).
+App is a WPF presentation host. `ScanService` composes the same pipeline as CLI. Backend is frozen.
+
+v1.4 presentation-only: DomainView (category index), CategoryView (setting list), refined SettingDetailPage, breadcrumb category segment.
 
 ---
 
@@ -55,23 +58,25 @@ App is a WPF presentation host. `ScanService` composes the same pipeline as CLI.
 | v1.0 | Desktop GUI + management-console direction — see `History/v1.0.md` |
 | v1.1 | Kill stacked-card UI; MMC property sheets — see `History/v1.1.md` |
 | v1.2 | Enterprise refinement: typography, progressive disclosure — see `History/v1.2.md` |
-| **1.3** | Domain setting cards + sketch-aligned detail + Home declutter + mid-cyber styling |
+| v1.3 | Domain setting cards + sketch-aligned detail + Home declutter + mid-cyber styling |
+| **1.4** | Information architecture: Domain→Category→Setting; list indexes; remove setting cards from indexes |
 | Next (v1.5) | Themes, export/snapshots design, deeper domain knowledge |
 
 ---
 
-## 5. Presentation notes (1.3)
+## 5. Presentation notes (1.4)
 
 - Classic **File / View / Tools / Help** menu bar.  
 - Content host is **full width**.  
-- Separators use dark rules (`BrushBorderStrong`).  
 - Sidebar 240px; group labels use domain color identity; left accent selection.  
-- Breadcrumbs: Home and domain segments navigate.  
-- **Home:** Identity / Security / Scan property sheets only; conflict attention when present. No domain tiles, no expanders.  
-- **Domain:** stacked setting cards (current, effective, options from ValueSemantics, left accent by conflict/unknown). Subcategory headers when present. Click opens detail.  
-- **Detail:** left = current + effective + source/confidence/reason; right = options table; Summary visible; secondary knowledge in expanders.  
+- Breadcrumbs: Home › Group › Domain › Category › Setting (clickable where navigable).  
+- **Home:** Identity / Security / Scan property sheets only; conflict attention when present.  
+- **Domain:** category index list (Category / Settings / Attention columns). Click opens Category.  
+- **Category:** setting index list (Setting / Current / Effective / Status columns). Click opens detail.  
+- **Detail:** single State property sheet (Current, Effective, Source, Confidence, Reason); Available values table when ValueSemantics exist; Summary visible; secondary knowledge in expanders.  
 - Cascadia Code / Consolas for raw values.  
-- Mid-cyber palette: stronger borders/headers, higher contrast, still enterprise.  
+- Mid-cyber palette retained; restrained, enterprise.  
+- **Do not** put options tables, full provenance, or educational paragraphs on Domain or Category pages.  
 
 ---
 
