@@ -8,217 +8,96 @@ using WindowsPrivacyPlatform.Models;
 
 namespace WindowsPrivacyPlatform.App.Views;
 
+/// <summary>
+/// Domain page: index of categories (SubCategory groups) within a ProductDomain.
+/// Does not list individual setting state — that belongs on CategoryView.
+/// </summary>
 public partial class DomainView : UserControl
 {
-    public DomainView(ScanService scan, ProductDomain domain, Action<string> openSetting)
+    public DomainView(ScanService scan, ProductDomain domain, Action<ProductDomain, string> openCategory)
     {
         InitializeComponent();
         TitleText.Text = NavigationBuilder.HumanizeDomain(domain);
 
-        var items = scan.Catalog.Where(m => m.ProductDomain == domain)
-            .OrderBy(m => m.SubCategory)
-            .ThenBy(m => m.ObjectName)
-            .ToList();
-
+        var items = scan.Catalog.Where(m => m.ProductDomain == domain).ToList();
         if (items.Count == 0)
         {
             SubtitleText.Text = "No curated entries.";
-            SettingsList.Children.Add(new TextBlock
+            CategoryList.Children.Add(new TextBlock
             {
                 Text = "No settings in catalog for this domain.",
                 Foreground = (Brush)FindResource("BrushTextMuted"),
-                Margin = new Thickness(4, 8, 4, 8)
+                Margin = new Thickness(12, 10, 12, 10)
             });
             return;
         }
 
-        var conflicts = items.Count(m =>
+        var groups = items
+            .GroupBy(m => string.IsNullOrWhiteSpace(m.SubCategory) ? domain.ToString() : m.SubCategory!)
+            .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var conflictTotal = items.Count(m =>
             m.Observation?.Resolution?.HasConflict == true ||
             m.Observation?.Effective?.HasConflict == true);
 
-        SubtitleText.Text = conflicts > 0
-            ? $"{items.Count} settings · {conflicts} conflict(s)"
-            : $"{items.Count} settings";
+        SubtitleText.Text = conflictTotal > 0
+            ? $"{groups.Count} categor{(groups.Count == 1 ? "y" : "ies")} · {items.Count} settings · {conflictTotal} conflict(s)"
+            : $"{groups.Count} categor{(groups.Count == 1 ? "y" : "ies")} · {items.Count} settings";
 
-        string? lastSub = null;
-        foreach (var mo in items)
+        foreach (var group in groups)
         {
-            var sub = string.IsNullOrWhiteSpace(mo.SubCategory) ? null : mo.SubCategory;
-            if (sub is not null && !string.Equals(sub, lastSub, StringComparison.Ordinal))
-            {
-                lastSub = sub;
-                SettingsList.Children.Add(new Border
-                {
-                    Background = (Brush)FindResource("BrushBgHeader"),
-                    BorderBrush = (Brush)FindResource("BrushBorderStrong"),
-                    BorderThickness = new Thickness(0, 0, 0, 1),
-                    Padding = new Thickness(12, 6, 12, 6),
-                    Margin = new Thickness(0, 10, 0, 4),
-                    Child = new TextBlock
-                    {
-                        Text = sub.ToUpperInvariant(),
-                        FontWeight = FontWeights.SemiBold,
-                        FontSize = 11,
-                        Foreground = (Brush)FindResource("BrushTextMuted"),
-                        FontFamily = new FontFamily("Cascadia Code, Consolas, Segoe UI")
-                    }
-                });
-            }
+            var conflicts = group.Count(m =>
+                m.Observation?.Resolution?.HasConflict == true ||
+                m.Observation?.Effective?.HasConflict == true);
+            var unknowns = group.Count(IsUnknown);
 
-            SettingsList.Children.Add(BuildSettingCard(mo, openSetting));
+            CategoryList.Children.Add(BuildCategoryRow(
+                group.Key,
+                group.Count(),
+                conflicts,
+                unknowns,
+                () => openCategory(domain, group.Key)));
         }
     }
 
-    private Border BuildSettingCard(ManagedObject mo, Action<string> openSetting)
+    private Border BuildCategoryRow(string name, int count, int conflicts, int unknowns, Action open)
     {
-        var hasConflict = mo.Observation?.Resolution?.HasConflict == true ||
-                          mo.Observation?.Effective?.HasConflict == true;
-        var observed = mo.CurrentState ?? "Not observed";
-        var isUnknown = string.IsNullOrWhiteSpace(mo.CurrentState) ||
-                        observed.Contains("Not observed", StringComparison.OrdinalIgnoreCase) ||
-                        observed.Contains("Unknown", StringComparison.OrdinalIgnoreCase) ||
-                        observed.Contains("Not configured", StringComparison.OrdinalIgnoreCase);
-
-        var effective = mo.Observation?.Resolution?.EffectiveValue
-                        ?? mo.Observation?.Effective?.EffectiveValue
-                        ?? observed;
-
-        // ConfigurationLayer is a non-nullable enum — cannot use ?.
-        string source = "—";
-        if (mo.Observation?.Resolution is not null)
-            source = mo.Observation.Resolution.EffectiveSource.ToString();
-        else if (mo.Observation?.Effective is not null)
-            source = mo.Observation.Effective.EffectiveSource.ToString();
-
-        var reason = mo.Observation?.Resolution?.ResolutionReason
-                     ?? mo.Observation?.Effective?.Explanation;
-
-        var accentBrush = hasConflict
-            ? (Brush)FindResource("BrushConflict")
-            : isUnknown
-                ? (Brush)FindResource("BrushUnknown")
-                : (Brush)FindResource("BrushAccent");
-
-        var card = new Border
+        var row = new Border
         {
-            Background = (Brush)FindResource("BrushBgContent"),
-            BorderBrush = (Brush)FindResource("BrushBorderStrong"),
-            BorderThickness = new Thickness(1),
-            Margin = new Thickness(0, 0, 0, 10),
-            Cursor = System.Windows.Input.Cursors.Hand,
-            ToolTip = "Open setting details"
+            Style = (Style)FindResource(conflicts > 0 ? "ListRowConflict" : "ListRow"),
+            ToolTip = "Open category"
         };
 
-        // left accent bar via outer grid
-        var outer = new Grid();
-        outer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(4) });
-        outer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var grid = new Grid();
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(90) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(90) });
 
-        var accent = new Border { Background = accentBrush };
-        Grid.SetColumn(accent, 0);
-        outer.Children.Add(accent);
-
-        var body = new Grid { Margin = new Thickness(12, 10, 12, 10) };
-        body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.6, GridUnitType.Star) });
-        body.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        Grid.SetColumn(body, 1);
-        outer.Children.Add(body);
-
-        // Left: name + current + effective
         var left = new StackPanel();
         left.Children.Add(new TextBlock
         {
-            Text = mo.ObjectName,
+            Text = name,
             FontWeight = FontWeights.SemiBold,
-            FontSize = 14,
-            TextWrapping = TextWrapping.Wrap,
+            FontSize = 13,
             Foreground = (Brush)FindResource("BrushTextPrimary")
         });
 
-        if (hasConflict)
-        {
-            left.Children.Add(new Border
-            {
-                Style = (Style)FindResource("BadgeConflict"),
-                Margin = new Thickness(0, 4, 0, 0),
-                HorizontalAlignment = HorizontalAlignment.Left,
-                Child = new TextBlock
-                {
-                    Text = "Conflict",
-                    FontSize = 10,
-                    FontWeight = FontWeights.SemiBold,
-                    Foreground = (Brush)FindResource("BrushConflict")
-                }
-            });
-        }
-        else if (isUnknown)
-        {
-            left.Children.Add(new Border
-            {
-                Style = (Style)FindResource("BadgeUnknown"),
-                Margin = new Thickness(0, 4, 0, 0),
-                HorizontalAlignment = HorizontalAlignment.Left,
-                Child = new TextBlock
-                {
-                    Text = "Unknown",
-                    FontSize = 10,
-                    FontWeight = FontWeights.SemiBold,
-                    Foreground = (Brush)FindResource("BrushUnknown")
-                }
-            });
-        }
-
-        left.Children.Add(new TextBlock
-        {
-            Text = "Current setting",
-            FontSize = 11,
-            Foreground = (Brush)FindResource("BrushTextMuted"),
-            Margin = new Thickness(0, 10, 0, 2)
-        });
-        left.Children.Add(new TextBlock
-        {
-            Text = observed,
-            FontSize = 13,
-            FontFamily = new FontFamily("Cascadia Code, Consolas, Segoe UI"),
-            TextWrapping = TextWrapping.Wrap,
-            Foreground = (Brush)FindResource("BrushTextPrimary")
-        });
-
-        left.Children.Add(new TextBlock
-        {
-            Text = "Effective state",
-            FontSize = 11,
-            Foreground = (Brush)FindResource("BrushTextMuted"),
-            Margin = new Thickness(0, 8, 0, 2)
-        });
-        left.Children.Add(new TextBlock
-        {
-            Text = effective,
-            FontSize = 13,
-            FontWeight = FontWeights.SemiBold,
-            FontFamily = new FontFamily("Cascadia Code, Consolas, Segoe UI"),
-            TextWrapping = TextWrapping.Wrap,
-            Foreground = hasConflict
-                ? (Brush)FindResource("BrushConflict")
-                : (Brush)FindResource("BrushTextPrimary")
-        });
-
-        if (!string.IsNullOrWhiteSpace(reason) && hasConflict)
+        if (conflicts > 0)
         {
             left.Children.Add(new TextBlock
             {
-                Text = reason,
+                Text = $"{conflicts} conflict{(conflicts == 1 ? "" : "s")}",
                 FontSize = 11,
-                TextWrapping = TextWrapping.Wrap,
-                Foreground = (Brush)FindResource("BrushTextSecondary"),
-                Margin = new Thickness(0, 4, 0, 0)
+                Foreground = (Brush)FindResource("BrushConflict"),
+                Margin = new Thickness(0, 2, 0, 0)
             });
         }
-        else if (!string.Equals(effective, observed, StringComparison.OrdinalIgnoreCase))
+        else if (unknowns == count)
         {
             left.Children.Add(new TextBlock
             {
-                Text = $"Source: {source}",
+                Text = "All unknown on this scan",
                 FontSize = 11,
                 Foreground = (Brush)FindResource("BrushTextMuted"),
                 Margin = new Thickness(0, 2, 0, 0)
@@ -226,67 +105,45 @@ public partial class DomainView : UserControl
         }
 
         Grid.SetColumn(left, 0);
-        body.Children.Add(left);
+        grid.Children.Add(left);
 
-        // Right: options from ValueSemantics
-        var right = new Border
+        var countBlock = new TextBlock
         {
-            Background = (Brush)FindResource("BrushBgHeader"),
-            BorderBrush = (Brush)FindResource("BrushBorder"),
-            BorderThickness = new Thickness(1),
-            Padding = new Thickness(10, 8, 10, 8),
-            Margin = new Thickness(12, 0, 0, 0),
-            VerticalAlignment = VerticalAlignment.Top
+            Text = count.ToString(),
+            FontSize = 13,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Center,
+            Foreground = (Brush)FindResource("BrushTextPrimary")
         };
+        Grid.SetColumn(countBlock, 1);
+        grid.Children.Add(countBlock);
 
-        var optPanel = new StackPanel();
-        optPanel.Children.Add(new TextBlock
+        var attention = new TextBlock
         {
-            Text = "Options",
-            FontSize = 11,
-            FontWeight = FontWeights.SemiBold,
-            Foreground = (Brush)FindResource("BrushTextMuted"),
-            Margin = new Thickness(0, 0, 0, 6)
-        });
+            Text = conflicts > 0 ? conflicts.ToString() : (unknowns > 0 ? "—" : ""),
+            FontSize = 13,
+            FontWeight = conflicts > 0 ? FontWeights.SemiBold : FontWeights.Normal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 4, 0),
+            Foreground = conflicts > 0
+                ? (Brush)FindResource("BrushConflict")
+                : (Brush)FindResource("BrushTextMuted")
+        };
+        Grid.SetColumn(attention, 2);
+        grid.Children.Add(attention);
 
-        if (mo.ValueSemantics is { Count: > 0 })
-        {
-            foreach (var v in mo.ValueSemantics.Take(8))
-            {
-                if (v is null) continue;
-                var label = string.IsNullOrWhiteSpace(v.DisplayLabel) ? v.Canonical : v.DisplayLabel;
-                optPanel.Children.Add(new TextBlock
-                {
-                    Text = $"{v.RawValue}  ·  {label}",
-                    FontSize = 12,
-                    FontFamily = new FontFamily("Cascadia Code, Consolas, Segoe UI"),
-                    TextWrapping = TextWrapping.Wrap,
-                    Margin = new Thickness(0, 0, 0, 3),
-                    Foreground = (Brush)FindResource("BrushTextPrimary")
-                });
-            }
-        }
-        else
-        {
-            var desc = string.IsNullOrWhiteSpace(mo.Description)
-                ? "No value map in catalog."
-                : (mo.Description.Length > 120 ? mo.Description[..117] + "…" : mo.Description);
-            optPanel.Children.Add(new TextBlock
-            {
-                Text = desc,
-                FontSize = 12,
-                TextWrapping = TextWrapping.Wrap,
-                Foreground = (Brush)FindResource("BrushTextSecondary")
-            });
-        }
+        row.Child = grid;
+        row.MouseLeftButtonUp += (_, _) => open();
+        return row;
+    }
 
-        right.Child = optPanel;
-        Grid.SetColumn(right, 1);
-        body.Children.Add(right);
-
-        card.Child = outer;
-        var id = mo.ObjectId;
-        card.MouseLeftButtonUp += (_, _) => openSetting(id);
-        return card;
+    private static bool IsUnknown(ManagedObject mo)
+    {
+        var observed = mo.CurrentState ?? "";
+        return string.IsNullOrWhiteSpace(mo.CurrentState) ||
+               observed.Contains("Not observed", StringComparison.OrdinalIgnoreCase) ||
+               observed.Contains("Unknown", StringComparison.OrdinalIgnoreCase) ||
+               observed.Contains("Not configured", StringComparison.OrdinalIgnoreCase);
     }
 }
