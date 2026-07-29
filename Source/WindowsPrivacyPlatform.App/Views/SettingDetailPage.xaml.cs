@@ -7,8 +7,8 @@ using WindowsPrivacyPlatform.Models;
 namespace WindowsPrivacyPlatform.App.Views;
 
 /// <summary>
-/// Property-sheet detail surface. Consumes SettingDetailView only.
-/// v1.3: primary surface matches sketch — current/effective + options table.
+/// Setting detail: primary state comparison, compact options, secondary knowledge in expanders.
+/// Consumes SettingDetailView only. v1.4: single state sheet (no side-by-side card layout).
 /// </summary>
 public partial class SettingDetailPage : UserControl
 {
@@ -122,43 +122,79 @@ public partial class SettingDetailPage : UserControl
 
     private void PopulateOptions(SettingDetailView detail)
     {
-        if (detail.Options.Count > 0)
+        if (detail.Options.Count == 0)
         {
-            foreach (var opt in detail.Options)
-            {
-                var block = new StackPanel { Margin = new Thickness(0, 0, 0, 8) };
-                block.Children.Add(new TextBlock
-                {
-                    Text = $"{opt.RawValue}  ·  {opt.Label}",
-                    FontSize = 12,
-                    FontWeight = FontWeights.SemiBold,
-                    FontFamily = new FontFamily("Cascadia Code, Consolas, Segoe UI"),
-                    TextWrapping = TextWrapping.Wrap,
-                    Foreground = (Brush)FindResource("BrushTextPrimary")
-                });
-                if (!string.IsNullOrWhiteSpace(opt.Description))
-                {
-                    block.Children.Add(new TextBlock
-                    {
-                        Text = opt.Description,
-                        FontSize = 11,
-                        TextWrapping = TextWrapping.Wrap,
-                        Foreground = (Brush)FindResource("BrushTextSecondary"),
-                        Margin = new Thickness(0, 2, 0, 0)
-                    });
-                }
-                OptionsList.Items.Add(block);
-            }
+            OptionsSheet.Visibility = Visibility.Collapsed;
             return;
         }
 
-        OptionsList.Items.Add(new TextBlock
+        OptionsSheet.Visibility = Visibility.Visible;
+
+        // Compact header row
+        var header = new Grid { Margin = new Thickness(0, 0, 0, 6) };
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(100) });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(140) });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        header.Children.Add(MakeHeaderCell("Value", 0));
+        header.Children.Add(MakeHeaderCell("Label", 1));
+        header.Children.Add(MakeHeaderCell("Meaning", 2));
+        OptionsList.Items.Add(header);
+
+        foreach (var opt in detail.Options)
         {
-            Text = "No value map defined in catalog for this ObjectId.",
-            FontSize = 12,
-            Foreground = (Brush)FindResource("BrushTextMuted"),
-            TextWrapping = TextWrapping.Wrap
-        });
+            var row = new Grid { Margin = new Thickness(0, 0, 0, 4) };
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(100) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(140) });
+            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            var raw = new TextBlock
+            {
+                Text = opt.RawValue,
+                FontSize = 12,
+                FontFamily = new FontFamily("Cascadia Code, Consolas, Segoe UI"),
+                Foreground = (Brush)FindResource("BrushTextPrimary")
+            };
+            Grid.SetColumn(raw, 0);
+            row.Children.Add(raw);
+
+            var label = new TextBlock
+            {
+                Text = opt.Label,
+                FontSize = 12,
+                FontWeight = FontWeights.SemiBold,
+                Foreground = (Brush)FindResource("BrushTextPrimary")
+            };
+            Grid.SetColumn(label, 1);
+            row.Children.Add(label);
+
+            if (!string.IsNullOrWhiteSpace(opt.Description))
+            {
+                var desc = new TextBlock
+                {
+                    Text = opt.Description,
+                    FontSize = 12,
+                    TextWrapping = TextWrapping.Wrap,
+                    Foreground = (Brush)FindResource("BrushTextSecondary")
+                };
+                Grid.SetColumn(desc, 2);
+                row.Children.Add(desc);
+            }
+
+            OptionsList.Items.Add(row);
+        }
+    }
+
+    private TextBlock MakeHeaderCell(string text, int column)
+    {
+        var tb = new TextBlock
+        {
+            Text = text,
+            FontSize = 11,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = (Brush)FindResource("BrushTextMuted")
+        };
+        Grid.SetColumn(tb, column);
+        return tb;
     }
 
     private void AddBadge(string? text, string styleKey, string foregroundKey)
