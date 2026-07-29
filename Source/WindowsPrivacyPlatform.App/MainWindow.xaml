@@ -58,7 +58,7 @@
             <TextBlock x:Name="ScanTimeLabel" Text="" FontSize="11"
                        Foreground="{StaticResource BrushTextMuted}" />
           </StackPanel>
-          <TextBlock Text="v1.3" Margin="14,0,0,0" VerticalAlignment="Center"
+          <TextBlock Text="v1.4" Margin="14,0,0,0" VerticalAlignment="Center"
                      Foreground="{StaticResource BrushTextMuted}" FontSize="12" FontWeight="SemiBold" />
           <Border Margin="16,0,0,0" Padding="8,3" BorderBrush="{StaticResource BrushBorderStrong}"
                   BorderThickness="1" Background="{StaticResource BrushBgHeader}" VerticalAlignment="Center">

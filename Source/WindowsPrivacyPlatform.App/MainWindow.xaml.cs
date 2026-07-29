@@ -16,6 +16,7 @@ namespace WindowsPrivacyPlatform.App;
 
 /// <summary>
 /// Application shell. Presentation only — navigates views over ScanService results.
+/// Hierarchy: Home → Domain → Category → Setting detail.
 /// </summary>
 public partial class MainWindow : Window
 {
@@ -207,11 +208,37 @@ public partial class MainWindow : Window
             var name = tag["domain:".Length..];
             if (Enum.TryParse<ProductDomain>(name, out var domain))
             {
-                ContentHost.Content = new DomainView(_scan, domain, OpenSetting);
+                ContentHost.Content = new DomainView(_scan, domain, OpenCategory);
                 UpdateBreadcrumbs(
                     NavigationBuilder.HumanizeDomain(domain),
-                    group: DomainGroup(domain));
+                    group: DomainGroup(domain),
+                    domainName: NavigationBuilder.HumanizeDomain(domain),
+                    domainTag: $"domain:{domain}");
                 return;
+            }
+        }
+
+        if (tag.StartsWith("category:", StringComparison.OrdinalIgnoreCase))
+        {
+            // category:{ProductDomain}:{SubCategory}
+            var rest = tag["category:".Length..];
+            var sep = rest.IndexOf(':');
+            if (sep > 0)
+            {
+                var domainName = rest[..sep];
+                var category = rest[(sep + 1)..];
+                if (Enum.TryParse<ProductDomain>(domainName, out var domain))
+                {
+                    ContentHost.Content = new CategoryView(_scan, domain, category, OpenSetting);
+                    UpdateBreadcrumbs(
+                        category,
+                        group: DomainGroup(domain),
+                        domainName: NavigationBuilder.HumanizeDomain(domain),
+                        domainTag: $"domain:{domain}",
+                        categoryName: category,
+                        categoryTag: tag);
+                    return;
+                }
             }
         }
 
@@ -234,6 +261,20 @@ public partial class MainWindow : Window
         NavigateFromMenu($"domain:{domain}");
     }
 
+    private void OpenCategory(ProductDomain domain, string category)
+    {
+        var tag = $"category:{domain}:{category}";
+        _currentNav = tag;
+
+        // Highlight the parent domain in the sidebar
+        var domainTag = $"domain:{domain}";
+        var btn = _navButtons.FirstOrDefault(b => b.Tag as string == domainTag);
+        if (btn is not null)
+            HighlightNav(btn);
+
+        Navigate(tag);
+    }
+
     private void OpenSetting(string objectId)
     {
         var mo = _scan.Catalog.FirstOrDefault(m =>
@@ -245,12 +286,20 @@ public partial class MainWindow : Window
         if (detail is null)
             return;
 
+        var category = string.IsNullOrWhiteSpace(mo.SubCategory)
+            ? mo.ProductDomain.ToString()
+            : mo.SubCategory!;
+
         ContentHost.Content = new SettingDetailPage(detail, OpenSetting);
         UpdateBreadcrumbs(
             detail.Title,
             group: DomainGroup(mo.ProductDomain),
             domainName: NavigationBuilder.HumanizeDomain(mo.ProductDomain),
-            domainTag: $"domain:{mo.ProductDomain}");
+            domainTag: $"domain:{mo.ProductDomain}",
+            categoryName: category,
+            categoryTag: $"category:{mo.ProductDomain}:{category}");
+
+        _currentNav = $"setting:{objectId}";
     }
 
     private static string DomainGroup(ProductDomain d) => d switch
@@ -268,7 +317,9 @@ public partial class MainWindow : Window
         string current,
         string? group = null,
         string? domainName = null,
-        string? domainTag = null)
+        string? domainTag = null,
+        string? categoryName = null,
+        string? categoryTag = null)
     {
         BreadcrumbPanel.Children.Clear();
 
@@ -286,12 +337,24 @@ public partial class MainWindow : Window
             AddBreadcrumbLink(domainName, domainTag);
         }
 
+        if (!string.IsNullOrEmpty(categoryName) && !string.IsNullOrEmpty(categoryTag))
+        {
+            AddBreadcrumbSep();
+            // If current page is the category itself, show as text; else as link
+            if (string.Equals(current, categoryName, StringComparison.Ordinal))
+                AddBreadcrumbText(categoryName);
+            else
+                AddBreadcrumbLink(categoryName, categoryTag);
+        }
+
         var isRoot = string.Equals(current, "Machine Overview", StringComparison.Ordinal)
                      || string.Equals(current, "Ready", StringComparison.Ordinal);
-        var domainAlreadyLinked = !string.IsNullOrEmpty(domainName)
+        var domainAlreadyShown = !string.IsNullOrEmpty(domainName)
                                   && string.Equals(current, domainName, StringComparison.Ordinal);
+        var categoryAlreadyShown = !string.IsNullOrEmpty(categoryName)
+                                    && string.Equals(current, categoryName, StringComparison.Ordinal);
 
-        if (!isRoot && !domainAlreadyLinked)
+        if (!isRoot && !domainAlreadyShown && !categoryAlreadyShown)
         {
             AddBreadcrumbSep();
             AddBreadcrumbText(current);
@@ -331,7 +394,16 @@ public partial class MainWindow : Window
         btn.Click += (_, _) =>
         {
             _currentNav = tag;
-            var match = _navButtons.FirstOrDefault(b => b.Tag as string == tag);
+            // For category tags, highlight parent domain
+            var highlightTag = tag;
+            if (tag.StartsWith("category:", StringComparison.OrdinalIgnoreCase))
+            {
+                var rest = tag["category:".Length..];
+                var sep = rest.IndexOf(':');
+                if (sep > 0)
+                    highlightTag = "domain:" + rest[..sep];
+            }
+            var match = _navButtons.FirstOrDefault(b => b.Tag as string == highlightTag);
             if (match is not null)
                 HighlightNav(match);
             Navigate(tag);
