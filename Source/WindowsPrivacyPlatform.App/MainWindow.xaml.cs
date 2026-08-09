@@ -16,15 +16,15 @@ using WindowsPrivacyPlatform.Models;
 namespace WindowsPrivacyPlatform.App;
 
 /// <summary>
-/// Application shell. Presentation only — navigates views over ScanService results.
-/// Hierarchy: Home → Domain → Category → Setting detail.
-/// v1.5: Modify mode elevation skeleton (no writes).
+/// Application shell. Hierarchy: Home → Domain → Category → Setting detail.
+/// v1.6: Modify mode with confirmed registry writes from category value buttons.
 /// </summary>
 public partial class MainWindow : Window
 {
     private readonly ScanService _scan = new();
     private readonly IAuditLogger _log = new AuditLogger();
     private readonly ElevationService _elevation;
+    private readonly PolicyChangeService _changes;
     private CancellationTokenSource? _cts;
     private string _currentNav = "home";
     private readonly List<Button> _navButtons = new();
@@ -36,6 +36,7 @@ public partial class MainWindow : Window
     {
         // Must construct before InitializeComponent: ModeCombo SelectionChanged fires during XAML load.
         _elevation = new ElevationService(_log);
+        _changes = new PolicyChangeService(_elevation, _log);
 
         var appData = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -88,7 +89,7 @@ public partial class MainWindow : Window
     {
         ContentHost.Content = new TextBlock
         {
-            Text = "Press Scan (F5) to discover local configuration.\n\nInspect mode · read-only.",
+            Text = "Press Scan (F5) to discover local configuration.\n\nInspect mode · read-only. Switch to Modify (elevated) to change values from category pages.",
             FontSize = 13,
             Foreground = (Brush)FindResource("BrushTextSecondary"),
             TextWrapping = TextWrapping.Wrap,
@@ -240,7 +241,15 @@ public partial class MainWindow : Window
                 var category = rest[(sep + 1)..];
                 if (Enum.TryParse<ProductDomain>(domainName, out var domain))
                 {
-                    ContentHost.Content = new CategoryView(_scan, domain, category, OpenSetting);
+                    ContentHost.Content = new CategoryView(
+                        _scan,
+                        domain,
+                        category,
+                        OpenSetting,
+                        _elevation,
+                        _changes,
+                        RunScanAsync,
+                        this);
                     UpdateBreadcrumbs(
                         category,
                         group: DomainGroup(domain),
@@ -476,8 +485,6 @@ public partial class MainWindow : Window
 
     private void ModeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        // SelectionChanged fires during InitializeComponent when the default item is selected.
-        // Guard until construction is complete and UI elements exist.
         if (_modeChangeInProgress || ModeCombo is null || StatusText is null)
             return;
 
@@ -492,9 +499,10 @@ public partial class MainWindow : Window
                     return;
                 }
 
-                // Authorized (elevated + confirmed). Still no writes in this build.
-                StatusText.Text = "Modify mode authorized (elevated). No write paths active in this version.";
-                _log.Change("MainWindow", "Modify mode entered (scaffold only — no writes performed).");
+                StatusText.Text = "Modify mode authorized — use value buttons on category pages to change settings.";
+                _log.Change("MainWindow", "Modify mode entered. Registry writes enabled with confirmation.");
+                // Rebuild current view so value buttons become enabled.
+                Navigate(_currentNav);
             }
             finally
             {
@@ -505,6 +513,7 @@ public partial class MainWindow : Window
         {
             _elevation.ExitModifyMode();
             StatusText.Text = "Inspect mode · read-only.";
+            Navigate(_currentNav);
         }
     }
 
