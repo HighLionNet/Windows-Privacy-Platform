@@ -1,50 +1,39 @@
-# Windows Privacy Platform
-## Current Status — Version 1.6.2
+# Current Status — Windows Privacy Platform v2.0
 
-**Last updated:** 2026-08-09  
-**Current development version:** **1.6.2**  
-**Previous:** 1.6.1 / 1.6  
+**Date:** 2026-08-09
 
----
+## Shipped on main (this session)
 
-## Trust contract (Modify writes)
+### Correctness (P0)
+- **Unknown is never converted to Not configured** (NavigationBuilder, SettingsQuery, PolicyPrecedenceResolver, CategoryView)
+- **Option buttons show ONLY raw values** (no `1. 0` / `2. 1` numbering)
+- **No invented 0/1 options** when ValueSemantics is missing
+- **WritableTarget** explicit modification contract (deny-by-default)
+- **PolicyChangeService** requires WritableTarget; type-safe writes; exact-target verification; firewall domain refused
+- **Firewall** remains observation-only (no WritableTarget attached)
+- **Catalog** attaches WritableTarget for concrete non-firewall registry settings
+- **CLI project removed** from solution
+- **Version 2.0.0** via Directory.Build.props
+- **About** screen rewritten for v2.0
 
-1. **Pre-read** independent system value before any change.  
-2. User confirms path + current + intended.  
-3. Write (DWORD/string/delete) under elevated token, Registry64 view.  
-4. **Mandatory read-back** (up to 3 attempts).  
-5. **Success only if read-back matches intended state.**  
-6. UI refresh only after verified success (or rescan after hard failure for honesty).  
-7. Full audit trail: BEFORE / AFTER / VERIFIED or VERIFY_FAIL in `changes.log`.  
+### Known remaining (next pass)
+- Full test project + CI workflows
+- Scan lifecycle generation-ID / cancellation safety
+- Structured ScanDiagnostics model
+- Central safe process runner
+- CapabilityCollector installed-vs-available fix
+- PolicyCollector/catalog consistency audit for duplicate probes
+- Window off-screen restore hardening
+- Knowledge base depth expansion
+- OSS docs (LICENSE, SECURITY.md, CONTRIBUTING, Actions)
 
-PolicyCollector and PolicyChangeService both use **RegistryView.Registry64** and invariant numeric formatting so scan and write cannot disagree on view or string form.
-
-Non-concrete DiscoveryMethod paths (`ServiceController:`, summary aggregates) are refused — never written.
-
----
-
-## 1.6.2 changes
-
-- **Catalog path purge:** All ConsentStore `DiscoveryMethod` values are now concrete  
-  `HKCU\Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\<capability>\Value`.  
-- ContentDelivery path expanded to full concrete location.  
-- Firewall service / logging summary remain observation-only (not writable).  
-- SchemaVersion / ConfidenceSource bumped to Catalog-v1.6.  
-
----
-
-## UI
-
-- Category cards: name, short blurb, path/type, current, value buttons  
-- Detail: status + single explanation paragraph  
-- Elevation: UAC relaunch + session authorize  
-
----
-
-## Build
-
-```powershell
-cd "C:\Windows Privacy Platform\repo"
-git pull origin main
-dotnet publish ".\Source\WindowsPrivacyPlatform.App\WindowsPrivacyPlatform.App.csproj" -c Release -r win-x64 --self-contained false -o "C:\Windows Privacy Platform\bin"
+### How to update local app
 ```
+cd "C:\Windows Privacy Platform"
+git fetch origin
+git checkout main
+git pull origin main
+cd Source
+dotnet build WindowsPrivacyPlatform.sln -c Release
+```
+Then run the Release exe (or use your existing shortcut after rebuild).
