@@ -2,7 +2,6 @@ namespace WindowsPrivacyPlatform.Models;
 
 /// <summary>
 /// Read-only query surface over a bound catalog.
-/// Future TUI/GUI/API consume this instead of collectors or snapshot lists.
 /// No mutation. No system interaction.
 /// </summary>
 public sealed class SettingsQuery
@@ -24,7 +23,6 @@ public sealed class SettingsQuery
     public IEnumerable<ManagedObject> GetByDomain(ProductDomain domain) =>
         _catalog.Where(m => m.ProductDomain == domain);
 
-    /// <summary>Alias for GetByDomain.</summary>
     public IEnumerable<ManagedObject> ByDomain(ProductDomain domain) => GetByDomain(domain);
 
     public ManagedObject? GetById(string objectId)
@@ -34,7 +32,6 @@ public sealed class SettingsQuery
         return _byId.TryGetValue(objectId.Trim(), out var mo) ? mo : null;
     }
 
-    /// <summary>Alias for GetById.</summary>
     public ManagedObject? ById(string objectId) => GetById(objectId);
 
     public IEnumerable<ManagedObject> GetRelatedSettings(string objectId)
@@ -58,7 +55,6 @@ public sealed class SettingsQuery
                 ids.Add(rel.ToObjectId);
         }
 
-        // Incoming edges: other objects that point at this id
         foreach (var other in _catalog)
         {
             if (other.ObjectId.Equals(objectId, StringComparison.OrdinalIgnoreCase))
@@ -79,7 +75,6 @@ public sealed class SettingsQuery
         }
     }
 
-    /// <summary>Alias for GetRelatedSettings.</summary>
     public IEnumerable<ManagedObject> RelatedTo(string objectId) => GetRelatedSettings(objectId);
 
     public IEnumerable<SettingRelationship> GetRelationshipEdges(string objectId)
@@ -108,7 +103,6 @@ public sealed class SettingsQuery
             m.Observation?.Effective?.HasConflict == true ||
             m.Observation?.Resolution?.HasConflict == true);
 
-    /// <summary>Alias for GetConflicts.</summary>
     public IEnumerable<ManagedObject> Conflicts() => GetConflicts();
 
     public IEnumerable<ManagedObject> GetMachineControlledSettings() =>
@@ -121,7 +115,6 @@ public sealed class SettingsQuery
                 or ConfigurationLayer.SecurityBaseline ||
             m.ControlLevel == ControlLevel.AdministratorControlled);
 
-    /// <summary>Alias for GetMachineControlledSettings.</summary>
     public IEnumerable<ManagedObject> MachineEnforced() => GetMachineControlledSettings();
 
     public IEnumerable<ManagedObject> GetSettingsNeedingReview() =>
@@ -144,7 +137,6 @@ public sealed class SettingsQuery
         if (string.IsNullOrWhiteSpace(term))
             return _catalog;
 
-        // Treat search text as plain display filter only — never as code/script.
         var t = term.Trim();
         if (t.Length > 200)
             t = t[..200];
@@ -173,9 +165,26 @@ public sealed class SettingsQuery
         return mo is null ? null : SettingExplanationFactory.FromDefinition(mo);
     }
 
-    private static bool IsConfigured(string? state) =>
-        !string.IsNullOrWhiteSpace(state) &&
-        !state.Contains("Not configured", StringComparison.OrdinalIgnoreCase) &&
-        !state.Contains("Not observed", StringComparison.OrdinalIgnoreCase) &&
-        !state.Contains("Error reading", StringComparison.OrdinalIgnoreCase);
+    /// <summary>
+    /// True only when a real configured value is present.
+    /// Unknown, Not configured, Not observed, and Error are all "not configured" for query purposes.
+    /// </summary>
+    public static bool IsConfigured(string? state)
+    {
+        if (string.IsNullOrWhiteSpace(state))
+            return false;
+
+        var s = state.Trim();
+        if (s.Equals("Unknown", StringComparison.OrdinalIgnoreCase))
+            return false;
+        if (s.Equals("Not configured", StringComparison.OrdinalIgnoreCase))
+            return false;
+        if (s.Equals("Not observed", StringComparison.OrdinalIgnoreCase) ||
+            s.Equals("Not observed in this scan", StringComparison.OrdinalIgnoreCase))
+            return false;
+        if (s.StartsWith("Error", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        return true;
+    }
 }

@@ -1,7 +1,7 @@
 namespace WindowsPrivacyPlatform.Models;
 
 /// <summary>
-/// Navigation / presentation models for TUI (and optional GUI).
+/// Navigation / presentation models for the GUI.
 /// Pure data — no input handling, no rendering, no system calls.
 /// </summary>
 
@@ -219,22 +219,42 @@ public static class NavigationBuilder
         return view;
     }
 
-    /// <summary>Map empty / not-observed tokens to a stable "Not configured" display.</summary>
+    /// <summary>
+    /// Normalize display of observed values while preserving the trust model:
+    /// Unknown, Not configured, Not observed, and Error are distinct states.
+    /// Never collapse Unknown into an absence state.
+    /// </summary>
     public static string DisplayValue(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
             return "Not configured";
-        if (value.Contains("Not observed", StringComparison.OrdinalIgnoreCase))
+
+        var trimmed = value.Trim();
+
+        // Preserve exact semantic tokens
+        if (trimmed.Equals("Unknown", StringComparison.OrdinalIgnoreCase))
+            return "Unknown";
+        if (trimmed.Equals("Not observed", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.Equals("Not observed in this scan", StringComparison.OrdinalIgnoreCase))
+            return "Not observed";
+        if (trimmed.StartsWith("Error", StringComparison.OrdinalIgnoreCase))
+            return trimmed;
+        if (trimmed.Equals("Not configured", StringComparison.OrdinalIgnoreCase))
             return "Not configured";
-        if (value.Contains("Unknown", StringComparison.OrdinalIgnoreCase) &&
-            value.Trim().Equals("Unknown", StringComparison.OrdinalIgnoreCase))
-            return "Not configured";
-        return value.Trim();
+
+        return trimmed;
     }
 
-    private static bool IsAbsent(string? value) =>
-        string.IsNullOrWhiteSpace(value) ||
-        value.Contains("Not configured", StringComparison.OrdinalIgnoreCase);
+    /// <summary>
+    /// True only when the value represents proven absence (successfully checked and missing).
+    /// Unknown and Not observed are NOT treated as absence.
+    /// </summary>
+    public static bool IsAbsent(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return true;
+        return value.Trim().Equals("Not configured", StringComparison.OrdinalIgnoreCase);
+    }
 
     public static string HumanizeDomain(ProductDomain domain) => domain switch
     {

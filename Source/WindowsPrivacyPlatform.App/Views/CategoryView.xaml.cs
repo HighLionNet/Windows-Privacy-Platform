@@ -14,7 +14,7 @@ namespace WindowsPrivacyPlatform.App.Views;
 /// <summary>
 /// Category page: compact two-column cards.
 /// Left: name, short blurb, path/type, current value.
-/// Right: numbered options with effect labels (from ValueSemantics).
+/// Right: option buttons showing only the raw value (from ValueSemantics).
 /// </summary>
 public partial class CategoryView : UserControl
 {
@@ -133,7 +133,6 @@ public partial class CategoryView : UserControl
             });
         }
 
-        // Path / type line (GPO vs HKLM UX vs HKCU etc.)
         left.Children.Add(new TextBlock
         {
             Text = FormatPathType(mo),
@@ -159,7 +158,7 @@ public partial class CategoryView : UserControl
         Grid.SetColumn(left, 0);
         grid.Children.Add(left);
 
-        // ---- RIGHT: numbered options with effect ----
+        // ---- RIGHT: options (raw value only, no numbering) ----
         var right = new StackPanel { Margin = new Thickness(8, 0, 0, 0) };
         right.Children.Add(new TextBlock
         {
@@ -171,39 +170,52 @@ public partial class CategoryView : UserControl
         });
 
         var options = BuildOptionList(mo);
-        var n = 1;
-        foreach (var opt in options)
+        if (options.Count == 0)
         {
-            var isCurrent = opt.IsClear
-                ? IsNotConfigured(observed)
-                : IsCurrent(observed, opt.Raw!);
-
-            var row = new DockPanel { Margin = new Thickness(0, 0, 0, 3) };
-
-            var btn = MakeValueButton(
-                $"{n}. {opt.RawDisplay}",
-                isCurrent,
-                () => ApplyValue(mo, opt.IsClear ? null : opt.Raw),
-                opt.Effect);
-
-            DockPanel.SetDock(btn, Dock.Left);
-            row.Children.Add(btn);
-
-            if (!string.IsNullOrWhiteSpace(opt.Effect))
+            right.Children.Add(new TextBlock
             {
-                row.Children.Add(new TextBlock
-                {
-                    Text = opt.Effect,
-                    FontSize = 11,
-                    Foreground = (Brush)FindResource("BrushTextSecondary"),
-                    TextWrapping = TextWrapping.Wrap,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    Margin = new Thickness(6, 0, 0, 0)
-                });
-            }
+                Text = "Modification not supported for this setting.",
+                FontSize = 11,
+                Foreground = (Brush)FindResource("BrushTextMuted"),
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(0, 2, 0, 0)
+            });
+        }
+        else
+        {
+            foreach (var opt in options)
+            {
+                var isCurrent = opt.IsClear
+                    ? IsNotConfigured(observed)
+                    : IsCurrent(observed, opt.Raw!);
 
-            right.Children.Add(row);
-            n++;
+                var row = new DockPanel { Margin = new Thickness(0, 0, 0, 3) };
+
+                // Button content is ONLY the raw value (or "—" for clear).
+                var btn = MakeValueButton(
+                    opt.RawDisplay,
+                    isCurrent,
+                    () => ApplyValue(mo, opt.IsClear ? null : opt.Raw),
+                    opt.Effect);
+
+                DockPanel.SetDock(btn, Dock.Left);
+                row.Children.Add(btn);
+
+                if (!string.IsNullOrWhiteSpace(opt.Effect))
+                {
+                    row.Children.Add(new TextBlock
+                    {
+                        Text = opt.Effect,
+                        FontSize = 11,
+                        Foreground = (Brush)FindResource("BrushTextSecondary"),
+                        TextWrapping = TextWrapping.Wrap,
+                        VerticalAlignment = VerticalAlignment.Center,
+                        Margin = new Thickness(6, 0, 0, 0)
+                    });
+                }
+
+                right.Children.Add(row);
+            }
         }
 
         Grid.SetColumn(right, 1);
@@ -221,6 +233,10 @@ public partial class CategoryView : UserControl
         public bool IsClear;
     }
 
+    /// <summary>
+    /// Options come only from explicit ValueSemantics.
+    /// Never invent 0/1. If none exist, the UI shows "Modification not supported".
+    /// </summary>
     private static List<OptionItem> BuildOptionList(ManagedObject mo)
     {
         var list = new List<OptionItem>();
@@ -247,19 +263,19 @@ public partial class CategoryView : UserControl
             }
         }
 
-        if (list.Count == 0)
+        // Always offer clear (delete) when we have any semantics-backed options.
+        // Clear itself is only meaningful for settings that have a registry value target;
+        // the change service will reject unsupported targets.
+        if (list.Count > 0)
         {
-            list.Add(new OptionItem { Raw = "0", RawDisplay = "0", Effect = "Off / not forced" });
-            list.Add(new OptionItem { Raw = "1", RawDisplay = "1", Effect = "On / forced" });
+            list.Add(new OptionItem
+            {
+                Raw = null,
+                RawDisplay = "—",
+                Effect = "Not configured (delete value)",
+                IsClear = true
+            });
         }
-
-        list.Add(new OptionItem
-        {
-            Raw = null,
-            RawDisplay = "—",
-            Effect = "Not configured (delete value)",
-            IsClear = true
-        });
 
         return list;
     }
@@ -325,7 +341,6 @@ public partial class CategoryView : UserControl
         if (string.IsNullOrWhiteSpace(path))
             return string.Empty;
 
-        // Prefer last two segments of key + value for readability
         var p = path.Replace("HKEY_LOCAL_MACHINE\\", "HKLM\\", StringComparison.OrdinalIgnoreCase)
                     .Replace("HKEY_CURRENT_USER\\", "HKCU\\", StringComparison.OrdinalIgnoreCase);
 
@@ -333,8 +348,7 @@ public partial class CategoryView : UserControl
         if (parts.Length <= 4)
             return p;
 
-        // Keep hive + ... + last 3 segments
-        return $"{parts[0]}\\…\\{parts[^3]}\\{parts[^2]}\\{parts[^1]}";
+        return $"{parts[0]}\\\u2026\\{parts[^3]}\\{parts[^2]}\\{parts[^1]}";
     }
 
     private Button MakeValueButton(string label, bool isCurrent, Action onClick, string? effectTooltip)
@@ -418,11 +432,7 @@ public partial class CategoryView : UserControl
 
     private static string NormalizeObserved(string? state)
     {
-        if (string.IsNullOrWhiteSpace(state))
-            return "Not configured";
-        if (state.Contains("Not observed", StringComparison.OrdinalIgnoreCase))
-            return "Not configured";
-        return state.Trim();
+        return NavigationBuilder.DisplayValue(state);
     }
 
     private static string ShortBlurb(ManagedObject mo)
@@ -433,14 +443,14 @@ public partial class CategoryView : UserControl
         text = text.Trim();
         if (text.Length <= 100)
             return text;
-        return text[..97].TrimEnd() + "…";
+        return text[..97].TrimEnd() + "\u2026";
     }
 
     private static string Truncate(string value, int max)
     {
         if (string.IsNullOrEmpty(value) || value.Length <= max)
             return value;
-        return value[..(max - 1)].TrimEnd() + "…";
+        return value[..(max - 1)].TrimEnd() + "\u2026";
     }
 
     private static bool IsCurrent(string observed, string raw)
@@ -454,7 +464,6 @@ public partial class CategoryView : UserControl
     private static bool IsNotConfigured(string observed)
     {
         return string.IsNullOrWhiteSpace(observed)
-               || observed.Contains("Not configured", StringComparison.OrdinalIgnoreCase)
-               || observed.Contains("Not observed", StringComparison.OrdinalIgnoreCase);
+               || observed.Equals("Not configured", StringComparison.OrdinalIgnoreCase);
     }
 }
