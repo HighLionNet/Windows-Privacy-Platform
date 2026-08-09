@@ -9,8 +9,7 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
     /// <summary>
     /// Central place for configuration-layer precedence and effective-value reasoning.
     /// Read-only pure logic — no registry access, no writes, no elevation.
-    /// Absent probed values resolve to "Not configured" (honest, not Unknown).
-    /// Same-rank conflicts still refuse a winner (Unknown) rather than invent priority.
+    /// Unknown is never treated as a configured value and never wins precedence.
     /// </summary>
     public static class PolicyPrecedenceResolver
     {
@@ -25,13 +24,26 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
             _ => 0
         };
 
+        /// <summary>
+        /// True only when the value is a real configured raw value.
+        /// Explicitly excludes Unknown, Not configured, Not observed, and Error states.
+        /// </summary>
         public static bool IsConfiguredValue(string? raw)
         {
             if (string.IsNullOrWhiteSpace(raw))
                 return false;
-            return !raw.Contains("Not configured", StringComparison.OrdinalIgnoreCase) &&
-                   !raw.Contains("Not observed", StringComparison.OrdinalIgnoreCase) &&
-                   !raw.Contains("Error reading", StringComparison.OrdinalIgnoreCase);
+
+            var s = raw.Trim();
+            if (s.Equals("Unknown", StringComparison.OrdinalIgnoreCase))
+                return false;
+            if (s.Contains("Not configured", StringComparison.OrdinalIgnoreCase))
+                return false;
+            if (s.Contains("Not observed", StringComparison.OrdinalIgnoreCase))
+                return false;
+            if (s.StartsWith("Error", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            return true;
         }
 
         public static string ExtractRawPolicyValue(string? state) =>
@@ -293,6 +305,26 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
 
             if (list.Count == 0)
             {
+                // Distinguish pure absence from pure Unknown
+                var anyUnknown = all.Any(l =>
+                    string.Equals(l.RawValue?.Trim(), "Unknown", StringComparison.OrdinalIgnoreCase));
+
+                if (anyUnknown && all.All(l => !IsConfiguredValue(l.RawValue)))
+                {
+                    return new ConfigurationResolution
+                    {
+                        RawObservations = all,
+                        EffectiveValue = "Unknown",
+                        EffectiveSource = ConfigurationLayer.Unknown,
+                        Confidence = EffectiveConfidence.Unknown,
+                        ResolutionReason =
+                            $"{featureName}: available observations are Unknown or unusable. " +
+                            "Insufficient evidence to establish effective state.",
+                        ConfidenceReason = "No configured value; at least one layer reported Unknown.",
+                        HasConflict = false
+                    };
+                }
+
                 var source = all.FirstOrDefault()?.Layer ?? ConfigurationLayer.MachinePolicy;
                 return new ConfigurationResolution
                 {
