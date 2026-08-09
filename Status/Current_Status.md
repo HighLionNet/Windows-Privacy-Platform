@@ -1,66 +1,45 @@
 # Windows Privacy Platform
-## Current Status — Version 1.5
-
-**Document role:** Authoritative live snapshot.
+## Current Status — Version 1.6
 
 **Last updated:** 2026-08-09  
-**Current development version:** **1.5**  
-**Previous:** Version 1.4  
+**Current development version:** **1.6**  
+**Previous:** Version 1.5  
 **Runtime target:** Windows 11; net8.0-windows  
-**Safety posture:** Read-only by default. Modify mode is elevation scaffold only — **no writes**. Auth/change events log to dedicated files.
 
 ---
 
-## 1. Product identity
+## What v1.6 delivers
 
-Local Windows privacy and security knowledge explorer. Philosophy: **Understand first. Change later.**
+### Category pages
+- Taller setting cards with **name + short one-line explanation + current value**.
+- **Value buttons** (0 / 1 / mapped labels / Not configured) are the change controls.
+- Changes are made from the category list, not the detail page.
 
----
+### Setting detail
+- Minimal: **Status** (Current / Effective / Source) + one organized **Explanation** paragraph.
+- No options tables, layer dumps, or related clutter on the detail page.
 
-## 2. Architecture
+### Modify mode (real writes)
+- `ElevationService` offers **UAC relaunch** when not elevated.
+- Session authorization after elevation.
+- `PolicyChangeService` writes registry values for catalog settings (DWORD or string; clear = delete value).
+- Every write requires confirmation and is logged to `changes.log`.
+- Auth decisions log to `auth.log`.
 
-```
-Models → Core → Logging → KnowledgeBase → Validator → Scanner → CLI
-                                                              ↘ App
-```
-
----
-
-## 3. Version 1.5 complete
-
-### Elevation / Modify mode scaffold
-- `ElevationService` (WindowsIdentity / WindowsPrincipal).
-- Requires elevated process + explicit confirmation.
-- No registry or system writes.
-- Logs: `%LocalAppData%\WindowsPrivacyPlatform\Logs\auth.log` and `changes.log`.
-
-### Logging
-- `AuditEventType.Auth` / `Change`.
-- File sinks for auth and change events.
-
-### Presentation
-- Setting detail: expanders removed; Why/Impact/Misconception/Layers/Related always visible.
-- Hierarchy unchanged.
-- Version string v1.5; App Version 1.5.0.
-
-### Catalog / collectors
-- PolicyCollector expanded with deep Windows Update (deferrals, WUServer, TargetRelease, ManagePreviewBuilds, ElevateNonAdmins, DualScan, etc.), Defender (Network Protection, Controlled Folder Access, CloudBlockLevel, DisableBlockAtFirstSeen, ScriptScanning, Catchup scans), SmartScreen, Clipboard history/cross-device.
-- Matching catalog entries and ValueSemantics are aligned for binding.
-- Relationships extended for new conflict/override pairs where applicable.
+### Safety
+- Inspect remains default.
+- Non-registry targets (firewall service, wildcards) are refused with a clear message.
+- Writes only when `IsModifyAuthorized` (elevated + confirmed).
 
 ---
 
-## 4. Safety
-
-Inspect default. Modify is session authorization gate only. No write paths implemented.
-
----
-
-## 5. Build
+## Build / run
 
 ```powershell
-cd Source
-dotnet build -c Release
-cd WindowsPrivacyPlatform.App
-dotnet run -c Release
+cd "C:\Windows Privacy Platform\repo"
+git pull origin main
+dotnet publish ".\Source\WindowsPrivacyPlatform.App\WindowsPrivacyPlatform.App.csproj" -c Release -r win-x64 --self-contained false -o "C:\Windows Privacy Platform\bin"
+Start-Process "C:\Windows Privacy Platform\bin\WindowsPrivacyPlatform.exe"
 ```
+
+For Modify: select **Modify** → accept UAC relaunch if needed → authorize session → use value buttons on a category page.
