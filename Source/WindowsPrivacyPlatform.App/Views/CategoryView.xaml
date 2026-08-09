@@ -5,29 +5,6 @@
     <TextBlock x:Name="TitleText" Style="{StaticResource SectionTitle}" />
     <TextBlock x:Name="SubtitleText" Style="{StaticResource SectionSubtitle}" />
     <Border Style="{StaticResource HeaderRule}" />
-    <Border Style="{StaticResource ListContainer}">
-      <StackPanel>
-        <Border Style="{StaticResource ListHeader}">
-          <Grid>
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="2*" />
-              <ColumnDefinition Width="1.2*" />
-              <ColumnDefinition Width="1.2*" />
-              <ColumnDefinition Width="72" />
-            </Grid.ColumnDefinitions>
-            <TextBlock Text="Setting" FontWeight="SemiBold" FontSize="11"
-                       Foreground="{StaticResource BrushTextSecondary}" />
-            <TextBlock Grid.Column="1" Text="Current" FontWeight="SemiBold" FontSize="11"
-                       Foreground="{StaticResource BrushTextSecondary}" />
-            <TextBlock Grid.Column="2" Text="Effective" FontWeight="SemiBold" FontSize="11"
-                       Foreground="{StaticResource BrushTextSecondary}" />
-            <TextBlock Grid.Column="3" Text="Status" FontWeight="SemiBold" FontSize="11"
-                       Foreground="{StaticResource BrushTextSecondary}" HorizontalAlignment="Right"
-                       Margin="0,0,4,0" />
-          </Grid>
-        </Border>
-        <StackPanel x:Name="SettingsList" />
-      </StackPanel>
-    </Border>
+    <StackPanel x:Name="SettingsList" />
   </StackPanel>
 </UserControl>
