@@ -14,7 +14,7 @@ namespace WindowsPrivacyPlatform.App.Views;
 /// <summary>
 /// Category page: compact two-column cards.
 /// Left: name, short blurb, path/type, current value.
-/// Right: option buttons showing only the raw value (from ValueSemantics).
+/// Right: option buttons — button content is ONLY the raw value; note is DisplayLabel.
 /// </summary>
 public partial class CategoryView : UserControl
 {
@@ -104,7 +104,6 @@ public partial class CategoryView : UserControl
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1.35, GridUnitType.Star) });
         grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
 
-        // ---- LEFT: identity + blurb + path/type + current ----
         var left = new StackPanel();
 
         var name = new TextBlock
@@ -158,7 +157,6 @@ public partial class CategoryView : UserControl
         Grid.SetColumn(left, 0);
         grid.Children.Add(left);
 
-        // ---- RIGHT: options (raw value only, no numbering) ----
         var right = new StackPanel { Margin = new Thickness(8, 0, 0, 0) };
         right.Children.Add(new TextBlock
         {
@@ -191,21 +189,21 @@ public partial class CategoryView : UserControl
 
                 var row = new DockPanel { Margin = new Thickness(0, 0, 0, 3) };
 
-                // Button content is ONLY the raw value (or "—" for clear).
+                // Button = raw value only.
                 var btn = MakeValueButton(
                     opt.RawDisplay,
                     isCurrent,
                     () => ApplyValue(mo, opt.IsClear ? null : opt.Raw),
-                    opt.Effect);
+                    opt.Tooltip);
 
                 DockPanel.SetDock(btn, Dock.Left);
                 row.Children.Add(btn);
 
-                if (!string.IsNullOrWhiteSpace(opt.Effect))
+                if (!string.IsNullOrWhiteSpace(opt.Note))
                 {
                     row.Children.Add(new TextBlock
                     {
-                        Text = opt.Effect,
+                        Text = opt.Note,
                         FontSize = 11,
                         Foreground = (Brush)FindResource("BrushTextSecondary"),
                         TextWrapping = TextWrapping.Wrap,
@@ -229,13 +227,16 @@ public partial class CategoryView : UserControl
     {
         public string? Raw;
         public string RawDisplay = string.Empty;
-        public string Effect = string.Empty;
+        /// <summary>Short human label shown next to the button (DisplayLabel / meaning).</summary>
+        public string Note = string.Empty;
+        /// <summary>Longer explanation for tooltip.</summary>
+        public string? Tooltip;
         public bool IsClear;
     }
 
     /// <summary>
-    /// Options come only from explicit ValueSemantics.
-    /// Never invent 0/1. If none exist, the UI shows "Modification not supported".
+    /// Options from ValueSemantics only. Button = raw value. Note = clear DisplayLabel.
+    /// Never invent 0/1. Never show "Policy value 0." as the note.
     /// </summary>
     private static List<OptionItem> BuildOptionList(ManagedObject mo)
     {
@@ -250,34 +251,67 @@ public partial class CategoryView : UserControl
                 if (list.Any(o => string.Equals(o.Raw, v.RawValue, StringComparison.OrdinalIgnoreCase)))
                     continue;
 
-                var effect = !string.IsNullOrWhiteSpace(v.Description)
-                    ? Truncate(v.Description!, 72)
-                    : (!string.IsNullOrWhiteSpace(v.DisplayLabel) ? v.DisplayLabel : v.Canonical);
+                // Prefer DisplayLabel for the visible note — never dump raw Description if it is generic.
+                var note = FormatOptionNote(v);
+                var tip = string.IsNullOrWhiteSpace(v.Description) ? note : v.Description;
 
                 list.Add(new OptionItem
                 {
                     Raw = v.RawValue,
                     RawDisplay = v.RawValue,
-                    Effect = effect ?? string.Empty
+                    Note = note,
+                    Tooltip = tip
                 });
             }
         }
 
-        // Always offer clear (delete) when we have any semantics-backed options.
-        // Clear itself is only meaningful for settings that have a registry value target;
-        // the change service will reject unsupported targets.
-        if (list.Count > 0)
+        if (list.Count > 0 && mo.IsWritable)
         {
             list.Add(new OptionItem
             {
                 Raw = null,
                 RawDisplay = "—",
-                Effect = "Not configured (delete value)",
+                Note = "Not configured (delete value)",
+                Tooltip = "Remove the registry value so Windows treats this setting as not configured.",
+                IsClear = true
+            });
+        }
+        else if (list.Count > 0)
+        {
+            // Read-only: still show clear option label but change service will refuse.
+            list.Add(new OptionItem
+            {
+                Raw = null,
+                RawDisplay = "—",
+                Note = "Not configured",
+                Tooltip = "Value absent at the probed path.",
                 IsClear = true
             });
         }
 
         return list;
+    }
+
+    /// <summary>
+    /// Build a clear short note for the UI. Avoids generic "Policy value 0." style text.
+    /// </summary>
+    private static string FormatOptionNote(ValueMeaning v)
+    {
+        if (!string.IsNullOrWhiteSpace(v.DisplayLabel) &&
+            !v.DisplayLabel.StartsWith("Policy value", StringComparison.OrdinalIgnoreCase))
+            return v.DisplayLabel.Trim();
+
+        if (!string.IsNullOrWhiteSpace(v.Canonical) &&
+            !v.Canonical.Equals(v.RawValue, StringComparison.OrdinalIgnoreCase))
+            return v.Canonical.Trim();
+
+        if (!string.IsNullOrWhiteSpace(v.Description) &&
+            !v.Description.StartsWith("Policy value", StringComparison.OrdinalIgnoreCase) &&
+            v.Description.Length <= 48)
+            return v.Description.Trim().TrimEnd('.');
+
+        // Last resort: canonical or raw
+        return !string.IsNullOrWhiteSpace(v.Canonical) ? v.Canonical : (v.RawValue ?? string.Empty);
     }
 
     private static string FormatPathType(ManagedObject mo)
@@ -430,10 +464,7 @@ public partial class CategoryView : UserControl
         }
     }
 
-    private static string NormalizeObserved(string? state)
-    {
-        return NavigationBuilder.DisplayValue(state);
-    }
+    private static string NormalizeObserved(string? state) => NavigationBuilder.DisplayValue(state);
 
     private static string ShortBlurb(ManagedObject mo)
     {
@@ -446,13 +477,6 @@ public partial class CategoryView : UserControl
         return text[..97].TrimEnd() + "\u2026";
     }
 
-    private static string Truncate(string value, int max)
-    {
-        if (string.IsNullOrEmpty(value) || value.Length <= max)
-            return value;
-        return value[..(max - 1)].TrimEnd() + "\u2026";
-    }
-
     private static bool IsCurrent(string observed, string raw)
     {
         if (string.IsNullOrWhiteSpace(observed) || string.IsNullOrWhiteSpace(raw))
@@ -461,9 +485,7 @@ public partial class CategoryView : UserControl
         return string.Equals(token, raw, StringComparison.OrdinalIgnoreCase);
     }
 
-    private static bool IsNotConfigured(string observed)
-    {
-        return string.IsNullOrWhiteSpace(observed)
-               || observed.Equals("Not configured", StringComparison.OrdinalIgnoreCase);
-    }
+    private static bool IsNotConfigured(string observed) =>
+        string.IsNullOrWhiteSpace(observed)
+        || observed.Equals("Not configured", StringComparison.OrdinalIgnoreCase);
 }
