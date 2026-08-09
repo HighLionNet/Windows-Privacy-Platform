@@ -9,14 +9,11 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
     /// <summary>
     /// Central place for configuration-layer precedence and effective-value reasoning.
     /// Read-only pure logic — no registry access, no writes, no elevation.
-    /// Semantic meaning of raw codes comes only from catalog ValueSemantics (via ValueSemanticsInterpreter).
-    /// Never silently guesses: unknown inputs yield Unknown confidence and clear reasons.
+    /// Absent probed values resolve to "Not configured" (honest, not Unknown).
+    /// Same-rank conflicts still refuse a winner (Unknown) rather than invent priority.
     /// </summary>
     public static class PolicyPrecedenceResolver
     {
-        /// <summary>
-        /// Relative strength for generic multi-layer comparison (higher wins when both configured).
-        /// </summary>
         public static int LayerRank(ConfigurationLayer layer) => layer switch
         {
             ConfigurationLayer.SecurityBaseline => 60,
@@ -51,10 +48,6 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
             return token;
         }
 
-        /// <summary>
-        /// Resolve user ConsentStore vs machine AppPrivacy LetApps* policy.
-        /// Meaning of AppPrivacy codes (0/1/2) is taken from the policy catalog entry's ValueSemantics only.
-        /// </summary>
         public static ConfigurationResolution ResolveConsentVsAppPrivacy(
             ConfigurationObservation? userLayer,
             ConfigurationObservation? policyLayer,
@@ -71,18 +64,24 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
 
             if (!policyConfigured)
             {
+                var effectiveUser = string.IsNullOrEmpty(userVal)
+                    ? (IsConfiguredValue(userLayer?.RawValue) ? userLayer!.RawValue : "Not configured")
+                    : userVal;
+
                 return new ConfigurationResolution
                 {
                     RawObservations = observations,
-                    EffectiveValue = string.IsNullOrEmpty(userVal) ? userLayer?.RawValue : userVal,
+                    EffectiveValue = effectiveUser,
                     EffectiveSource = ConfigurationLayer.UserPreference,
-                    Confidence = string.IsNullOrEmpty(userVal) ? EffectiveConfidence.Low : EffectiveConfidence.High,
+                    Confidence = string.IsNullOrEmpty(userVal) || effectiveUser == "Not configured"
+                        ? EffectiveConfidence.Medium
+                        : EffectiveConfidence.High,
                     ResolutionReason =
                         $"{featureName}: no machine AppPrivacy force policy is configured at the probed path. " +
                         "Windows therefore evaluates the per-user ConsentStore preference for this capability.",
                     ConfidenceReason =
-                        string.IsNullOrEmpty(userVal)
-                            ? "User preference not observed; confidence low."
+                        effectiveUser == "Not configured"
+                            ? "Policy absent; user preference also absent at probed path — reported as Not configured."
                             : "Policy absent; user preference observed directly from ConsentStore.",
                     HasConflict = false
                 };
@@ -92,7 +91,6 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
             var canonical = meaning?.Canonical ?? string.Empty;
             var display = meaning?.DisplayLabel ?? policyRaw;
 
-            // Knowledge-driven interpretation of force codes. If map missing, stay Unknown — never invent.
             if (meaning is null)
             {
                 return new ConfigurationResolution
@@ -114,18 +112,21 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
             if (string.Equals(canonical, "UserControlled", StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(canonical, "User", StringComparison.OrdinalIgnoreCase))
             {
+                var effectiveUser = string.IsNullOrEmpty(userVal)
+                    ? (IsConfiguredValue(userLayer?.RawValue) ? userLayer!.RawValue : "Not configured")
+                    : userVal;
                 return new ConfigurationResolution
                 {
                     RawObservations = observations,
-                    EffectiveValue = string.IsNullOrEmpty(userVal) ? userLayer?.RawValue : userVal,
+                    EffectiveValue = effectiveUser,
                     EffectiveSource = ConfigurationLayer.UserPreference,
                     Confidence = EffectiveConfidence.High,
                     ResolutionReason =
                         $"{featureName}: machine AppPrivacy is set to {display} ({policyRaw}). " +
                         "This code means the user ConsentStore value remains effective; Windows does not force allow or deny.",
-                    ConfidenceReason = "Known AppPrivacy code from catalog ValueSemantics; user preference observed.",
-                    SemanticValue = string.IsNullOrEmpty(userVal) ? null : NormalizePrivacyToken(userVal),
-                    SemanticDisplay = string.IsNullOrEmpty(userVal) ? null : userVal,
+                    ConfidenceReason = "Known AppPrivacy code from catalog ValueSemantics; user preference path is effective.",
+                    SemanticValue = effectiveUser == "Not configured" ? null : NormalizePrivacyToken(effectiveUser),
+                    SemanticDisplay = effectiveUser == "Not configured" ? null : effectiveUser,
                     HasConflict = false
                 };
             }
@@ -187,10 +188,6 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
             };
         }
 
-        /// <summary>
-        /// Resolve the same semantic setting stored in two machine policy paths.
-        /// Prefers SOFTWARE\\Policies (MachinePolicy) over CurrentVersion\\Policies when both differ.
-        /// </summary>
         public static ConfigurationResolution ResolveAlternateMachinePolicyPaths(
             ConfigurationObservation? primaryPoliciesPath,
             ConfigurationObservation? alternateCurrentVersionPath,
@@ -275,37 +272,38 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
             return new ConfigurationResolution
             {
                 RawObservations = observations,
-                EffectiveValue = null,
-                EffectiveSource = ConfigurationLayer.Unknown,
-                Confidence = EffectiveConfidence.Low,
-                ResolutionReason = $"{featureName}: neither machine policy store is configured.",
-                ConfidenceReason = "No configured value at either probed path.",
+                EffectiveValue = "Not configured",
+                EffectiveSource = ConfigurationLayer.MachinePolicy,
+                Confidence = EffectiveConfidence.Medium,
+                ResolutionReason =
+                    $"{featureName}: neither machine policy store is configured at the probed paths. " +
+                    "Reported as Not configured (value absent), not as an unknown runtime state.",
+                ConfidenceReason = "Absence at both probed paths is a definite observation.",
                 HasConflict = false
             };
         }
 
-        /// <summary>
-        /// Generic rank-based comparison when only layer ranks are known.
-        /// Returns Unknown when ranks tie or values cannot be interpreted.
-        /// </summary>
         public static ConfigurationResolution ResolveByLayerRank(
             IEnumerable<ConfigurationObservation> layers,
             ManagedObject? definition,
             string featureName)
         {
-            var list = layers?.Where(l => l is not null && IsConfiguredValue(l.RawValue)).ToList()
-                       ?? new List<ConfigurationObservation>();
+            var all = layers?.Where(l => l is not null).ToList() ?? new List<ConfigurationObservation>();
+            var list = all.Where(l => IsConfiguredValue(l.RawValue)).ToList();
 
             if (list.Count == 0)
             {
+                var source = all.FirstOrDefault()?.Layer ?? ConfigurationLayer.MachinePolicy;
                 return new ConfigurationResolution
                 {
-                    RawObservations = layers?.ToList() ?? new List<ConfigurationObservation>(),
-                    EffectiveValue = null,
-                    EffectiveSource = ConfigurationLayer.Unknown,
-                    Confidence = EffectiveConfidence.Low,
-                    ResolutionReason = $"{featureName}: no configured layers to compare.",
-                    ConfidenceReason = "No configured observations.",
+                    RawObservations = all,
+                    EffectiveValue = "Not configured",
+                    EffectiveSource = source == ConfigurationLayer.Unknown ? ConfigurationLayer.MachinePolicy : source,
+                    Confidence = EffectiveConfidence.Medium,
+                    ResolutionReason =
+                        $"{featureName}: no configured value at any probed layer. " +
+                        "Reported as Not configured (absence observed), not Unknown.",
+                    ConfidenceReason = "Definite absence of configured values at probed paths.",
                     HasConflict = false
                 };
             }
