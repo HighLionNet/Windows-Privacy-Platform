@@ -12,12 +12,13 @@ using WindowsPrivacyPlatform.Validator;
 namespace WindowsPrivacyPlatform.App.Services;
 
 /// <summary>
-/// Presentation-side composition host for the read-only pipeline.
-/// Mirrors CLI composition; contains no Windows logic of its own.
-/// All discovery, binding, and resolution remain in Scanner / Models.
+/// Presentation-side composition host for the scan pipeline.
 /// </summary>
 public sealed class ScanService
 {
+    public const string CatalogSchemaVersion = "2.0";
+    public const string KnowledgeBaseVersionValue = "2.0";
+
     public IReadOnlyList<ManagedObject> Catalog { get; private set; } = Array.Empty<ManagedObject>();
     public SettingsQuery? Query { get; private set; }
     public MachineOverview? Overview { get; private set; }
@@ -40,7 +41,7 @@ public sealed class ScanService
     {
         try
         {
-            Report("Starting read-only scan…");
+            Report("Starting scan…");
             var logger = new AuditLogger();
             logger.Info("App", "GUI pipeline start");
 
@@ -110,22 +111,23 @@ public sealed class ScanService
             if (snapshot is not null)
             {
                 Overview = MachineOverview.FromSnapshot(snapshot, catalog.Count);
-                Overview.CatalogVersion = "1.0";
-                Overview.KnowledgeBaseVersion = "1.0";
+                Overview.CatalogVersion = CatalogSchemaVersion;
+                Overview.KnowledgeBaseVersion = KnowledgeBaseVersionValue;
                 Summary = InventoryStateBinder.BuildSummary(snapshot, catalog, ValidationPassed, ValidationFailed);
+                Report("Scan complete.");
             }
             else
             {
                 Overview = new MachineOverview
                 {
-                    CatalogVersion = "1.0",
-                    KnowledgeBaseVersion = "1.0",
+                    CatalogVersion = CatalogSchemaVersion,
+                    KnowledgeBaseVersion = KnowledgeBaseVersionValue,
                     LastScanUtc = DateTime.UtcNow,
                     IdentityCollectionNotes = LastError
                 };
+                Report(string.IsNullOrEmpty(LastError) ? "Scan finished with no snapshot." : $"Scan incomplete: {LastError}");
             }
 
-            Report("Scan complete (read-only).");
             logger.Info("App", "GUI pipeline complete");
             ScanCompleted?.Invoke();
         }
