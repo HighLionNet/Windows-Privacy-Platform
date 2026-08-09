@@ -9,7 +9,7 @@
     <StackPanel x:Name="BadgeRow" Orientation="Horizontal" Margin="0,8,0,6" />
     <Border Style="{StaticResource HeaderRule}" />
 
-    <!-- Primary: current + effective comparison (property sheet, not oversized cards) -->
+    <!-- Primary: State property sheet -->
     <Border Style="{StaticResource PropertySheet}" Margin="0,0,0,12">
       <StackPanel>
         <Border Style="{StaticResource PropertySheetHeader}">
@@ -62,43 +62,30 @@
       </StackPanel>
     </Border>
 
-    <!-- Summary always visible -->
+    <!-- Summary -->
     <TextBlock Text="Summary" Style="{StaticResource GroupHeader}" Margin="0,0,0,4" />
     <TextBlock x:Name="WhatText" Style="{StaticResource ValueText}" Margin="0,0,0,10" />
 
-    <!-- Secondary knowledge: progressive disclosure only -->
-    <Expander Header="Why this exists and impact" Style="{StaticResource DetailExpander}" IsExpanded="False">
-      <StackPanel Margin="4,8,0,4">
-        <TextBlock Text="Why Windows has this" FontWeight="SemiBold" FontSize="12"
-                   Foreground="{StaticResource BrushTextSecondary}" Margin="0,0,0,4" />
-        <TextBlock x:Name="WhyText" Style="{StaticResource ValueText}" Margin="0,0,0,10" />
+    <!-- Why / Impact (always visible, minimal) -->
+    <TextBlock Text="Why / Impact" Style="{StaticResource GroupHeader}" Margin="0,4,0,4" />
+    <TextBlock x:Name="WhyText" Style="{StaticResource ValueText}" Margin="0,0,0,6" />
+    <TextBlock x:Name="ImpactText" Style="{StaticResource ValueText}" Margin="0,0,0,10" />
 
-        <TextBlock Text="Impact" FontWeight="SemiBold" FontSize="12"
-                   Foreground="{StaticResource BrushTextSecondary}" Margin="0,0,0,4" />
-        <TextBlock x:Name="ImpactText" Style="{StaticResource ValueText}" Margin="0,0,0,4" />
-      </StackPanel>
-    </Expander>
+    <!-- Misconception / Limits -->
+    <TextBlock x:Name="MisconceptionText" Style="{StaticResource ValueText}" Margin="0,0,0,4"
+               Foreground="{StaticResource BrushWarning}" />
+    <TextBlock x:Name="UnknownsText" Style="{StaticResource ValueText}" Margin="0,0,0,10"
+               Foreground="{StaticResource BrushTextMuted}" />
 
-    <Expander Header="User · enterprise · misconceptions · limits" Style="{StaticResource DetailExpander}" IsExpanded="False">
-      <StackPanel Margin="4,8,0,4">
-        <TextBlock x:Name="UserImpactText" Style="{StaticResource ValueText}" />
-        <TextBlock x:Name="EnterpriseText" Style="{StaticResource ValueText}" Margin="0,6,0,0" />
-        <TextBlock x:Name="MisconceptionText" Style="{StaticResource ValueText}" Margin="0,6,0,0"
-                   Foreground="{StaticResource BrushWarning}" />
-        <TextBlock x:Name="UnknownsText" Style="{StaticResource ValueText}" Margin="0,6,0,0"
-                   Foreground="{StaticResource BrushTextMuted}" />
-      </StackPanel>
-    </Expander>
+    <!-- Observed layers -->
+    <TextBlock Text="Observed layers" Style="{StaticResource GroupHeader}" Margin="0,4,0,4" />
+    <ItemsControl x:Name="LayersList" Margin="0,0,0,10" />
 
-    <Expander Header="Observed layers (evidence)" Style="{StaticResource DetailExpander}" IsExpanded="False">
-      <ItemsControl x:Name="LayersList" Margin="4,8,0,4" />
-    </Expander>
-
-    <Expander Header="Related settings" Style="{StaticResource DetailExpander}" IsExpanded="False">
-      <Border Style="{StaticResource ListContainer}" Margin="0,8,0,0">
-        <ItemsControl x:Name="RelatedList" />
-      </Border>
-    </Expander>
+    <!-- Related -->
+    <TextBlock Text="Related settings" Style="{StaticResource GroupHeader}" Margin="0,4,0,4" />
+    <Border Style="{StaticResource ListContainer}" Margin="0,0,0,8">
+      <ItemsControl x:Name="RelatedList" />
+    </Border>
 
     <Border Style="{StaticResource SectionRule}" />
     <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
