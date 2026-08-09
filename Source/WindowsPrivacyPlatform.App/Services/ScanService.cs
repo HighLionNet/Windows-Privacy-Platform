@@ -13,11 +13,12 @@ namespace WindowsPrivacyPlatform.App.Services;
 
 /// <summary>
 /// Presentation-side composition host for the scan pipeline.
+/// Maintains last completed valid scan separately from in-progress / failed attempts.
 /// </summary>
 public sealed class ScanService
 {
-    public const string CatalogSchemaVersion = "2.0";
-    public const string KnowledgeBaseVersionValue = "2.0";
+    public const string CatalogSchemaVersion = "2.1";
+    public const string KnowledgeBaseVersionValue = "2.1";
 
     public IReadOnlyList<ManagedObject> Catalog { get; private set; } = Array.Empty<ManagedObject>();
     public SettingsQuery? Query { get; private set; }
@@ -27,7 +28,13 @@ public sealed class ScanService
     public int ValidationPassed { get; private set; }
     public int ValidationFailed { get; private set; }
     public string LastError { get; private set; } = string.Empty;
+    public ScanResult? LastScanResult { get; private set; }
     public bool HasScan => Overview is not null;
+
+    // Last known-good completed scan (not replaced by canceled/failed runs).
+    private MachineOverview? _lastGoodOverview;
+    private ObservationSummary? _lastGoodSummary;
+    private IReadOnlyList<ManagedObject>? _lastGoodCatalog;
 
     public event Action<string>? StatusChanged;
     public event Action? ScanCompleted;
@@ -65,17 +72,34 @@ public sealed class ScanService
             var scanner = new InventoryScanner(logger, collectors);
             var validator = new SchemaValidator(logger);
 
+            var scanResult = scanner.Scan(cancellationToken);
+            LastScanResult = scanResult;
+
             InventorySnapshot? snapshot = null;
-            var scanResult = scanner.Scan();
-            if (scanResult.Success && scanResult.Snapshot is not null)
+            if (scanResult.Status is ScanStatus.Completed or ScanStatus.CompletedWithWarnings or ScanStatus.Partial
+                && scanResult.Snapshot is not null)
+            {
                 snapshot = scanResult.Snapshot;
+            }
+            else if (scanResult.Status == ScanStatus.Canceled)
+            {
+                LastError = "Scan canceled.";
+                Report("Scan cancelled.");
+                // Do not replace last good scan.
+                RestoreLastGoodIfNeeded();
+                ScanCompleted?.Invoke();
+                return;
+            }
             else
+            {
                 LastError = scanResult.Message ?? "Scan returned no snapshot.";
+            }
 
             cancellationToken.ThrowIfCancellationRequested();
             Report("Loading knowledge catalog…");
 
-            var catalog = ManagedObjectCatalog.All.ToList();
+            // Fresh catalog instances for this scan (avoid stale observation mutation across scans).
+            var catalog = ManagedObjectCatalog.All.Select(CloneDefinition).ToList();
 
             if (snapshot is not null)
             {
@@ -114,17 +138,34 @@ public sealed class ScanService
                 Overview.CatalogVersion = CatalogSchemaVersion;
                 Overview.KnowledgeBaseVersion = KnowledgeBaseVersionValue;
                 Summary = InventoryStateBinder.BuildSummary(snapshot, catalog, ValidationPassed, ValidationFailed);
-                Report("Scan complete.");
+
+                // Promote to last-good only on successful / warning completion.
+                if (scanResult.Status is ScanStatus.Completed or ScanStatus.CompletedWithWarnings)
+                {
+                    _lastGoodOverview = Overview;
+                    _lastGoodSummary = Summary;
+                    _lastGoodCatalog = catalog;
+                }
+
+                var msg = scanResult.Status == ScanStatus.CompletedWithWarnings
+                    ? "Scan complete (with collector warnings)."
+                    : "Scan complete.";
+                Report(msg);
             }
             else
             {
-                Overview = new MachineOverview
+                // Failed scan: keep previous good data visible if available.
+                RestoreLastGoodIfNeeded();
+                if (Overview is null)
                 {
-                    CatalogVersion = CatalogSchemaVersion,
-                    KnowledgeBaseVersion = KnowledgeBaseVersionValue,
-                    LastScanUtc = DateTime.UtcNow,
-                    IdentityCollectionNotes = LastError
-                };
+                    Overview = new MachineOverview
+                    {
+                        CatalogVersion = CatalogSchemaVersion,
+                        KnowledgeBaseVersion = KnowledgeBaseVersionValue,
+                        LastScanUtc = DateTime.UtcNow,
+                        IdentityCollectionNotes = LastError
+                    };
+                }
                 Report(string.IsNullOrEmpty(LastError) ? "Scan finished with no snapshot." : $"Scan incomplete: {LastError}");
             }
 
@@ -133,14 +174,123 @@ public sealed class ScanService
         }
         catch (OperationCanceledException)
         {
+            LastError = "Scan canceled.";
             Report("Scan cancelled.");
+            RestoreLastGoodIfNeeded();
+            ScanCompleted?.Invoke();
         }
         catch (Exception ex)
         {
             LastError = ex.Message;
             Report($"Scan error: {ex.Message}");
+            RestoreLastGoodIfNeeded();
             ScanCompleted?.Invoke();
         }
+    }
+
+    private void RestoreLastGoodIfNeeded()
+    {
+        if (_lastGoodOverview is not null)
+        {
+            Overview = _lastGoodOverview;
+            Summary = _lastGoodSummary;
+            if (_lastGoodCatalog is not null)
+            {
+                Catalog = _lastGoodCatalog;
+                Query = new SettingsQuery(_lastGoodCatalog);
+                NavigationRoot = NavigationBuilder.BuildDomainTree(_lastGoodCatalog);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Shallow definition clone so runtime Observation on one scan cannot contaminate the static catalog
+    /// or another scan's objects. WritableTarget is reference-shared (immutable contract).
+    /// </summary>
+    private static ManagedObject CloneDefinition(ManagedObject src)
+    {
+        return new ManagedObject
+        {
+            ObjectId = src.ObjectId,
+            ObjectName = src.ObjectName,
+            ObjectType = src.ObjectType,
+            CanonicalPath = src.CanonicalPath,
+            FeatureCategory = src.FeatureCategory,
+            ProductDomain = src.ProductDomain,
+            SubCategory = src.SubCategory,
+            RiskLevel = src.RiskLevel,
+            ImpactLevel = src.ImpactLevel,
+            MinimumBuild = src.MinimumBuild,
+            MaximumBuild = src.MaximumBuild,
+            SupportedEditions = src.SupportedEditions,
+            SupportedWindowsVersions = src.SupportedWindowsVersions,
+            Description = src.Description,
+            Rationale = src.Rationale,
+            References = src.References,
+            WhenIgnored = src.WhenIgnored,
+            CommonMisconception = src.CommonMisconception,
+            TypicalEnterpriseUse = src.TypicalEnterpriseUse,
+            ConsumerImpact = src.ConsumerImpact,
+            ValueSemantics = src.ValueSemantics,
+            InterfaceName = src.InterfaceName,
+            InterfaceScope = src.InterfaceScope,
+            ConfigurationType = src.ConfigurationType,
+            TargetValue = src.TargetValue,
+            BuildConstraint = src.BuildConstraint,
+            EditionConstraint = src.EditionConstraint,
+            ComponentConstraint = src.ComponentConstraint,
+            HardwareConstraint = src.HardwareConstraint,
+            SoftwareConstraint = src.SoftwareConstraint,
+            VirtualizationConstraint = src.VirtualizationConstraint,
+            DiscoveryMethod = src.DiscoveryMethod,
+            ComplianceMethod = src.ComplianceMethod,
+            RemediationMethod = src.RemediationMethod,
+            RemediationScope = src.RemediationScope,
+            Reversibility = src.Reversibility,
+            BackupRequired = src.BackupRequired,
+            RebootRequirement = src.RebootRequirement,
+            PriorityLevel = src.PriorityLevel,
+            ControlLevel = src.ControlLevel,
+            ComponentOwner = src.ComponentOwner,
+            PrivacyImpact = src.PrivacyImpact,
+            SecurityImpact = src.SecurityImpact,
+            PerformanceImpact = src.PerformanceImpact,
+            UserExperienceImpact = src.UserExperienceImpact,
+            SystemStabilityImpact = src.SystemStabilityImpact,
+            KnownSideEffects = src.KnownSideEffects,
+            CumulativeUpdateBehavior = src.CumulativeUpdateBehavior,
+            FeatureUpdateBehavior = src.FeatureUpdateBehavior,
+            ApplicationUpdateBehavior = src.ApplicationUpdateBehavior,
+            SchemaVersion = src.SchemaVersion,
+            CreatedBy = src.CreatedBy,
+            CreatedTimestamp = src.CreatedTimestamp,
+            LastModifiedBy = src.LastModifiedBy,
+            LastModifiedTimestamp = src.LastModifiedTimestamp,
+            LogLevel = src.LogLevel,
+            AuditRequired = src.AuditRequired,
+            LifecycleState = src.LifecycleState,
+            ConfidenceScore = src.ConfidenceScore,
+            ConfidenceSource = src.ConfidenceSource,
+            VerificationMethod = src.VerificationMethod,
+            ExpectedResult = src.ExpectedResult,
+            VerificationReliability = src.VerificationReliability,
+            EvidenceType = src.EvidenceType,
+            EvidenceLocation = src.EvidenceLocation,
+            EvidenceHash = src.EvidenceHash,
+            WritableTarget = src.WritableTarget,
+            Requires = src.Requires,
+            Recommended = src.Recommended,
+            ConflictsWith = src.ConflictsWith,
+            Ordering = src.Ordering,
+            RebootDependency = src.RebootDependency,
+            RelatedFeature = src.RelatedFeature,
+            Replacement = src.Replacement,
+            Alternative = src.Alternative,
+            ConflictExplanation = src.ConflictExplanation,
+            StructuredRelationships = src.StructuredRelationships,
+            // Observation left fresh for this scan.
+            Observation = new SettingObservation()
+        };
     }
 
     private void Report(string status) => StatusChanged?.Invoke(status);
