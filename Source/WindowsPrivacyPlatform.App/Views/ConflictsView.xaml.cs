@@ -62,6 +62,16 @@ public partial class ConflictsView : UserControl
                 Foreground = (Brush)FindResource("BrushTextPrimary")
             });
 
+            // Concise actionability — not a wall of metadata.
+            var writable = mo.IsWritable ? "Writable in Modify mode" : "Observation only";
+            panel.Children.Add(new TextBlock
+            {
+                Text = writable,
+                FontSize = 11,
+                Margin = new Thickness(0, 2, 0, 0),
+                Foreground = (Brush)FindResource("BrushTextMuted")
+            });
+
             if (!string.IsNullOrWhiteSpace(card.ResolutionReason))
             {
                 panel.Children.Add(new TextBlock
