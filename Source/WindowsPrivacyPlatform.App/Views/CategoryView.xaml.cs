@@ -12,7 +12,7 @@ namespace WindowsPrivacyPlatform.App.Views;
 
 /// <summary>
 /// Category page: taller setting cards with a one-line explanation and value action buttons.
-/// Changes are applied from this page (Modify mode). Name click opens the clean detail page.
+/// Changes are applied from this page (Modify mode). Success requires system read-back verification.
 /// </summary>
 public partial class CategoryView : UserControl
 {
@@ -20,6 +20,7 @@ public partial class CategoryView : UserControl
     private readonly PolicyChangeService _changes;
     private readonly Func<Task> _refreshScan;
     private readonly Window? _owner;
+    private bool _applyInProgress;
 
     public CategoryView(
         ScanService scan,
@@ -66,7 +67,7 @@ public partial class CategoryView : UserControl
             m.Observation?.Effective?.HasConflict == true);
 
         var modeHint = _elevation.IsModifyAuthorized
-            ? "Modify mode — click a value to change it"
+            ? "Modify mode — click a value to change it (verified against the system)"
             : "Inspect mode — switch to Modify to change values";
 
         SubtitleText.Text = conflicts > 0
@@ -93,11 +94,10 @@ public partial class CategoryView : UserControl
             BorderBrush = hasConflict
                 ? (Brush)FindResource("BrushConflict")
                 : (Brush)FindResource("BrushBorderStrong"),
-            BorderThickness = new Thickness(hasConflict ? 2 : 1, hasConflict ? 2 : 1, hasConflict ? 2 : 1, hasConflict ? 2 : 1),
+            BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(2)
         };
 
-        // left accent
         var accent = new Border
         {
             Width = 3,
@@ -113,7 +113,6 @@ public partial class CategoryView : UserControl
 
         var body = new StackPanel { Margin = new Thickness(6, 0, 0, 0) };
 
-        // Name (click → detail)
         var name = new TextBlock
         {
             Text = mo.ObjectName,
@@ -127,7 +126,6 @@ public partial class CategoryView : UserControl
         name.MouseLeftButtonUp += (_, _) => openSetting(id);
         body.Children.Add(name);
 
-        // One-line short explanation
         var blurb = ShortBlurb(mo);
         if (!string.IsNullOrWhiteSpace(blurb))
         {
@@ -141,7 +139,6 @@ public partial class CategoryView : UserControl
             });
         }
 
-        // Current status line
         body.Children.Add(new TextBlock
         {
             Text = hasConflict ? $"Current: {observed}  ·  Conflict" : $"Current: {observed}",
@@ -153,7 +150,6 @@ public partial class CategoryView : UserControl
             Margin = new Thickness(0, 8, 0, 6)
         });
 
-        // Value action buttons
         var actions = new WrapPanel();
         var options = mo.ValueSemantics?
             .Select(v => v.RawValue)
@@ -163,7 +159,6 @@ public partial class CategoryView : UserControl
 
         if (options.Count == 0)
         {
-            // Sensible defaults for typical policy DWORD
             options.Add("0");
             options.Add("1");
         }
@@ -172,13 +167,10 @@ public partial class CategoryView : UserControl
         {
             var label = LabelFor(mo, raw);
             var isCurrent = IsCurrent(observed, raw);
-            var btn = MakeValueButton(label, isCurrent, () => ApplyValue(mo, raw));
-            actions.Children.Add(btn);
+            actions.Children.Add(MakeValueButton(label, isCurrent, () => ApplyValue(mo, raw)));
         }
 
-        // Clear / Not configured
-        var clearBtn = MakeValueButton("Not configured", IsNotConfigured(observed), () => ApplyValue(mo, null));
-        actions.Children.Add(clearBtn);
+        actions.Children.Add(MakeValueButton("Not configured", IsNotConfigured(observed), () => ApplyValue(mo, null)));
 
         body.Children.Add(actions);
         root.Children.Add(body);
@@ -188,7 +180,7 @@ public partial class CategoryView : UserControl
 
     private Button MakeValueButton(string label, bool isCurrent, Action onClick)
     {
-        var enabled = _elevation.IsModifyAuthorized;
+        var enabled = _elevation.IsModifyAuthorized && !_applyInProgress;
         var btn = new Button
         {
             Content = label,
@@ -199,7 +191,7 @@ public partial class CategoryView : UserControl
             IsEnabled = enabled,
             Cursor = enabled ? Cursors.Hand : Cursors.Arrow,
             ToolTip = enabled
-                ? "Apply this value (requires confirmation)"
+                ? "Apply this value — success only if system read-back matches"
                 : "Switch to Modify mode to change values"
         };
 
@@ -216,6 +208,9 @@ public partial class CategoryView : UserControl
 
     private async void ApplyValue(ManagedObject mo, string? rawValue)
     {
+        if (_applyInProgress)
+            return;
+
         if (!_elevation.IsModifyAuthorized)
         {
             MessageBox.Show(
@@ -227,14 +222,35 @@ public partial class CategoryView : UserControl
             return;
         }
 
-        if (_changes.TryApply(mo, rawValue, _owner, out var msg))
+        _applyInProgress = true;
+        try
         {
-            // Refresh observations so cards show the new value.
-            await _refreshScan();
+            if (_changes.TryApply(mo, rawValue, _owner, out var msg))
+            {
+                // Only refresh UI after verified system success.
+                await _refreshScan();
+                MessageBox.Show(
+                    _owner,
+                    msg + "\n\nA fresh scan was applied so the UI matches the system.",
+                    "Change verified",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
+            else if (!string.Equals(msg, "Change cancelled.", StringComparison.Ordinal))
+            {
+                MessageBox.Show(
+                    _owner,
+                    msg + "\n\nThe UI was not updated because the system could not be verified.",
+                    "Change not accepted",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+                // Still rescan so any partial state is visible honestly.
+                await _refreshScan();
+            }
         }
-        else if (!string.Equals(msg, "Change cancelled.", StringComparison.Ordinal))
+        finally
         {
-            MessageBox.Show(_owner, msg, "Change failed", MessageBoxButton.OK, MessageBoxImage.Warning);
+            _applyInProgress = false;
         }
     }
 
@@ -262,7 +278,6 @@ public partial class CategoryView : UserControl
     {
         if (string.IsNullOrWhiteSpace(observed))
             return false;
-        // Observed often looks like "1 (HKLM)" or "0"
         var token = observed.Split(' ', '(', ')')[0].Trim();
         return string.Equals(token, raw, StringComparison.OrdinalIgnoreCase);
     }
