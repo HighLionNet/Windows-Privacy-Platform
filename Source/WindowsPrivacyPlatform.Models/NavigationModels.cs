@@ -3,7 +3,6 @@ namespace WindowsPrivacyPlatform.Models;
 /// <summary>
 /// Navigation / presentation models for TUI (and optional GUI).
 /// Pure data — no input handling, no rendering, no system calls.
-/// Trusted catalog metadata is kept separate from untrusted discovered values.
 /// </summary>
 
 public class NavigationNode
@@ -21,9 +20,6 @@ public class NavigationNode
     public List<NavigationNode> Children { get; set; } = new();
 }
 
-/// <summary>
-/// Full decision-support card for one setting (UI-independent).
-/// </summary>
 public class SettingDetailView
 {
     public string ObjectId { get; set; } = string.Empty;
@@ -34,7 +30,6 @@ public class SettingDetailView
 
     public SettingExplanation Explanation { get; set; } = new();
 
-    // Untrusted / discovered (display only — never execute)
     public string? CurrentStateDisplay { get; set; }
     public string? EffectiveValueDisplay { get; set; }
     public string? EffectiveSourceDisplay { get; set; }
@@ -43,8 +38,6 @@ public class SettingDetailView
     public bool HasConflict { get; set; }
     public List<LayerDisplay> Layers { get; set; } = new();
     public List<RelatedSettingDisplay> Related { get; set; } = new();
-
-    /// <summary>Catalog ValueSemantics mapped for the options table (trusted).</summary>
     public List<OptionDisplay> Options { get; set; } = new();
 }
 
@@ -70,10 +63,6 @@ public class RelatedSettingDisplay
     public string? Explanation { get; set; }
 }
 
-/// <summary>
-/// Builds navigation trees and detail cards from a bound catalog + SettingsQuery.
-/// No UI framework dependency.
-/// </summary>
 public static class NavigationBuilder
 {
     public static NavigationNode BuildDomainTree(IReadOnlyList<ManagedObject> catalog)
@@ -114,9 +103,10 @@ public static class NavigationBuilder
                     {
                         Id = $"setting:{mo.ObjectId}",
                         Title = mo.ObjectName,
-                        Subtitle = mo.Observation?.Effective?.EffectiveValue
-                                   ?? mo.Observation?.Resolution?.EffectiveValue
-                                   ?? mo.CurrentState,
+                        Subtitle = DisplayValue(
+                                       mo.Observation?.Effective?.EffectiveValue
+                                       ?? mo.Observation?.Resolution?.EffectiveValue
+                                       ?? mo.CurrentState),
                         Domain = mo.ProductDomain,
                         ObjectId = mo.ObjectId,
                         RiskLevel = mo.RiskLevel,
@@ -146,6 +136,17 @@ public static class NavigationBuilder
         var resolution = mo.Observation?.Resolution;
         var effective = mo.Observation?.Effective;
 
+        var current = DisplayValue(mo.CurrentState);
+        var effectiveValue = DisplayValue(resolution?.EffectiveValue ?? effective?.EffectiveValue ?? mo.CurrentState);
+        var source = resolution?.EffectiveSource ?? effective?.EffectiveSource;
+        var sourceDisplay = source is null or ConfigurationLayer.Unknown
+            ? (IsAbsent(current) ? "No policy value at probed path" : "Unknown")
+            : source.ToString();
+
+        var confidence = resolution?.Confidence ?? effective?.Confidence ?? EffectiveConfidence.Unknown;
+        if (IsAbsent(effectiveValue) && confidence == EffectiveConfidence.Unknown)
+            confidence = EffectiveConfidence.Medium;
+
         var view = new SettingDetailView
         {
             ObjectId = mo.ObjectId,
@@ -154,11 +155,11 @@ public static class NavigationBuilder
             RiskLevel = mo.RiskLevel,
             ControlLevel = mo.ControlLevel,
             Explanation = explanation,
-            CurrentStateDisplay = mo.CurrentState,
-            EffectiveValueDisplay = resolution?.EffectiveValue ?? effective?.EffectiveValue,
-            EffectiveSourceDisplay = (resolution?.EffectiveSource ?? effective?.EffectiveSource)?.ToString(),
+            CurrentStateDisplay = current,
+            EffectiveValueDisplay = effectiveValue,
+            EffectiveSourceDisplay = sourceDisplay,
             ResolutionReason = resolution?.ResolutionReason ?? effective?.Explanation,
-            Confidence = resolution?.Confidence ?? effective?.Confidence ?? EffectiveConfidence.Unknown,
+            Confidence = confidence,
             HasConflict = resolution?.HasConflict == true || effective?.HasConflict == true
         };
 
@@ -184,8 +185,7 @@ public static class NavigationBuilder
                 view.Layers.Add(new LayerDisplay
                 {
                     LayerName = layer.Layer.ToString(),
-                    // Display-only: treat as opaque text, never execute
-                    ValueDisplay = SanitizeDisplay(layer.RawValue),
+                    ValueDisplay = SanitizeDisplay(DisplayValue(layer.RawValue)),
                     SourcePathDisplay = SanitizeDisplay(layer.SourcePath)
                 });
             }
@@ -219,9 +219,23 @@ public static class NavigationBuilder
         return view;
     }
 
-    /// <summary>
-    /// Human-readable domain title for navigation and page headers.
-    /// </summary>
+    /// <summary>Map empty / not-observed tokens to a stable "Not configured" display.</summary>
+    public static string DisplayValue(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return "Not configured";
+        if (value.Contains("Not observed", StringComparison.OrdinalIgnoreCase))
+            return "Not configured";
+        if (value.Contains("Unknown", StringComparison.OrdinalIgnoreCase) &&
+            value.Trim().Equals("Unknown", StringComparison.OrdinalIgnoreCase))
+            return "Not configured";
+        return value.Trim();
+    }
+
+    private static bool IsAbsent(string? value) =>
+        string.IsNullOrWhiteSpace(value) ||
+        value.Contains("Not configured", StringComparison.OrdinalIgnoreCase);
+
     public static string HumanizeDomain(ProductDomain domain) => domain switch
     {
         ProductDomain.ConsentStore => "Privacy — App permissions",
@@ -242,10 +256,6 @@ public static class NavigationBuilder
         _ => domain.ToString()
     };
 
-    /// <summary>
-    /// Strip control characters from discovered strings before UI display.
-    /// Does not interpret content as code.
-    /// </summary>
     private static string SanitizeDisplay(string? value)
     {
         if (string.IsNullOrEmpty(value))
