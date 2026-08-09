@@ -11,11 +11,12 @@ namespace WindowsPrivacyPlatform.App.Services;
 
 /// <summary>
 /// Controlled registry changes for catalog-backed settings.
-/// Contract:
+/// Contract (v2.1):
 /// - DEFAULT deny. Only settings with an explicit complete WritableTarget may be modified.
 /// - Write target comes ONLY from WritableTarget (never from Observation or DiscoveryMethod).
-/// - RegistryValueKind comes from WritableTarget (no guessing from user text).
-/// - Success is returned ONLY when an independent read-back of the exact target matches.
+/// - RegistryValueKind comes from WritableTarget (no guessing).
+/// - Success is returned ONLY when an independent read-back of the exact target matches both value and kind.
+/// - Read failures are never treated as "Not configured".
 /// </summary>
 public sealed class PolicyChangeService
 {
@@ -30,7 +31,7 @@ public sealed class PolicyChangeService
 
     /// <summary>
     /// Apply a catalog value. rawValue null/empty = delete value (Not configured) when SupportsDeletion.
-    /// Returns true only when the system registry read-back matches the intended state.
+    /// Returns true only when the system registry read-back matches the intended state including kind.
     /// </summary>
     public bool TryApply(ManagedObject mo, string? rawValue, Window? owner, out string message)
     {
@@ -42,10 +43,10 @@ public sealed class PolicyChangeService
             return false;
         }
 
-        if (!_elevation.IsModifyAuthorized || !ElevationService.IsProcessElevated())
+        if (!_elevation.IsModifyAuthorized)
         {
-            message = "Modify mode is not authorized or the process is not elevated.";
-            _log.Change("PolicyChangeService", $"DENIED {mo.ObjectId}: not authorized or not elevated.");
+            message = "Modify mode is not authorized for this session.";
+            _log.Change("PolicyChangeService", $"DENIED {mo.ObjectId}: Modify not authorized.");
             return false;
         }
 
@@ -58,7 +59,15 @@ public sealed class PolicyChangeService
             return false;
         }
 
-        // Firewall domain hard boundary: refuse unless explicitly marked (future profile writes only)
+        // Respect RequiresElevation from the explicit target.
+        if (target.RequiresElevation && !ElevationService.IsProcessElevated())
+        {
+            message = "This setting requires elevation and the process is not elevated.";
+            _log.Change("PolicyChangeService", $"DENIED {mo.ObjectId}: RequiresElevation but process not elevated.");
+            return false;
+        }
+
+        // Firewall domain hard boundary
         if (mo.ProductDomain == ProductDomain.Firewall)
         {
             message = "Firewall rule and profile mutation through WPP is restricted. Use native Windows Firewall tools for rules.";
@@ -86,7 +95,6 @@ public sealed class PolicyChangeService
 
         if (!intendedDelete)
         {
-            // Supported raw values gate
             if (target.SupportedRawValues.Count > 0 &&
                 !target.SupportedRawValues.Any(v => string.Equals(v, rawValue, StringComparison.OrdinalIgnoreCase)))
             {
@@ -105,8 +113,15 @@ public sealed class PolicyChangeService
 
         // --- Pre-read exact target ---
         var before = ReadValue(hive, view, subKey, valueName);
+        if (before.Status == RegistryReadStatus.AccessDenied || before.Status == RegistryReadStatus.Error)
+        {
+            message = $"Cannot read current system state for verification ({before.Status}). Change refused.";
+            _log.Change("PolicyChangeService", $"PRE_READ_FAIL {mo.ObjectId} | {targetPath} | status={before.Status}");
+            return false;
+        }
+
         _log.Change("PolicyChangeService",
-            $"BEFORE {mo.ObjectId} | {targetPath} | present={before.Present} kind={before.Kind} value={before.Normalized ?? "(absent)"}");
+            $"BEFORE {mo.ObjectId} | {targetPath} | status={before.Status} kind={before.Kind} value={before.Normalized ?? "(absent)"}");
 
         var confirm = MessageBox.Show(
             owner,
@@ -114,9 +129,9 @@ public sealed class PolicyChangeService
             $"{mo.ObjectName}\n" +
             $"ObjectId: {mo.ObjectId}\n\n" +
             $"Registry: {targetPath} ({target.View})\n" +
-            $"Current (system): {(before.Present ? before.Normalized : "Not configured")}\n" +
+            $"Current (system): {FormatRead(before)}\n" +
             $"Intended: {intendedDisplay}\n\n" +
-            "The change is only accepted if a fresh registry read-back matches.\n" +
+            "The change is only accepted if a fresh registry read-back matches value and type.\n" +
             "Continue?",
             "Confirm change",
             MessageBoxButton.YesNo,
@@ -164,32 +179,42 @@ public sealed class PolicyChangeService
             for (var attempt = 1; attempt <= 3; attempt++)
             {
                 after = ReadValue(hive, view, subKey, valueName);
+
+                // A read error after write is verification failure, not success.
+                if (after.Status == RegistryReadStatus.AccessDenied || after.Status == RegistryReadStatus.Error)
+                {
+                    _log.Change("PolicyChangeService",
+                        $"VERIFY_READ_FAIL {mo.ObjectId} | attempt={attempt} | status={after.Status}");
+                    break;
+                }
+
                 verified = StateMatches(after, rawValue, target.ValueKind);
                 if (verified)
                     break;
+
                 System.Threading.Thread.Sleep(40 * attempt);
             }
 
             _log.Change("PolicyChangeService",
-                $"AFTER {mo.ObjectId} | {targetPath} | present={after.Present} kind={after.Kind} value={after.Normalized ?? "(absent)"} | verified={verified}");
+                $"AFTER {mo.ObjectId} | {targetPath} | status={after.Status} kind={after.Kind} value={after.Normalized ?? "(absent)"} | verified={verified}");
 
             if (!verified)
             {
                 message =
                     "Write completed but verification FAILED.\n" +
                     $"Intended: {intendedDisplay}\n" +
-                    $"System read-back: {(after.Present ? after.Normalized : "Not configured")}\n\n" +
+                    $"System read-back: {FormatRead(after)}\n\n" +
                     "The application will not report this change as successful.";
                 _log.Change("PolicyChangeService",
-                    $"VERIFY_FAIL {mo.ObjectId} | intended={intendedDisplay} | actual={(after.Present ? after.Normalized : "(absent)")}");
+                    $"VERIFY_FAIL {mo.ObjectId} | intended={intendedDisplay} | actual={FormatRead(after)}");
                 return false;
             }
 
             message = intendedDelete
                 ? "Verified: value is absent (Not configured)."
-                : $"Verified: system value is {after.Normalized}.";
+                : $"Verified: system value is {after.Normalized} ({after.Kind}).";
             _log.Change("PolicyChangeService",
-                $"VERIFIED {mo.ObjectId} | {targetPath} = {after.Normalized ?? "(absent)"} | by {Environment.UserName}");
+                $"VERIFIED {mo.ObjectId} | {targetPath} = {after.Normalized ?? "(absent)"} | kind={after.Kind} | by {Environment.UserName}");
             return true;
         }
         catch (UnauthorizedAccessException ex)
@@ -208,12 +233,22 @@ public sealed class PolicyChangeService
 
     // ---------- registry primitives (exact view) ----------
 
+    private enum RegistryReadStatus
+    {
+        Present,
+        Absent,
+        AccessDenied,
+        Error
+    }
+
     private readonly struct RegistryRead
     {
-        public bool Present { get; init; }
+        public RegistryReadStatus Status { get; init; }
         public RegistryValueKind Kind { get; init; }
         public string? Normalized { get; init; }
         public object? Raw { get; init; }
+
+        public bool Present => Status == RegistryReadStatus.Present;
     }
 
     private static RegistryRead ReadValue(RegistryHive hive, RegistryView view, string subKey, string valueName)
@@ -223,33 +258,40 @@ public sealed class PolicyChangeService
             using var baseKey = RegistryKey.OpenBaseKey(hive, view);
             using var key = baseKey.OpenSubKey(subKey, writable: false);
             if (key is null)
-                return new RegistryRead { Present = false };
+                return new RegistryRead { Status = RegistryReadStatus.Absent };
 
             var raw = key.GetValue(valueName, defaultValue: null, options: RegistryValueOptions.DoNotExpandEnvironmentNames);
             if (raw is null)
             {
-                // Distinguish missing value vs null default
                 var names = key.GetValueNames();
                 var exists = names.Any(n => string.Equals(n, valueName, StringComparison.OrdinalIgnoreCase));
                 if (!exists)
-                    return new RegistryRead { Present = false };
-            }
+                    return new RegistryRead { Status = RegistryReadStatus.Absent };
 
-            if (raw is null)
-                return new RegistryRead { Present = false };
+                // Value name exists but raw is null — treat as absent for practical purposes.
+                return new RegistryRead { Status = RegistryReadStatus.Absent };
+            }
 
             var kind = key.GetValueKind(valueName);
             return new RegistryRead
             {
-                Present = true,
+                Status = RegistryReadStatus.Present,
                 Kind = kind,
                 Raw = raw,
                 Normalized = NormalizeRaw(raw, kind)
             };
         }
+        catch (UnauthorizedAccessException)
+        {
+            return new RegistryRead { Status = RegistryReadStatus.AccessDenied };
+        }
+        catch (System.Security.SecurityException)
+        {
+            return new RegistryRead { Status = RegistryReadStatus.AccessDenied };
+        }
         catch
         {
-            return new RegistryRead { Present = false };
+            return new RegistryRead { Status = RegistryReadStatus.Error };
         }
     }
 
@@ -324,21 +366,37 @@ public sealed class PolicyChangeService
         return true;
     }
 
+    /// <summary>
+    /// Value + kind must both match. Textual match with wrong RegistryValueKind is failure.
+    /// </summary>
     private static bool StateMatches(RegistryRead read, string? intendedRaw, RegistryValueKindExpected expectedKind)
     {
         var wantAbsent = string.IsNullOrWhiteSpace(intendedRaw);
-        if (wantAbsent)
-            return !read.Present;
 
-        if (!read.Present || read.Normalized is null)
+        if (wantAbsent)
+            return read.Status == RegistryReadStatus.Absent;
+
+        if (read.Status != RegistryReadStatus.Present || read.Normalized is null)
             return false;
 
-        // Type-aware comparison using invariant normalization
+        // Kind must match expected WritableTarget kind.
+        if (!KindMatches(read.Kind, expectedKind))
+            return false;
+
         return string.Equals(
             read.Normalized.Trim(),
             intendedRaw!.Trim(),
             StringComparison.OrdinalIgnoreCase);
     }
+
+    private static bool KindMatches(RegistryValueKind actual, RegistryValueKindExpected expected) => expected switch
+    {
+        RegistryValueKindExpected.DWord => actual == RegistryValueKind.DWord,
+        RegistryValueKindExpected.QWord => actual == RegistryValueKind.QWord,
+        RegistryValueKindExpected.String => actual == RegistryValueKind.String,
+        RegistryValueKindExpected.ExpandString => actual == RegistryValueKind.ExpandString,
+        _ => false
+    };
 
     private static string NormalizeRaw(object raw, RegistryValueKind kind)
     {
@@ -353,6 +411,15 @@ public sealed class PolicyChangeService
             _ => raw.ToString()?.Trim() ?? string.Empty
         };
     }
+
+    private static string FormatRead(RegistryRead read) => read.Status switch
+    {
+        RegistryReadStatus.Present => $"{read.Normalized} ({read.Kind})",
+        RegistryReadStatus.Absent => "Not configured",
+        RegistryReadStatus.AccessDenied => "Access denied",
+        RegistryReadStatus.Error => "Read error",
+        _ => "Unknown"
+    };
 
     private static bool TryParseHive(string hive, out RegistryHive result)
     {
