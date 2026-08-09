@@ -10,10 +10,9 @@ using WindowsPrivacyPlatform.Models;
 namespace WindowsPrivacyPlatform.App.Services;
 
 /// <summary>
-/// Applies controlled registry changes for catalog-backed settings.
-/// Requires ElevationService.IsModifyAuthorized. Every write is confirmed and audited.
-/// Supports DWORD numeric values, string ConsentStore values, and value deletion (Not configured).
-/// Does not touch firewall service state or non-registry interfaces.
+/// Controlled registry changes for catalog-backed settings.
+/// Contract: success is returned ONLY when an independent read-back matches the intended state.
+/// Requires ElevationService.IsModifyAuthorized. Every attempt is audited (before, after, verify).
 /// </summary>
 public sealed class PolicyChangeService
 {
@@ -27,8 +26,8 @@ public sealed class PolicyChangeService
     }
 
     /// <summary>
-    /// Apply a catalog value. rawValue null or empty means delete the value (Not configured).
-    /// Returns true if the write succeeded.
+    /// Apply a catalog value. rawValue null/empty = delete value (Not configured).
+    /// Returns true only when the system registry read-back matches the intended state.
     /// </summary>
     public bool TryApply(ManagedObject mo, string? rawValue, Window? owner, out string message)
     {
@@ -40,29 +39,38 @@ public sealed class PolicyChangeService
             return false;
         }
 
-        if (!_elevation.IsModifyAuthorized)
+        if (!_elevation.IsModifyAuthorized || !ElevationService.IsProcessElevated())
         {
-            message = "Modify mode is not authorized. Switch to Modify and elevate first.";
-            _log.Change("PolicyChangeService", $"Denied write for {mo.ObjectId}: not authorized.");
+            message = "Modify mode is not authorized or the process is not elevated.";
+            _log.Change("PolicyChangeService", $"DENIED {mo.ObjectId}: not authorized or not elevated.");
             return false;
         }
 
         if (!TryResolveTarget(mo, out var hive, out var subKey, out var valueName, out var resolveError))
         {
             message = resolveError;
-            _log.Change("PolicyChangeService", $"Cannot resolve path for {mo.ObjectId}: {resolveError}");
+            _log.Change("PolicyChangeService", $"RESOLVE_FAIL {mo.ObjectId}: {resolveError}");
             return false;
         }
 
-        var displayValue = string.IsNullOrWhiteSpace(rawValue) ? "(delete / Not configured)" : rawValue;
+        var targetPath = $"{FormatHive(hive)}\\{subKey}\\{valueName}";
+        var intendedDelete = string.IsNullOrWhiteSpace(rawValue);
+        var intendedDisplay = intendedDelete ? "(absent / Not configured)" : rawValue!;
+
+        // --- Pre-read (independent of catalog observation) ---
+        var before = ReadValue(hive, subKey, valueName);
+        _log.Change("PolicyChangeService",
+            $"BEFORE {mo.ObjectId} | {targetPath} | present={before.Present} kind={before.Kind} value={before.Normalized ?? "(absent)"}");
+
         var confirm = MessageBox.Show(
             owner,
             $"Change setting:\n\n" +
             $"{mo.ObjectName}\n" +
             $"ObjectId: {mo.ObjectId}\n\n" +
-            $"Target: {FormatHive(hive)}\\{subKey}\\{valueName}\n" +
-            $"New value: {displayValue}\n\n" +
-            "This writes to the Windows registry under an elevated token.\n" +
+            $"Registry: {targetPath}\n" +
+            $"Current (system): {(before.Present ? before.Normalized : "Not configured")}\n" +
+            $"Intended: {intendedDisplay}\n\n" +
+            "The change is only accepted if a fresh registry read-back matches.\n" +
             "Continue?",
             "Confirm change",
             MessageBoxButton.YesNo,
@@ -72,74 +80,231 @@ public sealed class PolicyChangeService
         if (confirm != MessageBoxResult.Yes)
         {
             message = "Change cancelled.";
-            _log.Change("PolicyChangeService", $"User cancelled write for {mo.ObjectId} → {displayValue}");
+            _log.Change("PolicyChangeService", $"CANCELLED {mo.ObjectId} → {intendedDisplay}");
             return false;
+        }
+
+        // Idempotent short-circuit: already at intended state
+        if (StateMatches(before, rawValue))
+        {
+            message = $"Already at intended state (verified): {intendedDisplay}";
+            _log.Change("PolicyChangeService", $"NOOP_VERIFIED {mo.ObjectId} | {targetPath} = {intendedDisplay}");
+            return true;
         }
 
         try
         {
-            using var baseKey = hive == RegistryHive.LocalMachine
-                ? RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64)
-                : RegistryKey.OpenBaseKey(RegistryHive.CurrentUser, RegistryView.Registry64);
-
-            if (string.IsNullOrWhiteSpace(rawValue))
+            if (intendedDelete)
             {
-                using var key = baseKey.OpenSubKey(subKey, writable: true);
-                if (key is null)
+                if (!TryDeleteValue(hive, subKey, valueName, out var delError))
                 {
-                    message = "Key does not exist; nothing to clear.";
-                    _log.Change("PolicyChangeService", $"{mo.ObjectId}: clear skipped — key missing.");
-                    return true; // already not configured
-                }
-
-                key.DeleteValue(valueName, throwOnMissingValue: false);
-                message = "Value cleared (Not configured).";
-                _log.Change("PolicyChangeService",
-                    $"CLEARED {mo.ObjectId} | {FormatHive(hive)}\\{subKey}\\{valueName} | by {Environment.UserName}");
-                return true;
-            }
-
-            using (var key = baseKey.CreateSubKey(subKey, writable: true))
-            {
-                if (key is null)
-                {
-                    message = "Could not open or create registry key.";
+                    message = delError;
+                    _log.Change("PolicyChangeService", $"DELETE_FAIL {mo.ObjectId}: {delError}");
                     return false;
                 }
-
-                // Prefer DWORD for pure numeric policy values; string for ConsentStore-style.
-                if (IsAllDigits(rawValue))
+            }
+            else
+            {
+                if (!TryWriteValue(hive, subKey, valueName, rawValue!, before.Kind, out var writeError))
                 {
-                    if (!int.TryParse(rawValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var dword))
-                    {
-                        message = "Invalid numeric value.";
-                        return false;
-                    }
-                    key.SetValue(valueName, dword, RegistryValueKind.DWord);
-                }
-                else
-                {
-                    key.SetValue(valueName, rawValue, RegistryValueKind.String);
+                    message = writeError;
+                    _log.Change("PolicyChangeService", $"WRITE_FAIL {mo.ObjectId}: {writeError}");
+                    return false;
                 }
             }
 
-            message = $"Set to {rawValue}.";
+            // --- Mandatory independent read-back ---
+            // Close handles above before reading. Small retry for registry propagation.
+            RegistryRead after = default;
+            var verified = false;
+            for (var attempt = 1; attempt <= 3; attempt++)
+            {
+                after = ReadValue(hive, subKey, valueName);
+                verified = StateMatches(after, rawValue);
+                if (verified)
+                    break;
+                System.Threading.Thread.Sleep(40 * attempt);
+            }
+
             _log.Change("PolicyChangeService",
-                $"SET {mo.ObjectId} | {FormatHive(hive)}\\{subKey}\\{valueName} = {rawValue} | by {Environment.UserName}");
+                $"AFTER {mo.ObjectId} | {targetPath} | present={after.Present} kind={after.Kind} value={after.Normalized ?? "(absent)"} | verified={verified}");
+
+            if (!verified)
+            {
+                message =
+                    "Write completed but verification FAILED.\n" +
+                    $"Intended: {intendedDisplay}\n" +
+                    $"System read-back: {(after.Present ? after.Normalized : "Not configured")}\n\n" +
+                    "The application will not report this change as successful.";
+                _log.Change("PolicyChangeService",
+                    $"VERIFY_FAIL {mo.ObjectId} | intended={intendedDisplay} | actual={(after.Present ? after.Normalized : "(absent)")}");
+                return false;
+            }
+
+            message = intendedDelete
+                ? "Verified: value is absent (Not configured)."
+                : $"Verified: system value is {after.Normalized}.";
+            _log.Change("PolicyChangeService",
+                $"VERIFIED {mo.ObjectId} | {targetPath} = {after.Normalized ?? "(absent)"} | by {Environment.UserName}");
             return true;
         }
         catch (UnauthorizedAccessException ex)
         {
             message = "Access denied. Process may not be fully elevated.";
-            _log.Change("PolicyChangeService", $"Access denied writing {mo.ObjectId}: {ex.Message}");
+            _log.Change("PolicyChangeService", $"ACCESS_DENIED {mo.ObjectId}: {ex.Message}");
             return false;
         }
         catch (Exception ex)
         {
-            message = "Write failed: " + ex.Message;
-            _log.Change("PolicyChangeService", $"Write failed for {mo.ObjectId}: {ex.Message}");
+            message = "Change failed: " + ex.Message;
+            _log.Change("PolicyChangeService", $"EXCEPTION {mo.ObjectId}: {ex}");
             return false;
         }
+    }
+
+    // ---------- registry primitives ----------
+
+    private readonly struct RegistryRead
+    {
+        public bool Present { get; init; }
+        public RegistryValueKind Kind { get; init; }
+        public string? Normalized { get; init; }
+        public object? Raw { get; init; }
+    }
+
+    private static RegistryRead ReadValue(RegistryHive hive, string subKey, string valueName)
+    {
+        // Prefer 64-bit view (Policies live here). Fall back to default view if needed.
+        foreach (var view in new[] { RegistryView.Registry64, RegistryView.Default })
+        {
+            try
+            {
+                using var baseKey = RegistryKey.OpenBaseKey(hive, view);
+                using var key = baseKey.OpenSubKey(subKey, writable: false);
+                if (key is null)
+                    continue;
+
+                var names = key.GetValueNames();
+                var exists = names.Any(n => string.Equals(n, valueName, StringComparison.OrdinalIgnoreCase))
+                             || (string.IsNullOrEmpty(valueName) && key.GetValue(null) is not null);
+
+                // GetValueNames does not include default value; handle named values only for policies.
+                var raw = key.GetValue(valueName, defaultValue: null, options: RegistryValueOptions.DoNotExpandEnvironmentNames);
+                if (raw is null && !exists)
+                    continue; // try next view / treat as missing after both
+
+                if (raw is null)
+                    return new RegistryRead { Present = false };
+
+                var kind = key.GetValueKind(valueName);
+                return new RegistryRead
+                {
+                    Present = true,
+                    Kind = kind,
+                    Raw = raw,
+                    Normalized = NormalizeRaw(raw, kind)
+                };
+            }
+            catch
+            {
+                // try next view
+            }
+        }
+
+        return new RegistryRead { Present = false };
+    }
+
+    private static bool TryWriteValue(
+        RegistryHive hive,
+        string subKey,
+        string valueName,
+        string rawValue,
+        RegistryValueKind existingKind,
+        out string error)
+    {
+        error = string.Empty;
+        using var baseKey = RegistryKey.OpenBaseKey(hive, RegistryView.Registry64);
+        using var key = baseKey.CreateSubKey(subKey, writable: true);
+        if (key is null)
+        {
+            error = "Could not open or create registry key.";
+            return false;
+        }
+
+        // Match existing kind when present; otherwise DWORD for pure digits, String otherwise.
+        if (IsAllDigits(rawValue))
+        {
+            if (!int.TryParse(rawValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var dword))
+            {
+                error = "Invalid numeric value.";
+                return false;
+            }
+
+            var kind = existingKind is RegistryValueKind.DWord or RegistryValueKind.QWord
+                ? RegistryValueKind.DWord
+                : RegistryValueKind.DWord;
+            key.SetValue(valueName, dword, kind);
+        }
+        else
+        {
+            // ConsentStore / string policies
+            if (existingKind == RegistryValueKind.DWord && int.TryParse(rawValue, out var asDword))
+            {
+                key.SetValue(valueName, asDword, RegistryValueKind.DWord);
+            }
+            else
+            {
+                key.SetValue(valueName, rawValue, RegistryValueKind.String);
+            }
+        }
+
+        key.Flush();
+        return true;
+    }
+
+    private static bool TryDeleteValue(RegistryHive hive, string subKey, string valueName, out string error)
+    {
+        error = string.Empty;
+        using var baseKey = RegistryKey.OpenBaseKey(hive, RegistryView.Registry64);
+        using var key = baseKey.OpenSubKey(subKey, writable: true);
+        if (key is null)
+        {
+            // Key missing ⇒ value is already absent
+            return true;
+        }
+
+        key.DeleteValue(valueName, throwOnMissingValue: false);
+        key.Flush();
+        return true;
+    }
+
+    private static bool StateMatches(RegistryRead read, string? intendedRaw)
+    {
+        var wantAbsent = string.IsNullOrWhiteSpace(intendedRaw);
+        if (wantAbsent)
+            return !read.Present;
+
+        if (!read.Present || read.Normalized is null)
+            return false;
+
+        return string.Equals(
+            read.Normalized.Trim(),
+            intendedRaw!.Trim(),
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string NormalizeRaw(object raw, RegistryValueKind kind)
+    {
+        return kind switch
+        {
+            RegistryValueKind.DWord => Convert.ToInt32(raw, CultureInfo.InvariantCulture)
+                .ToString(CultureInfo.InvariantCulture),
+            RegistryValueKind.QWord => Convert.ToInt64(raw, CultureInfo.InvariantCulture)
+                .ToString(CultureInfo.InvariantCulture),
+            RegistryValueKind.Binary when raw is byte[] bytes => BitConverter.ToString(bytes),
+            RegistryValueKind.MultiString when raw is string[] arr => string.Join(";", arr),
+            _ => raw.ToString()?.Trim() ?? string.Empty
+        };
     }
 
     private static bool TryResolveTarget(
@@ -154,12 +319,12 @@ public sealed class PolicyChangeService
         valueName = string.Empty;
         error = string.Empty;
 
-        // Prefer live observed layer path when present.
         var path = mo.Observation?.Layers?
             .Select(l => l.SourcePath)
             .FirstOrDefault(p => !string.IsNullOrWhiteSpace(p) &&
                                  (p.StartsWith("HKLM", StringComparison.OrdinalIgnoreCase) ||
-                                  p.StartsWith("HKCU", StringComparison.OrdinalIgnoreCase)));
+                                  p.StartsWith("HKCU", StringComparison.OrdinalIgnoreCase) ||
+                                  p.StartsWith("HKEY_", StringComparison.OrdinalIgnoreCase)));
 
         if (string.IsNullOrWhiteSpace(path))
             path = mo.DiscoveryMethod;
@@ -170,11 +335,11 @@ public sealed class PolicyChangeService
             return false;
         }
 
-        // Firewall / service paths are not registry value writes.
-        if (path.StartsWith("ServiceController:", StringComparison.OrdinalIgnoreCase) ||
-            path.Contains("*", StringComparison.Ordinal))
+        if (path.Contains("...", StringComparison.Ordinal) ||
+            path.Contains('*') ||
+            path.StartsWith("ServiceController:", StringComparison.OrdinalIgnoreCase))
         {
-            error = "This setting is not a single registry value and cannot be changed here yet.";
+            error = "This setting does not map to a single concrete registry value and cannot be changed safely here.";
             return false;
         }
 
@@ -206,7 +371,6 @@ public sealed class PolicyChangeService
             return false;
         }
 
-        // Catalog sometimes uses "...\\ConsentStore\\location\\Value" — last segment is value name.
         var lastSlash = path.LastIndexOf('\\');
         if (lastSlash <= 0 || lastSlash >= path.Length - 1)
         {
@@ -228,13 +392,9 @@ public sealed class PolicyChangeService
 
     private static bool IsAllDigits(string s)
     {
-        if (string.IsNullOrEmpty(s))
-            return false;
+        if (string.IsNullOrEmpty(s)) return false;
         foreach (var c in s)
-        {
-            if (c is < '0' or > '9')
-                return false;
-        }
+            if (c is < '0' or > '9') return false;
         return true;
     }
 
