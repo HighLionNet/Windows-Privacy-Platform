@@ -1,9 +1,9 @@
 # Windows Privacy Platform
-## Current Status — Version 1.6.1
+## Current Status — Version 1.6.2
 
 **Last updated:** 2026-08-09  
-**Current development version:** **1.6.1**  
-**Previous:** 1.6 / 1.5  
+**Current development version:** **1.6.2**  
+**Previous:** 1.6.1 / 1.6  
 
 ---
 
@@ -19,13 +19,23 @@
 
 PolicyCollector and PolicyChangeService both use **RegistryView.Registry64** and invariant numeric formatting so scan and write cannot disagree on view or string form.
 
-Placeholder DiscoveryMethod paths (`...`, wildcards, ServiceController) are refused — never written.
+Non-concrete DiscoveryMethod paths (`ServiceController:`, summary aggregates) are refused — never written.
+
+---
+
+## 1.6.2 changes
+
+- **Catalog path purge:** All ConsentStore `DiscoveryMethod` values are now concrete  
+  `HKCU\Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\<capability>\Value`.  
+- ContentDelivery path expanded to full concrete location.  
+- Firewall service / logging summary remain observation-only (not writable).  
+- SchemaVersion / ConfidenceSource bumped to Catalog-v1.6.  
 
 ---
 
 ## UI
 
-- Category cards: name, short blurb, current, value buttons  
+- Category cards: name, short blurb, path/type, current, value buttons  
 - Detail: status + single explanation paragraph  
 - Elevation: UAC relaunch + session authorize  
 
