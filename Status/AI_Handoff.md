@@ -1,25 +1,21 @@
-# AI Handoff — v2.0 in progress (2026-08-09)
+# AI Handoff — v2.0 (2026-08-09)
 
-## Done this session
-- P0 Unknown preservation
-- CategoryView raw-value-only buttons (no numbering)
-- WritableTarget model + deny-by-default PolicyChangeService
+## Done
+- P0 Unknown preservation across NavigationBuilder / SettingsQuery / PolicyPrecedenceResolver
+- CategoryView: raw-value buttons; notes from DisplayLabel (FormatOptionNote)
+- WritableTarget + deny-by-default PolicyChangeService
 - Firewall write boundary
-- Version 2.0.0 + About rewrite
+- Version 2.0.0 (Directory.Build.props, MainWindow.xaml, About, README)
 - CLI removed from solution
-- Catalog WritableTarget attachment for non-firewall concrete paths
 
-## Next priorities (in order)
-1. Confirm Release build on Windows after pull
-2. Add test project: Unknown semantics, IsConfigured, WritableTarget gate, precedence
-3. ScanService concurrent-scan protection
-4. SafeProcessRunner for collectors
-5. CapabilityCollector state model
-6. GitHub Actions build/test
-7. LICENSE + SECURITY.md + CONTRIBUTING
+## Next
+1. Expand catalog policy ObjectIds to full pre-v2 set
+2. Test project for Unknown / WritableTarget / precedence
+3. Scan generation ID
+4. CI + LICENSE + SECURITY.md
 
-## Do not
-- Reintroduce Unknown → Not configured
-- Invent 0/1 options without ValueSemantics
-- Write firewall rules via registry
-- Infer write targets from Observation alone
+## Do not reintroduce
+- Unknown → Not configured
+- Numbered option buttons
+- "Policy value 0." as the only note
+- Write targets inferred from Observation alone
