@@ -9,7 +9,11 @@ namespace WindowsPrivacyPlatform.Models;
 public static class ManagedObjectCatalog
 {
     public static IReadOnlyList<ManagedObject> PrivacySettings { get; } = Finalize(CreatePrivacyBatch());
-    public static IReadOnlyList<ManagedObject> PolicySettings { get; } = Finalize(CreatePolicyBatch().Concat(CreateExtendedPolicyBatch()).ToList());
+    public static IReadOnlyList<ManagedObject> PolicySettings { get; } = Finalize(
+        CreatePolicyBatch()
+            .Concat(CreateExtendedPolicyBatch())
+            .Concat(CatalogExpansion.CreateCoverageBatch())
+            .ToList());
     public static IReadOnlyList<ManagedObject> FirewallSettings { get; } = Finalize(CreateFirewallBatch());
     public static IReadOnlyList<ManagedObject> All { get; } =
         PrivacySettings.Concat(PolicySettings).Concat(FirewallSettings).ToList().AsReadOnly();
@@ -27,20 +31,18 @@ public static class ManagedObjectCatalog
         return batch;
     }
 
-    /// <summary>
-    /// Deny-by-default. Only ObjectIds on the explicit authorization list receive a WritableTarget.
-    /// DiscoveryMethod is used solely as a convenience path source AFTER authorization is granted by ObjectId.
-    /// Firewall domain is never writable.
-    /// </summary>
     private static void AttachWritableTarget(ManagedObject mo)
     {
         if (mo.ProductDomain == ProductDomain.Firewall)
             return;
 
+        // Service anchors are observation-only.
+        if (mo.FeatureCategory == FeatureCategory.WindowsService)
+            return;
+
         if (!IsExplicitlyAuthorizedForWrite(mo.ObjectId))
             return;
 
-        // Authorization already decided by ObjectId. Now fill exact target fields.
         if (!TryParseRegistryPath(mo.DiscoveryMethod, out var hive, out var subKey, out var valueName))
             return;
 
@@ -65,20 +67,18 @@ public static class ManagedObjectCatalog
         };
     }
 
-    /// <summary>
-    /// ObjectId whitelist is the only source of write authorization.
-    /// Adding a new writable setting requires an explicit entry here.
-    /// </summary>
     private static bool IsExplicitlyAuthorizedForWrite(string objectId)
     {
         if (string.IsNullOrWhiteSpace(objectId))
             return false;
 
-        // ConsentStore (HKCU string values) — user-controlled privacy surface.
         if (objectId.StartsWith("privacy.consentstore.", StringComparison.OrdinalIgnoreCase))
             return true;
 
-        // Other privacy HKCU settings with known safe semantics.
+        // AppPrivacy machine policies (0/1/2) — explicit force allow/deny/user-controlled.
+        if (objectId.StartsWith("policy.appprivacy.", StringComparison.OrdinalIgnoreCase))
+            return true;
+
         if (objectId is
             "privacy.advertisingid.enabled" or
             "privacy.tailoredexperiences" or
@@ -86,7 +86,8 @@ public static class ManagedObjectCatalog
             "privacy.speech.onlinespeech")
             return true;
 
-        // Core policy settings that have explicit ValueSemantics and known registry kinds.
+        // Core + expanded policy settings with known kinds and semantics.
+        // BitLocker, UAC master switches, and service objects are intentionally NOT listed.
         if (objectId is
             "policy.telemetry.allowtelemetry" or
             "policy.telemetry.allowtelemetry.currentversion" or
@@ -96,28 +97,60 @@ public static class ManagedObjectCatalog
             "policy.deliveryopt.downloadmode" or
             "policy.defender.disableantispyware" or
             "policy.defender.disablerealtime" or
+            "policy.defender.disablebehaviormonitor" or
+            "policy.defender.disableioav" or
             "policy.defender.spynetreporting" or
             "policy.defender.submitsamples" or
+            "policy.defender.puaprotection" or
             "policy.defender.enablenetworkprotection" or
             "policy.defender.enablecontrolledfolderaccess" or
             "policy.defender.cloudblocklevel" or
+            "policy.defender.disableblockatfirstseen" or
+            "policy.defender.disablescriptscanning" or
+            "policy.defender.disablecatchupfullscan" or
+            "policy.defender.disablecatchupquickscan" or
             "policy.search.allowcortana" or
             "policy.search.disablewebsearch" or
+            "policy.search.connectedsearchuseweb" or
+            "policy.search.allowsearchlocation" or
+            "policy.search.allowcloudsearch" or
             "policy.activity.enableactivityfeed" or
             "policy.activity.uploaduseractivities" or
+            "policy.activity.publishuseractivities" or
             "policy.cloud.disableconsumerfeatures" or
+            "policy.cloud.disablesoftlanding" or
+            "policy.cloud.disablecloudoptimized" or
+            "policy.cloud.disablewindowsspotlight.hkcu" or
+            "policy.cloud.disabletailored.hkcu" or
             "policy.advertising.disabledbygpo" or
             "policy.location.disablelocation" or
-            "policy.appprivacy.location" or
-            "policy.appprivacy.camera" or
-            "policy.appprivacy.microphone" or
+            "policy.location.disablelocationscripting" or
+            "policy.location.disablewindowslocationsupplier" or
             "policy.smartscreen.enable" or
             "policy.smartscreen.shelllevel" or
             "policy.edge.trackingprevention" or
+            "policy.edge.metricsreporting" or
+            "policy.edge.personalizationreporting" or
+            "policy.edge.searchsuggest" or
+            "policy.edge.passwordmanager" or
+            "policy.edge.autofilladdress" or
+            "policy.edge.autofillcreditcard" or
+            "policy.edge.sendsitinfo" or
             "policy.clipboard.allowhistory" or
             "policy.clipboard.allowcrossdevice" or
             "policy.update.targetreleaseversion" or
-            "policy.update.disabledualscan")
+            "policy.update.disabledualscan" or
+            "policy.update.managepreviewbuilds" or
+            "policy.update.allowmuupdateservice" or
+            "policy.update.elevatednonadmins" or
+            "policy.update.disablewuaccess" or
+            "policy.update.donotconnectinternet" or
+            "policy.update.excludewudrivers" or
+            "policy.update.disableuxwuaccess" or
+            "policy.findmydevice.allow" or
+            "policy.device.metadataretrieval" or
+            "policy.biometrics.enabled" or
+            "policy.biometrics.facialfeatures")
             return true;
 
         return false;
@@ -125,14 +158,15 @@ public static class ManagedObjectCatalog
 
     private static RegistryValueKindExpected ResolveValueKind(string objectId)
     {
-        // Explicit type map — never guess from observed value or DiscoveryMethod alone.
         if (objectId.StartsWith("privacy.consentstore.", StringComparison.OrdinalIgnoreCase))
             return RegistryValueKindExpected.String;
 
         if (objectId.Equals("policy.smartscreen.shelllevel", StringComparison.OrdinalIgnoreCase))
             return RegistryValueKindExpected.String;
 
-        // Everything else currently authorized is DWord.
+        if (objectId.Equals("policy.update.targetreleaseversioninfo", StringComparison.OrdinalIgnoreCase))
+            return RegistryValueKindExpected.String;
+
         return RegistryValueKindExpected.DWord;
     }
 
@@ -219,40 +253,35 @@ public static class ManagedObjectCatalog
         { mo.ValueSemantics = [V("0", "Default", "Default", "Default."), V("2", "High", "High", "High."), V("4", "HighPlus", "High+", "High+."), V("6", "ZeroTolerance", "Zero tolerance", "Zero tolerance.")]; return; }
         if (mo.ObjectId.Equals("policy.smartscreen.shelllevel", StringComparison.OrdinalIgnoreCase))
         { mo.ValueSemantics = [V("Warn", "Warn", "Warn", "Warn."), V("Block", "Block", "Block", "Block.")]; return; }
-        if (mo.ObjectId is "policy.advertising.disabledbygpo" or "policy.location.disablelocation"
-            or "policy.defender.disablerealtime" or "policy.defender.disableantispyware"
-            or "policy.defender.disablebehaviormonitor" or "policy.defender.disableioav"
-            or "policy.update.noautoupdate" or "policy.activity.uploaduseractivities"
-            or "policy.activity.enableactivityfeed" or "policy.activity.publishuseractivities"
-            or "policy.search.allowcortana" or "policy.search.disablewebsearch"
-            or "policy.search.connectedsearchuseweb" or "policy.search.allowsearchlocation"
-            or "policy.search.allowcloudsearch" or "policy.cloud.disableconsumerfeatures"
-            or "policy.cloud.disablesoftlanding" or "policy.cloud.disablecloudoptimized"
-            or "policy.cloud.disablewindowsspotlight.hkcu" or "policy.cloud.disabletailored.hkcu"
-            or "policy.biometrics.enabled" or "policy.findmydevice.allow"
-            or "policy.edge.metricsreporting" or "policy.edge.personalizationreporting"
-            or "policy.edge.searchsuggest" or "policy.edge.passwordmanager"
-            or "policy.edge.autofilladdress" or "policy.edge.autofillcreditcard"
-            or "policy.edge.alternateerrorpages" or "policy.edge.paymentmethods"
-            or "policy.edge.sendsitinfo" or "policy.defender.puaprotection"
-            or "policy.location.disablelocationscripting" or "policy.location.disablewindowslocationsupplier"
-            or "policy.update.disablewuaccess" or "policy.update.donotconnectinternet"
-            or "policy.update.excludewudrivers" or "policy.update.disableuxwuaccess"
-            or "policy.telemetry.donotshowfeedback" or "policy.device.metadataretrieval"
-            or "policy.onedrive.disablefilesonDemand" or "policy.explorer.allowonlinecontent"
-            or "policy.explorer.norecentserverdocs" or "policy.biometrics.facialfeatures"
-            or "privacy.tailoredexperiences" or "privacy.contentdelivery.systempanesuggestions"
-            or "privacy.speech.onlinespeech"
-            or "policy.defender.enablenetworkprotection" or "policy.defender.enablecontrolledfolderaccess"
-            or "policy.defender.disableblockatfirstseen" or "policy.defender.disablescriptscanning"
-            or "policy.defender.disablecatchupfullscan" or "policy.defender.disablecatchupquickscan"
-            or "policy.smartscreen.enable"
-            or "policy.clipboard.allowhistory" or "policy.clipboard.allowcrossdevice"
-            or "policy.update.elevatednonadmins" or "policy.update.allowmuupdateservice"
-            or "policy.update.disabledualscan" or "policy.update.managepreviewbuilds"
-            or "policy.update.targetreleaseversion")
+        if (mo.ObjectId.Equals("policy.uac.consentpromptbehavioradmin", StringComparison.OrdinalIgnoreCase))
         {
-            mo.ValueSemantics = [V("0", "Disabled", "Not forced / Off", "Policy value 0."), V("1", "Enabled", "Forced / On", "Policy value 1.")];
+            mo.ValueSemantics =
+            [
+                V("0", "ElevateWithoutPrompt", "Elevate without prompting", "Admin elevation without prompt (least secure)."),
+                V("1", "PromptCredentials", "Prompt for credentials", "Prompt for credentials on the secure desktop."),
+                V("2", "PromptConsent", "Prompt for consent", "Prompt for consent on the secure desktop."),
+                V("3", "PromptCredentialsNotSecureDesktop", "Prompt credentials (not secure desktop)", "Prompt for credentials without secure desktop."),
+                V("4", "PromptConsentNotSecureDesktop", "Prompt consent (not secure desktop)", "Prompt for consent without secure desktop."),
+                V("5", "PromptConsentForNonWindows", "Prompt consent for non-Windows binaries", "Default modern admin behavior.")
+            ];
+            return;
+        }
+        // Binary 0/1 policies
+        if (mo.ObjectId.StartsWith("policy.", StringComparison.OrdinalIgnoreCase)
+            && mo.ValueSemantics.Count == 0
+            && !mo.ObjectId.Contains("defer", StringComparison.OrdinalIgnoreCase)
+            && !mo.ObjectId.Contains("targetreleaseversioninfo", StringComparison.OrdinalIgnoreCase)
+            && !mo.ObjectId.Contains("auoptions", StringComparison.OrdinalIgnoreCase)
+            && !mo.ObjectId.Contains("downloadmode", StringComparison.OrdinalIgnoreCase)
+            && !mo.ObjectId.Contains("cloudblock", StringComparison.OrdinalIgnoreCase)
+            && !mo.ObjectId.Contains("spynet", StringComparison.OrdinalIgnoreCase)
+            && !mo.ObjectId.Contains("submit", StringComparison.OrdinalIgnoreCase)
+            && !mo.ObjectId.Contains("tracking", StringComparison.OrdinalIgnoreCase)
+            && !mo.ObjectId.Contains("shelllevel", StringComparison.OrdinalIgnoreCase)
+            && !mo.ObjectId.Contains("encryptionmethod", StringComparison.OrdinalIgnoreCase)
+            && !mo.ObjectId.StartsWith("service.", StringComparison.OrdinalIgnoreCase))
+        {
+            mo.ValueSemantics = [V("0", "Disabled", "Off / Not forced", "Policy value 0."), V("1", "Enabled", "On / Forced", "Policy value 1.")];
         }
     }
 
