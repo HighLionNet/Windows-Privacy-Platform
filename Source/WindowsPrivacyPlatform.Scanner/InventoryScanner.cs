@@ -51,7 +51,6 @@ public sealed class InventoryScanner : IInventoryScanner
                     diag.Duration = sw.Elapsed;
                     diag.Status = CollectorStatus.Completed;
                     diag.Message = "Completed";
-                    // Item counts are best-effort; collectors own their sections.
                     diag.ItemCount = EstimateItemCount(snapshot, collector.Name);
 
                     _logger.Debug("Scanner", $"Collector finish: {collector.Name} ({diag.Duration.TotalMilliseconds:F0} ms)");
@@ -149,14 +148,14 @@ public sealed class InventoryScanner : IInventoryScanner
 
     private static int EstimateItemCount(InventorySnapshot snapshot, string collectorName)
     {
-        // Best-effort counts for diagnostics only.
         return collectorName switch
         {
             "CapabilityCollector" => snapshot.InstalledCapabilities?.Count ?? 0,
             "PackageCollector" => snapshot.InstalledPackages?.Count ?? 0,
             "ServiceCollector" => snapshot.Services?.Count ?? 0,
             "ScheduledTaskCollector" => snapshot.ScheduledTasks?.Count ?? 0,
-            "FirewallCollector" => snapshot.FirewallRules?.Count ?? 0,
+            "PrivacyCollector" => snapshot.PrivacySettings?.Count ?? 0,
+            "PolicyCollector" => snapshot.PolicySettings?.Count ?? 0,
             _ => 0
         };
     }
