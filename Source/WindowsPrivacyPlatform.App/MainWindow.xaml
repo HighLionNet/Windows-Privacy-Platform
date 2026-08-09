@@ -29,7 +29,7 @@
         <MenuItem Header="_Search…" InputGestureText="Ctrl+F" Click="MenuSearch_Click" />
         <Separator />
         <MenuItem Header="Mode: _Inspect" IsEnabled="False" IsChecked="True" />
-        <MenuItem Header="Mode: _Modify (future)" IsEnabled="False" />
+        <MenuItem Header="Mode: _Modify (scaffold)" IsEnabled="False" />
       </MenuItem>
       <MenuItem Header="_Help">
         <MenuItem Header="_About Windows Privacy Platform" Click="MenuAbout_Click" />
@@ -58,7 +58,7 @@
             <TextBlock x:Name="ScanTimeLabel" Text="" FontSize="11"
                        Foreground="{StaticResource BrushTextMuted}" />
           </StackPanel>
-          <TextBlock Text="v1.4" Margin="14,0,0,0" VerticalAlignment="Center"
+          <TextBlock Text="v1.5" Margin="14,0,0,0" VerticalAlignment="Center"
                      Foreground="{StaticResource BrushTextMuted}" FontSize="12" FontWeight="SemiBold" />
           <Border Margin="16,0,0,0" Padding="8,3" BorderBrush="{StaticResource BrushBorderStrong}"
                   BorderThickness="1" Background="{StaticResource BrushBgHeader}" VerticalAlignment="Center">
@@ -69,7 +69,7 @@
                         VerticalContentAlignment="Center" SelectedIndex="0" FontSize="11"
                         SelectionChanged="ModeCombo_SelectionChanged">
                 <ComboBoxItem Content="Inspect" IsSelected="True" />
-                <ComboBoxItem Content="Modify" IsEnabled="False" />
+                <ComboBoxItem Content="Modify" />
               </ComboBox>
             </StackPanel>
           </Border>
