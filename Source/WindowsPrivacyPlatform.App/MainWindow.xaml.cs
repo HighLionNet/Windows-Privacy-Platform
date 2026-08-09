@@ -34,8 +34,7 @@ public partial class MainWindow : Window
 
     public MainWindow()
     {
-        InitializeComponent();
-
+        // Must construct before InitializeComponent: ModeCombo SelectionChanged fires during XAML load.
         _elevation = new ElevationService(_log);
 
         var appData = Path.Combine(
@@ -43,6 +42,8 @@ public partial class MainWindow : Window
             "WindowsPrivacyPlatform");
         Directory.CreateDirectory(appData);
         _prefsPath = Path.Combine(appData, "window.prefs");
+
+        InitializeComponent();
 
         RestoreWindowBounds();
 
@@ -60,7 +61,11 @@ public partial class MainWindow : Window
         };
 
         _scan.StatusChanged += status =>
-            Dispatcher.Invoke(() => StatusText.Text = status);
+            Dispatcher.Invoke(() =>
+            {
+                if (StatusText is not null)
+                    StatusText.Text = status;
+            });
     }
 
     private void CollectNavButtons()
@@ -471,7 +476,9 @@ public partial class MainWindow : Window
 
     private void ModeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_modeChangeInProgress || ModeCombo is null)
+        // SelectionChanged fires during InitializeComponent when the default item is selected.
+        // Guard until construction is complete and UI elements exist.
+        if (_modeChangeInProgress || ModeCombo is null || StatusText is null)
             return;
 
         if (ModeCombo.SelectedIndex == 1)
