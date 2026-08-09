@@ -1,5 +1,6 @@
 // Source/WindowsPrivacyPlatform.Models/ManagedObjectCatalog.cs
-// RESTORE: full catalog with WritableTarget attachment for non-firewall concrete registry settings.
+// v2.1: WritableTarget is explicit catalog-backed authorization only.
+// DiscoveryMethod is observation metadata and NEVER creates write permission.
 using System.Collections.Generic;
 using System.Linq;
 
@@ -18,52 +19,170 @@ public static class ManagedObjectCatalog
         foreach (var mo in batch)
         {
             if (mo is null) continue;
-            mo.SchemaVersion = "2.0";
-            mo.ConfidenceSource = "Catalog-v2.0";
+            mo.SchemaVersion = "2.1";
+            mo.ConfidenceSource = "Catalog-v2.1";
             ApplyKnownSemantics(mo);
             AttachWritableTarget(mo);
         }
         return batch;
     }
 
+    /// <summary>
+    /// Deny-by-default. Only ObjectIds on the explicit authorization list receive a WritableTarget.
+    /// DiscoveryMethod is used solely as a convenience path source AFTER authorization is granted by ObjectId.
+    /// Firewall domain is never writable.
+    /// </summary>
     private static void AttachWritableTarget(ManagedObject mo)
     {
-        if (mo.ProductDomain == ProductDomain.Firewall) return;
-        var path = mo.DiscoveryMethod;
-        if (string.IsNullOrWhiteSpace(path)) return;
+        if (mo.ProductDomain == ProductDomain.Firewall)
+            return;
+
+        if (!IsExplicitlyAuthorizedForWrite(mo.ObjectId))
+            return;
+
+        // Authorization already decided by ObjectId. Now fill exact target fields.
+        if (!TryParseRegistryPath(mo.DiscoveryMethod, out var hive, out var subKey, out var valueName))
+            return;
+
+        var kind = ResolveValueKind(mo.ObjectId);
+        var supported = mo.ValueSemantics?
+            .Where(v => v is not null && !string.IsNullOrWhiteSpace(v.RawValue))
+            .Select(v => v.RawValue!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList() ?? new List<string>();
+
+        mo.WritableTarget = new WritableTarget
+        {
+            Hive = hive,
+            View = RegistryViewKind.Registry64,
+            SubKey = subKey,
+            ValueName = valueName,
+            ValueKind = kind,
+            SupportedRawValues = supported,
+            SupportsDeletion = true,
+            RequiresElevation = hive.Equals("HKLM", StringComparison.OrdinalIgnoreCase),
+            Notes = "Explicit catalog authorization (v2.1). DiscoveryMethod does not grant write permission."
+        };
+    }
+
+    /// <summary>
+    /// ObjectId whitelist is the only source of write authorization.
+    /// Adding a new writable setting requires an explicit entry here.
+    /// </summary>
+    private static bool IsExplicitlyAuthorizedForWrite(string objectId)
+    {
+        if (string.IsNullOrWhiteSpace(objectId))
+            return false;
+
+        // ConsentStore (HKCU string values) — user-controlled privacy surface.
+        if (objectId.StartsWith("privacy.consentstore.", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        // Other privacy HKCU settings with known safe semantics.
+        if (objectId is
+            "privacy.advertisingid.enabled" or
+            "privacy.tailoredexperiences" or
+            "privacy.contentdelivery.systempanesuggestions" or
+            "privacy.speech.onlinespeech")
+            return true;
+
+        // Core policy settings that have explicit ValueSemantics and known registry kinds.
+        if (objectId is
+            "policy.telemetry.allowtelemetry" or
+            "policy.telemetry.allowtelemetry.currentversion" or
+            "policy.telemetry.donotshowfeedback" or
+            "policy.update.noautoupdate" or
+            "policy.update.auoptions" or
+            "policy.deliveryopt.downloadmode" or
+            "policy.defender.disableantispyware" or
+            "policy.defender.disablerealtime" or
+            "policy.defender.spynetreporting" or
+            "policy.defender.submitsamples" or
+            "policy.defender.enablenetworkprotection" or
+            "policy.defender.enablecontrolledfolderaccess" or
+            "policy.defender.cloudblocklevel" or
+            "policy.search.allowcortana" or
+            "policy.search.disablewebsearch" or
+            "policy.activity.enableactivityfeed" or
+            "policy.activity.uploaduseractivities" or
+            "policy.cloud.disableconsumerfeatures" or
+            "policy.advertising.disabledbygpo" or
+            "policy.location.disablelocation" or
+            "policy.appprivacy.location" or
+            "policy.appprivacy.camera" or
+            "policy.appprivacy.microphone" or
+            "policy.smartscreen.enable" or
+            "policy.smartscreen.shelllevel" or
+            "policy.edge.trackingprevention" or
+            "policy.clipboard.allowhistory" or
+            "policy.clipboard.allowcrossdevice" or
+            "policy.update.targetreleaseversion" or
+            "policy.update.disabledualscan")
+            return true;
+
+        return false;
+    }
+
+    private static RegistryValueKindExpected ResolveValueKind(string objectId)
+    {
+        // Explicit type map — never guess from observed value or DiscoveryMethod alone.
+        if (objectId.StartsWith("privacy.consentstore.", StringComparison.OrdinalIgnoreCase))
+            return RegistryValueKindExpected.String;
+
+        if (objectId.Equals("policy.smartscreen.shelllevel", StringComparison.OrdinalIgnoreCase))
+            return RegistryValueKindExpected.String;
+
+        // Everything else currently authorized is DWord.
+        return RegistryValueKindExpected.DWord;
+    }
+
+    private static bool TryParseRegistryPath(string path, out string hive, out string subKey, out string valueName)
+    {
+        hive = string.Empty;
+        subKey = string.Empty;
+        valueName = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(path))
+            return false;
+
         if (path.Contains("...") || path.Contains('*') ||
             path.StartsWith("ServiceController:", StringComparison.OrdinalIgnoreCase) ||
             path.StartsWith("FirewallPolicy-", StringComparison.OrdinalIgnoreCase))
-            return;
+            return false;
+
         path = path.Replace('/', '\\').Trim();
-        string hive, rest;
-        if (path.StartsWith("HKLM\\", StringComparison.OrdinalIgnoreCase)) { hive = "HKLM"; rest = path[5..]; }
-        else if (path.StartsWith("HKCU\\", StringComparison.OrdinalIgnoreCase)) { hive = "HKCU"; rest = path[5..]; }
-        else if (path.StartsWith("HKEY_LOCAL_MACHINE\\", StringComparison.OrdinalIgnoreCase)) { hive = "HKLM"; rest = path["HKEY_LOCAL_MACHINE\\".Length..]; }
-        else if (path.StartsWith("HKEY_CURRENT_USER\\", StringComparison.OrdinalIgnoreCase)) { hive = "HKCU"; rest = path["HKEY_CURRENT_USER\\".Length..]; }
-        else return;
-        var lastSlash = rest.LastIndexOf('\\');
-        if (lastSlash <= 0 || lastSlash >= rest.Length - 1) return;
-        var subKey = rest[..lastSlash];
-        var valueName = rest[(lastSlash + 1)..];
-        if (string.IsNullOrWhiteSpace(subKey) || string.IsNullOrWhiteSpace(valueName)) return;
-        var kind = RegistryValueKindExpected.DWord;
-        if (mo.ObjectId.StartsWith("privacy.consentstore.", StringComparison.OrdinalIgnoreCase) ||
-            mo.ObjectId.Equals("policy.smartscreen.shelllevel", StringComparison.OrdinalIgnoreCase) ||
-            mo.ObjectId.Contains("wuserver", StringComparison.OrdinalIgnoreCase) ||
-            mo.ObjectId.Contains("targetreleaseversioninfo", StringComparison.OrdinalIgnoreCase) ||
-            mo.ObjectId.Contains("pausefeatureupdates", StringComparison.OrdinalIgnoreCase) ||
-            mo.ObjectId.Contains("pausequalityupdates", StringComparison.OrdinalIgnoreCase))
-            kind = RegistryValueKindExpected.String;
-        var supported = mo.ValueSemantics?.Where(v => v is not null && !string.IsNullOrWhiteSpace(v.RawValue))
-            .Select(v => v.RawValue!).Distinct(StringComparer.OrdinalIgnoreCase).ToList() ?? new List<string>();
-        mo.WritableTarget = new WritableTarget
+
+        string rest;
+        if (path.StartsWith("HKLM\\", StringComparison.OrdinalIgnoreCase))
         {
-            Hive = hive, View = RegistryViewKind.Registry64, SubKey = subKey, ValueName = valueName,
-            ValueKind = kind, SupportedRawValues = supported, SupportsDeletion = true,
-            RequiresElevation = hive.Equals("HKLM", StringComparison.OrdinalIgnoreCase),
-            Notes = "Catalog-backed explicit write target (v2.0)"
-        };
+            hive = "HKLM";
+            rest = path[5..];
+        }
+        else if (path.StartsWith("HKCU\\", StringComparison.OrdinalIgnoreCase))
+        {
+            hive = "HKCU";
+            rest = path[5..];
+        }
+        else if (path.StartsWith("HKEY_LOCAL_MACHINE\\", StringComparison.OrdinalIgnoreCase))
+        {
+            hive = "HKLM";
+            rest = path["HKEY_LOCAL_MACHINE\\".Length..];
+        }
+        else if (path.StartsWith("HKEY_CURRENT_USER\\", StringComparison.OrdinalIgnoreCase))
+        {
+            hive = "HKCU";
+            rest = path["HKEY_CURRENT_USER\\".Length..];
+        }
+        else
+            return false;
+
+        var lastSlash = rest.LastIndexOf('\\');
+        if (lastSlash <= 0 || lastSlash >= rest.Length - 1)
+            return false;
+
+        subKey = rest[..lastSlash];
+        valueName = rest[(lastSlash + 1)..];
+        return !string.IsNullOrWhiteSpace(subKey) && !string.IsNullOrWhiteSpace(valueName);
     }
 
     private static void ApplyKnownSemantics(ManagedObject mo)
@@ -265,8 +384,8 @@ public static class ManagedObjectCatalog
             ImpactLevel = ImpactLevel.Security, LifecycleState = LifecycleState.Active, InterfaceName = iface,
             ConfigurationType = cfg, DiscoveryMethod = discovery, CanonicalPath = id, ControlLevel = control,
             ComponentOwner = owner, PriorityLevel = PriorityLevel.Recommended, Reversibility = Reversibility.Reversible,
-            RebootRequirement = RebootRequirement.None, SchemaVersion = "2.0", CreatedBy = "ManagedObjectCatalog",
-            CreatedTimestamp = DateTime.UtcNow, ConfidenceScore = 80, ConfidenceSource = "Catalog-v2.0"
+            RebootRequirement = RebootRequirement.None, SchemaVersion = "2.1", CreatedBy = "ManagedObjectCatalog",
+            CreatedTimestamp = DateTime.UtcNow, ConfidenceScore = 80, ConfidenceSource = "Catalog-v2.1"
         };
     }
 }
