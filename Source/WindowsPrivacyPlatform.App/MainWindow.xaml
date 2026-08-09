@@ -9,7 +9,6 @@
         Closing="Window_Closing">
   <DockPanel>
 
-    <!-- Classic Windows menu bar -->
     <Menu DockPanel.Dock="Top" Background="{StaticResource BrushBgMenu}"
           BorderBrush="{StaticResource BrushBorderStrong}" BorderThickness="0,0,0,1">
       <MenuItem Header="_File">
@@ -27,16 +26,12 @@
       </MenuItem>
       <MenuItem Header="_Tools">
         <MenuItem Header="_Search…" InputGestureText="Ctrl+F" Click="MenuSearch_Click" />
-        <Separator />
-        <MenuItem Header="Mode: _Inspect" IsEnabled="False" IsChecked="True" />
-        <MenuItem Header="Mode: _Modify (scaffold)" IsEnabled="False" />
       </MenuItem>
       <MenuItem Header="_Help">
         <MenuItem Header="_About Windows Privacy Platform" Click="MenuAbout_Click" />
       </MenuItem>
     </Menu>
 
-    <!-- Toolbar -->
     <Border DockPanel.Dock="Top" Background="{StaticResource BrushBgContent}"
             BorderBrush="{StaticResource BrushBorderStrong}" BorderThickness="0,0,0,1" Padding="12,8">
       <Grid>
@@ -58,7 +53,7 @@
             <TextBlock x:Name="ScanTimeLabel" Text="" FontSize="11"
                        Foreground="{StaticResource BrushTextMuted}" />
           </StackPanel>
-          <TextBlock Text="v1.5" Margin="14,0,0,0" VerticalAlignment="Center"
+          <TextBlock Text="v1.6" Margin="14,0,0,0" VerticalAlignment="Center"
                      Foreground="{StaticResource BrushTextMuted}" FontSize="12" FontWeight="SemiBold" />
           <Border Margin="16,0,0,0" Padding="8,3" BorderBrush="{StaticResource BrushBorderStrong}"
                   BorderThickness="1" Background="{StaticResource BrushBgHeader}" VerticalAlignment="Center">
@@ -87,7 +82,6 @@
       </Grid>
     </Border>
 
-    <!-- Status bar -->
     <Border DockPanel.Dock="Bottom" Background="{StaticResource BrushBgSidebar}"
             BorderBrush="{StaticResource BrushBorderStrong}" BorderThickness="0,1,0,0" Padding="12,4">
       <Grid>
@@ -105,20 +99,18 @@
                      Foreground="{StaticResource BrushTextMuted}" FontSize="11" />
           <TextBlock x:Name="ValidationLabel" Text="Validation: —" Margin="12,0,0,0"
                      Foreground="{StaticResource BrushTextMuted}" FontSize="11" />
-          <TextBlock Text="Inspect · Read-only" Margin="14,0,0,0"
+          <TextBlock Text="v1.6" Margin="14,0,0,0"
                      Foreground="{StaticResource BrushAccent}" FontSize="11" FontWeight="SemiBold" />
         </StackPanel>
       </Grid>
     </Border>
 
-    <!-- Body -->
     <Grid>
       <Grid.ColumnDefinitions>
         <ColumnDefinition x:Name="SidebarColumn" Width="240" MinWidth="0" />
         <ColumnDefinition Width="*" />
       </Grid.ColumnDefinitions>
 
-      <!-- Navigation tree -->
       <Border Grid.Column="0" Background="{StaticResource BrushBgSidebar}"
               BorderBrush="{StaticResource BrushBorderStrong}" BorderThickness="0,0,1,0">
         <ScrollViewer VerticalScrollBarVisibility="Auto" x:Name="NavScroll">
@@ -168,7 +160,6 @@
         </ScrollViewer>
       </Border>
 
-      <!-- Content -->
       <DockPanel Grid.Column="1" Background="{StaticResource BrushBgWindow}">
         <Border DockPanel.Dock="Top" Background="{StaticResource BrushBgContent}"
                 BorderBrush="{StaticResource BrushBorderStrong}" BorderThickness="0,0,0,1"
