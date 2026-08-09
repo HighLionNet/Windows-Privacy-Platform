@@ -1,18 +1,42 @@
 // Source/WindowsPrivacyPlatform.Logging/AuditLogger.cs
 using System;
+using System.IO;
 
 namespace WindowsPrivacyPlatform.Logging
 {
     /// <summary>
-    /// Thread-safe, lightweight console logger.
-    /// Zero dependency on Models.
-    /// Designed so additional sinks can be added later.
+    /// Thread-safe logger with console + dedicated file sinks.
+    /// Auth events → auth.log; Change events → changes.log; others → console (+ optional general.log).
+    /// Log root: %LocalAppData%\WindowsPrivacyPlatform\Logs
     /// </summary>
     public sealed class AuditLogger : IAuditLogger
     {
         private readonly object _syncRoot = new object();
+        private readonly string _logRoot;
+        private readonly string _authLogPath;
+        private readonly string _changeLogPath;
 
-        // Future: private readonly List<IAuditSink> _sinks = new();
+        public AuditLogger()
+        {
+            _logRoot = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "WindowsPrivacyPlatform",
+                "Logs");
+
+            try
+            {
+                Directory.CreateDirectory(_logRoot);
+            }
+            catch
+            {
+                // Fall back to temp if LocalAppData is unavailable.
+                _logRoot = Path.Combine(Path.GetTempPath(), "WindowsPrivacyPlatform", "Logs");
+                try { Directory.CreateDirectory(_logRoot); } catch { /* last resort: console only */ }
+            }
+
+            _authLogPath = Path.Combine(_logRoot, "auth.log");
+            _changeLogPath = Path.Combine(_logRoot, "changes.log");
+        }
 
         public void Debug(string component, string message)
             => Log(AuditEventType.Debug, component, message);
@@ -26,6 +50,12 @@ namespace WindowsPrivacyPlatform.Logging
         public void Error(string component, string message)
             => Log(AuditEventType.Error, component, message);
 
+        public void Auth(string component, string message)
+            => Log(AuditEventType.Auth, component, message);
+
+        public void Change(string component, string message)
+            => Log(AuditEventType.Change, component, message);
+
         public void Log(AuditEventType eventType, string component, string message)
         {
             if (component is null) throw new ArgumentNullException(nameof(component));
@@ -35,9 +65,21 @@ namespace WindowsPrivacyPlatform.Logging
             {
                 var timestamp = DateTime.UtcNow;
                 var severity = eventType.ToString().ToUpperInvariant();
-                Console.WriteLine($"[{timestamp:yyyy-MM-dd HH:mm:ss.fff}] [{severity}] [{component}] {message}");
+                var line = $"[{timestamp:yyyy-MM-dd HH:mm:ss.fff}] [{severity}] [{component}] {message}";
 
-                // Future sinks invoked here.
+                Console.WriteLine(line);
+
+                try
+                {
+                    if (eventType == AuditEventType.Auth)
+                        File.AppendAllText(_authLogPath, line + Environment.NewLine);
+                    else if (eventType == AuditEventType.Change)
+                        File.AppendAllText(_changeLogPath, line + Environment.NewLine);
+                }
+                catch
+                {
+                    // File write failure must never break the application.
+                }
             }
         }
     }
