@@ -1,33 +1,46 @@
 # Windows Privacy Platform
 
-**Current milestone:** Version **1.6.2**
+**Version 2.0**
 
-Local privacy and security **knowledge explorer** for Windows with an explicit, verified Modify path.
+Evidence-driven Windows privacy and configuration inspection and management.
 
-> **Understand first. Change deliberately.**
+> **Understand first. Change deliberately. Never invent certainty.**
 
 ---
 
 ## What it does
 
-- **Inspect (default):** Full read-only inventory of privacy ConsentStore values, Group Policy / registry policies, identity, services, packages, scheduled tasks, and firewall profile state.
-- **Modify (explicit):** After UAC elevation + session authorize, supported registry-backed settings can be changed. Every change is pre-read, confirmed, applied, and **only reported successful after independent read-back verification**. Audited to `changes.log` / `auth.log`.
+- **Inspect (default):** Read-only inventory of ConsentStore permissions, Group Policy / registry policies, identity, services, packages, scheduled tasks, and firewall profile state.
+- **Modify (explicit):** After UAC elevation and session authorize, catalog settings with an explicit `WritableTarget` can be changed. Every change is pre-read, confirmed, applied, and **only reported successful after independent read-back of the exact target**. Audited locally.
 
-Firewall rules are observation-only. This tool does **not** create, edit, enable, or delete firewall rules. Use Windows Firewall with Advanced Security (`wf.msc`) for rule changes.
+### Hard rules
+
+| State | Meaning |
+|-------|---------|
+| **Unknown** | Insufficient evidence. Never treated as configured or absent. |
+| **Not configured** | Location was checked; value is absent. |
+| **Not observed** | This scan did not collect this setting. |
+| **Error** | Collection failed. |
+
+- No privacy “score”. No optimizer. No one-click tweaker.
+- No telemetry from this application.
+- Firewall **rules** are observation-only. Use Windows Firewall (`wf.msc`) for rule management.
+- Modification is **deny-by-default**: only settings with an explicit catalog `WritableTarget` are writable.
 
 ---
 
 ## Architecture
 
 ```
-Models → Core → Logging → KnowledgeBase → Validator → Scanner → CLI
-                                                              ↘ App (WPF)
+Models → Core → Logging → KnowledgeBase → Validator → Scanner → App (WPF)
 ```
 
-- **Models** — pure data (catalog, observations, ValueSemantics). No OS I/O.
+- **Models** — pure data (catalog, observations, ValueSemantics, WritableTarget). No OS I/O.
 - **Scanner** — collectors are the only inventory read layer.
-- **PolicyChangeService** — sole write path; requires `ElevationService.IsModifyAuthorized`.
-- **PolicyPrecedenceResolver** — sole precedence authority.
+- **PolicyChangeService** — sole write path; requires elevation + explicit WritableTarget.
+- **PolicyPrecedenceResolver** — sole precedence authority; Unknown never wins.
+
+CLI was removed in v2.0. The WPF GUI is the product.
 
 ---
 
@@ -35,7 +48,7 @@ Models → Core → Logging → KnowledgeBase → Validator → Scanner → CLI
 
 ```powershell
 cd Source
-dotnet build -c Release
+dotnet build WindowsPrivacyPlatform.sln -c Release
 ```
 
 ## Publishing (win-x64)
@@ -51,15 +64,31 @@ cd Source\WindowsPrivacyPlatform.App
 dotnet run -c Release
 ```
 
-For accurate HKLM / firewall / service reads, run elevated (right-click → Run as administrator, or use the in-app Modify elevation path).
+For accurate HKLM / service reads and Modify mode, run elevated or use the in-app Modify elevation path.
 
 ---
 
-## Safety
+## Modify contract
 
-- Inspect mode never writes.
-- Modify requires explicit mode switch, UAC elevation, session authorize, per-change confirmation, and verified read-back.
-- Non-concrete paths (service controllers, multi-key summaries) are refused for writes.
-- No privacy “score”. No cloud backend. No telemetry of the tool itself.
+1. Resolve explicit `WritableTarget` from catalog (not from Observation).
+2. Read exact target.
+3. User confirms.
+4. Write exact target with catalog-defined RegistryValueKind.
+5. Read exact target again.
+6. Report success only if verified.
+7. Refresh scan.
+
+Unsupported types and settings without a WritableTarget are refused cleanly.
+
+---
+
+## Local data
+
+- Window prefs: `%LocalAppData%\WindowsPrivacyPlatform\window.prefs`
+- Audit logs: under the same app data folder (`changes.log`, `auth.log`)
+
+No network calls. No cloud backend.
+
+---
 
 Repository: [HighLionNet/Windows-Privacy-Platform](https://github.com/HighLionNet/Windows-Privacy-Platform)
