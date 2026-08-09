@@ -6,6 +6,10 @@ namespace WindowsPrivacyPlatform.Logging
         Debug,
         Information,
         Warning,
-        Error
+        Error,
+        /// <summary>Authentication / elevation attempts and outcomes.</summary>
+        Auth,
+        /// <summary>Configuration change attempts (future write path).</summary>
+        Change
     }
 }
