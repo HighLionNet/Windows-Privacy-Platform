@@ -4,33 +4,32 @@
 
 ## Product
 
-WPF GUI only (CLI not in solution). Application version **2.1.0**.
+WPF GUI only. Application version **2.1.0**.
 
-## v2.1 hardening completed this session
+## Hardening (completed)
 
-- **WritableTarget** is deny-by-default and ObjectId-whitelisted only. DiscoveryMethod never authorizes writes.
-- **ValueKind** is explicit per ObjectId (no heuristic from discovery path for authorization).
-- **PolicyChangeService**: kind-aware verification; read errors (AccessDenied/Error) are not treated as "Not configured"; RequiresElevation is enforced from WritableTarget.
-- **SafeProcessRunner**: concurrent stdout/stderr, timeout kill, cancellation, no shell.
-- **CapabilityCollector** rewritten on SafeProcessRunner; no `-ExecutionPolicy Bypass`; shorter timeouts; empty ≠ proven absence.
-- **ScanResult** + **InventoryScanner**: structured per-collector diagnostics; ScanStatus; cancellation support; no false full success when collectors fail.
-- **ScanService**: passes CancellationToken; preserves last successful scan on cancel/fail; clones catalog definitions per scan to avoid stale observation mutation; version 2.1.
-- Authoritative version source: `Directory.Build.props` → **2.1.0**.
+- Explicit WritableTarget ObjectId whitelist (DiscoveryMethod never authorizes)
+- Kind-aware write verification; read errors ≠ Not configured
+- SafeProcessRunner; CapabilityCollector + ScheduledTaskCollector on it
+- Scan diagnostics + last-good scan preservation + catalog clone per scan
+- Tests project + CI
+- Safety_Model.md, LICENSE, SECURITY.md, CONTRIBUTING.md
 
-## Remaining (next feature prompt)
+## Coverage expansion (completed)
 
-- Full automated test project expansion (precedence, ValueSemantics, WritableTarget validation).
-- GitHub Actions CI polish.
-- Stronger SchemaValidator rules (WritableTarget completeness, relationship resolution).
-- Architecture.md / README / SAFETY model docs completion.
-- Preference file robustness and remaining collector error/absence distinctions.
-- Optional further policy catalog audit entries.
+- CatalogExpansion: full AppPrivacy LetApps* set, Defender depth, Windows Update policies, Search/Activity/Cloud, Location/Device/Biometrics, UAC observation, BitLocker **policy** observation, Edge privacy policies, key service anchors (observation-only)
+- AppPrivacy writable via explicit whitelist
+- BitLocker / UAC master switches / services remain non-writable by design
+- Conflicts page: concise Effective + writable status (no UI clutter)
 
-## Update local
+## Explicit non-goals retained
+
+No bulk modify, profiles, rollback, privacy score, CLI product, firewall rule writing, generic service/task editors.
+
+## Local verify
 
 ```powershell
-cd "C:\Windows Privacy Platform"
-git pull origin main
 cd Source
 dotnet build WindowsPrivacyPlatform.sln -c Release
+dotnet test WindowsPrivacyPlatform.sln -c Release
 ```
