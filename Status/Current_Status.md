@@ -1,45 +1,40 @@
 # Windows Privacy Platform
-## Current Status — Version 1.6
+## Current Status — Version 1.6.1
 
 **Last updated:** 2026-08-09  
-**Current development version:** **1.6**  
-**Previous:** Version 1.5  
-**Runtime target:** Windows 11; net8.0-windows  
+**Current development version:** **1.6.1**  
+**Previous:** 1.6 / 1.5  
 
 ---
 
-## What v1.6 delivers
+## Trust contract (Modify writes)
 
-### Category pages
-- Taller setting cards with **name + short one-line explanation + current value**.
-- **Value buttons** (0 / 1 / mapped labels / Not configured) are the change controls.
-- Changes are made from the category list, not the detail page.
+1. **Pre-read** independent system value before any change.  
+2. User confirms path + current + intended.  
+3. Write (DWORD/string/delete) under elevated token, Registry64 view.  
+4. **Mandatory read-back** (up to 3 attempts).  
+5. **Success only if read-back matches intended state.**  
+6. UI refresh only after verified success (or rescan after hard failure for honesty).  
+7. Full audit trail: BEFORE / AFTER / VERIFIED or VERIFY_FAIL in `changes.log`.  
 
-### Setting detail
-- Minimal: **Status** (Current / Effective / Source) + one organized **Explanation** paragraph.
-- No options tables, layer dumps, or related clutter on the detail page.
+PolicyCollector and PolicyChangeService both use **RegistryView.Registry64** and invariant numeric formatting so scan and write cannot disagree on view or string form.
 
-### Modify mode (real writes)
-- `ElevationService` offers **UAC relaunch** when not elevated.
-- Session authorization after elevation.
-- `PolicyChangeService` writes registry values for catalog settings (DWORD or string; clear = delete value).
-- Every write requires confirmation and is logged to `changes.log`.
-- Auth decisions log to `auth.log`.
-
-### Safety
-- Inspect remains default.
-- Non-registry targets (firewall service, wildcards) are refused with a clear message.
-- Writes only when `IsModifyAuthorized` (elevated + confirmed).
+Placeholder DiscoveryMethod paths (`...`, wildcards, ServiceController) are refused — never written.
 
 ---
 
-## Build / run
+## UI
+
+- Category cards: name, short blurb, current, value buttons  
+- Detail: status + single explanation paragraph  
+- Elevation: UAC relaunch + session authorize  
+
+---
+
+## Build
 
 ```powershell
 cd "C:\Windows Privacy Platform\repo"
 git pull origin main
 dotnet publish ".\Source\WindowsPrivacyPlatform.App\WindowsPrivacyPlatform.App.csproj" -c Release -r win-x64 --self-contained false -o "C:\Windows Privacy Platform\bin"
-Start-Process "C:\Windows Privacy Platform\bin\WindowsPrivacyPlatform.exe"
 ```
-
-For Modify: select **Modify** → accept UAC relaunch if needed → authorize session → use value buttons on a category page.
