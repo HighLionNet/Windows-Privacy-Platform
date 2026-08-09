@@ -1,24 +1,30 @@
-# Current Status — Windows Privacy Platform **v2.0**
+# Current Status — Windows Privacy Platform **v2.1**
 
 **Date:** 2026-08-09
 
 ## Product
 
-WPF GUI only (CLI removed). Application version **2.0.0**.
+WPF GUI only (CLI not in solution). Application version **2.1.0**.
 
-## Fixed this session
+## v2.1 hardening completed this session
 
-- Unknown never shown as Not configured
-- Option **buttons** = raw value only (`0`, `1`, `—`, …) — no index numbering
-- Option **notes** = clear DisplayLabel (Off / On / Force deny / Zero tolerance), not "Policy value 0."
-- No invented 0/1 when ValueSemantics missing
-- WritableTarget deny-by-default; PolicyChangeService type-safe verified writes
-- Firewall observation-only
-- UI + README + About all say **v2.0**
+- **WritableTarget** is deny-by-default and ObjectId-whitelisted only. DiscoveryMethod never authorizes writes.
+- **ValueKind** is explicit per ObjectId (no heuristic from discovery path for authorization).
+- **PolicyChangeService**: kind-aware verification; read errors (AccessDenied/Error) are not treated as "Not configured"; RequiresElevation is enforced from WritableTarget.
+- **SafeProcessRunner**: concurrent stdout/stderr, timeout kill, cancellation, no shell.
+- **CapabilityCollector** rewritten on SafeProcessRunner; no `-ExecutionPolicy Bypass`; shorter timeouts; empty ≠ proven absence.
+- **ScanResult** + **InventoryScanner**: structured per-collector diagnostics; ScanStatus; cancellation support; no false full success when collectors fail.
+- **ScanService**: passes CancellationToken; preserves last successful scan on cancel/fail; clones catalog definitions per scan to avoid stale observation mutation; version 2.1.
+- Authoritative version source: `Directory.Build.props` → **2.1.0**.
 
-## Remaining
+## Remaining (next feature prompt)
 
-Tests/CI, scan lifecycle, ScanDiagnostics, SafeProcessRunner, CapabilityCollector fix, full policy catalog expansion, OSS docs.
+- Full automated test project expansion (precedence, ValueSemantics, WritableTarget validation).
+- GitHub Actions CI polish.
+- Stronger SchemaValidator rules (WritableTarget completeness, relationship resolution).
+- Architecture.md / README / SAFETY model docs completion.
+- Preference file robustness and remaining collector error/absence distinctions.
+- Optional further policy catalog audit entries.
 
 ## Update local
 
