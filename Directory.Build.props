@@ -1,0 +1,17 @@
+<Project>
+  <PropertyGroup>
+    <!-- Single authoritative application version for v2.0 -->
+    <Version>2.0.0</Version>
+    <AssemblyVersion>2.0.0.0</AssemblyVersion>
+    <FileVersion>2.0.0.0</FileVersion>
+    <InformationalVersion>2.0.0</InformationalVersion>
+    <Product>Windows Privacy Platform</Product>
+    <Company>HighLionNet</Company>
+    <Authors>HighLionNet</Authors>
+    <Copyright>Copyright © HighLionNet 2026</Copyright>
+    <Description>Evidence-driven Windows privacy and configuration inspection and management</Description>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+</Project>

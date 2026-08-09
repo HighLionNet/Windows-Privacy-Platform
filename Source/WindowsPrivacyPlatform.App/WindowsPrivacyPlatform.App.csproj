@@ -10,10 +10,8 @@
     <StartupObject>WindowsPrivacyPlatform.App.App</StartupObject>
     <RootNamespace>WindowsPrivacyPlatform.App</RootNamespace>
     <AssemblyName>WindowsPrivacyPlatform</AssemblyName>
-    <Version>1.6.0</Version>
     <AssemblyTitle>Windows Privacy Platform</AssemblyTitle>
-    <Product>Windows Privacy Platform</Product>
-    <Description>Windows privacy and security knowledge explorer with confirmed Modify writes</Description>
+    <!-- Version comes from Directory.Build.props (2.0.0) -->
   </PropertyGroup>
 
   <ItemGroup>

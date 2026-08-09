@@ -13,10 +13,12 @@
         </Border>
         <Grid Margin="0,2,0,4">
           <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="130" />
+            <ColumnDefinition Width="140" />
             <ColumnDefinition Width="*" />
           </Grid.ColumnDefinitions>
           <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -25,19 +27,27 @@
 
           <TextBlock Text="Name" Style="{StaticResource SheetLabel}" />
           <TextBlock Grid.Column="1" Style="{StaticResource SheetValue}" FontWeight="SemiBold"
-                     Text="Windows Privacy Platform 1.4" />
+                     Text="Windows Privacy Platform 2.0" />
 
           <TextBlock Grid.Row="1" Text="Purpose" Style="{StaticResource SheetLabel}" />
           <TextBlock Grid.Row="1" Grid.Column="1" Style="{StaticResource SheetValue}"
-                     Text="Local read-only configuration knowledge explorer" />
+                     Text="Evidence-driven Windows privacy &amp; configuration inspection and management" />
 
-          <TextBlock Grid.Row="2" Text="Mode" Style="{StaticResource SheetLabel}" />
+          <TextBlock Grid.Row="2" Text="Modes" Style="{StaticResource SheetLabel}" />
           <TextBlock Grid.Row="2" Grid.Column="1" Style="{StaticResource SheetValue}"
-                     Text="Inspect (active) · Modify (not available)" />
+                     Text="Inspect (read-only) · Modify (UAC elevation required, verified writes only)" />
 
-          <TextBlock Grid.Row="3" Text="Safety" Style="{StaticResource SheetLabel}" />
+          <TextBlock Grid.Row="3" Text="Modification" Style="{StaticResource SheetLabel}" />
           <TextBlock Grid.Row="3" Grid.Column="1" Style="{StaticResource SheetValue}"
-                     Text="No writes · No elevation · No telemetry · Unknown preserved" />
+                     Text="Explicit catalog-backed targets only. Every write is confirmed and independently verified." />
+
+          <TextBlock Grid.Row="4" Text="Firewall" Style="{StaticResource SheetLabel}" />
+          <TextBlock Grid.Row="4" Grid.Column="1" Style="{StaticResource SheetValue}"
+                     Text="Observation only for rules. Selected profile/policy settings may be supported; rule management stays in native Windows tools." />
+
+          <TextBlock Grid.Row="5" Text="Privacy" Style="{StaticResource SheetLabel}" />
+          <TextBlock Grid.Row="5" Grid.Column="1" Style="{StaticResource SheetValue}"
+                     Text="No telemetry. No network calls. Local audit logs only. Unknown is never turned into certainty." />
         </Grid>
       </StackPanel>
     </Border>
@@ -60,7 +70,7 @@
                      Foreground="{StaticResource BrushTextSecondary}" />
         </Border>
         <TextBlock Style="{StaticResource SheetValue}" Margin="12,8,12,10"
-                   Text="https://github.com/HighLionNet/Windows-Privacy-Platform&#10;.NET 8 · Windows 11 · 2026-07-29" />
+                   Text="https://github.com/HighLionNet/Windows-Privacy-Platform&#10;.NET 8 · Windows 11 · v2.0" />
       </StackPanel>
     </Border>
   </StackPanel>
