@@ -10,6 +10,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using WindowsPrivacyPlatform.App.Services;
 using WindowsPrivacyPlatform.App.Views;
+using WindowsPrivacyPlatform.Logging;
 using WindowsPrivacyPlatform.Models;
 
 namespace WindowsPrivacyPlatform.App;
@@ -17,19 +18,25 @@ namespace WindowsPrivacyPlatform.App;
 /// <summary>
 /// Application shell. Presentation only — navigates views over ScanService results.
 /// Hierarchy: Home → Domain → Category → Setting detail.
+/// v1.5: Modify mode elevation skeleton (no writes).
 /// </summary>
 public partial class MainWindow : Window
 {
     private readonly ScanService _scan = new();
+    private readonly IAuditLogger _log = new AuditLogger();
+    private readonly ElevationService _elevation;
     private CancellationTokenSource? _cts;
     private string _currentNav = "home";
     private readonly List<Button> _navButtons = new();
     private bool _sidebarCollapsed;
     private readonly string _prefsPath;
+    private bool _modeChangeInProgress;
 
     public MainWindow()
     {
         InitializeComponent();
+
+        _elevation = new ElevationService(_log);
 
         var appData = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -220,7 +227,6 @@ public partial class MainWindow : Window
 
         if (tag.StartsWith("category:", StringComparison.OrdinalIgnoreCase))
         {
-            // category:{ProductDomain}:{SubCategory}
             var rest = tag["category:".Length..];
             var sep = rest.IndexOf(':');
             if (sep > 0)
@@ -266,7 +272,6 @@ public partial class MainWindow : Window
         var tag = $"category:{domain}:{category}";
         _currentNav = tag;
 
-        // Highlight the parent domain in the sidebar
         var domainTag = $"domain:{domain}";
         var btn = _navButtons.FirstOrDefault(b => b.Tag as string == domainTag);
         if (btn is not null)
@@ -340,7 +345,6 @@ public partial class MainWindow : Window
         if (!string.IsNullOrEmpty(categoryName) && !string.IsNullOrEmpty(categoryTag))
         {
             AddBreadcrumbSep();
-            // If current page is the category itself, show as text; else as link
             if (string.Equals(current, categoryName, StringComparison.Ordinal))
                 AddBreadcrumbText(categoryName);
             else
@@ -394,7 +398,6 @@ public partial class MainWindow : Window
         btn.Click += (_, _) =>
         {
             _currentNav = tag;
-            // For category tags, highlight parent domain
             var highlightTag = tag;
             if (tag.StartsWith("category:", StringComparison.OrdinalIgnoreCase))
             {
@@ -468,15 +471,33 @@ public partial class MainWindow : Window
 
     private void ModeCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (_modeChangeInProgress || ModeCombo is null)
+            return;
+
         if (ModeCombo.SelectedIndex == 1)
         {
-            MessageBox.Show(
-                "Modify mode is not available in this version.\n\n" +
-                "Inspect-only. No write functionality exists.",
-                "Modify mode",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
-            ModeCombo.SelectedIndex = 0;
+            _modeChangeInProgress = true;
+            try
+            {
+                if (!_elevation.TryEnterModifyMode(this))
+                {
+                    ModeCombo.SelectedIndex = 0;
+                    return;
+                }
+
+                // Authorized (elevated + confirmed). Still no writes in this build.
+                StatusText.Text = "Modify mode authorized (elevated). No write paths active in this version.";
+                _log.Change("MainWindow", "Modify mode entered (scaffold only — no writes performed).");
+            }
+            finally
+            {
+                _modeChangeInProgress = false;
+            }
+        }
+        else
+        {
+            _elevation.ExitModifyMode();
+            StatusText.Text = "Inspect mode · read-only.";
         }
     }
 
