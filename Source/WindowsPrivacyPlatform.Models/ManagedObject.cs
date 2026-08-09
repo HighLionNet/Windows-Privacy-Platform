@@ -4,68 +4,48 @@ namespace WindowsPrivacyPlatform.Models;
 /// Catalog + runtime view of a managed Windows setting.
 ///
 /// Conceptual separation:
-/// - Definition fields (identity, description, domain, risk, documentation, semantics) come from the static catalog.
-/// - Observation holds live discovered values and layer data after binding.
-/// - Desired holds optional baseline comparison data (compare-only).
-/// - StructuredRelationships describe overrides / related settings.
-///
-/// Models remain pure data — no business logic. Windows meaning lives in ValueSemantics and documentation fields only.
+/// - Definition fields come from the static catalog.
+/// - Observation holds live discovered values after binding.
+/// - WritableTarget (optional) is the ONLY authorization for Modify mode.
+/// - Absence of WritableTarget means the setting is observation-only.
 /// </summary>
 public class ManagedObject
 {
     // ========== DEFINITION (static catalog) ==========
 
-    // Identity
     public string ObjectId { get; set; } = string.Empty;
     public string ObjectName { get; set; } = string.Empty;
     public string ObjectType { get; set; } = string.Empty;
     public string CanonicalPath { get; set; } = string.Empty;
 
-    // Classification
     public FeatureCategory FeatureCategory { get; set; }
-    /// <summary>Primary product domain for navigation and report grouping.</summary>
     public ProductDomain ProductDomain { get; set; }
     public string? SubCategory { get; set; }
     public RiskLevel RiskLevel { get; set; }
     public ImpactLevel ImpactLevel { get; set; }
 
-    // Version / edition compatibility (metadata only; no runtime filtering yet)
     public int MinimumBuild { get; set; }
     public int? MaximumBuild { get; set; }
     public List<string>? SupportedEditions { get; set; }
-    /// <summary>e.g. "Windows 10", "Windows 11", "24H2", "25H2", "Server", "LTSC". Empty = general.</summary>
     public List<string>? SupportedWindowsVersions { get; set; }
 
-    // Documentation
     public string Description { get; set; } = string.Empty;
     public string? Rationale { get; set; }
     public List<string>? References { get; set; }
 
-    /// <summary>When Windows may ignore this setting (policy present, component disabled, edition, etc.).</summary>
     public string? WhenIgnored { get; set; }
-
-    /// <summary>Common incorrect assumptions about this setting.</summary>
     public string? CommonMisconception { get; set; }
-
-    /// <summary>Typical enterprise configuration context (informational).</summary>
     public string? TypicalEnterpriseUse { get; set; }
-
-    /// <summary>Typical consumer impact (informational).</summary>
     public string? ConsumerImpact { get; set; }
 
-    // Value semantics — single source of truth for raw → meaning (v0.9)
-    /// <summary>Known raw-value interpretations. Empty list means no map; interpreter returns Unknown.</summary>
     public List<ValueMeaning> ValueSemantics { get; set; } = new();
 
-    // ManagementInterface
     public InterfaceName InterfaceName { get; set; }
     public string? InterfaceScope { get; set; }
 
-    // Configuration definition
     public ConfigurationType ConfigurationType { get; set; }
     public string TargetValue { get; set; } = string.Empty;
 
-    // Applicability
     public string? BuildConstraint { get; set; }
     public string? EditionConstraint { get; set; }
     public string? ComponentConstraint { get; set; }
@@ -73,15 +53,12 @@ public class ManagedObject
     public string? SoftwareConstraint { get; set; }
     public string? VirtualizationConstraint { get; set; }
 
-    // Detection
     public string DiscoveryMethod { get; set; } = string.Empty;
     public string ComplianceMethod { get; set; } = string.Empty;
 
-    // Remediation metadata (definition only — no execution in current phase)
     public string RemediationMethod { get; set; } = string.Empty;
     public string? RemediationScope { get; set; }
 
-    // Recovery / impact definition
     public Reversibility Reversibility { get; set; }
     public bool? BackupRequired { get; set; }
     public RebootRequirement RebootRequirement { get; set; }
@@ -100,7 +77,6 @@ public class ManagedObject
     public UpdatePersistenceBehavior FeatureUpdateBehavior { get; set; }
     public UpdatePersistenceBehavior ApplicationUpdateBehavior { get; set; }
 
-    // Catalog metadata
     public string SchemaVersion { get; set; } = string.Empty;
     public string? CreatedBy { get; set; }
     public DateTime CreatedTimestamp { get; set; }
@@ -110,23 +86,30 @@ public class ManagedObject
     public bool? AuditRequired { get; set; }
     public LifecycleState LifecycleState { get; set; }
 
-    // Confidence of the definition itself
     public int ConfidenceScore { get; set; }
     public string? ConfidenceSource { get; set; }
 
-    // Verification definition
     public string VerificationMethod { get; set; } = string.Empty;
     public string? ExpectedResult { get; set; }
     public int VerificationReliability { get; set; }
 
-    // Evidence definition
     public string? EvidenceType { get; set; }
     public string? EvidenceLocation { get; set; }
     public string? EvidenceHash { get; set; }
 
+    // ========== WRITE AUTHORIZATION (explicit, deny-by-default) ==========
+
+    /// <summary>
+    /// When non-null and complete, this setting may be modified under Modify mode.
+    /// When null, modification is refused regardless of DiscoveryMethod or Observation paths.
+    /// </summary>
+    public WritableTarget? WritableTarget { get; set; }
+
+    /// <summary>Convenience: true only when an explicit complete WritableTarget is present.</summary>
+    public bool IsWritable => WritableTarget is { IsComplete: true };
+
     // ========== RELATIONSHIPS ==========
 
-    /// <summary>Legacy string lists — still populated where useful; prefer StructuredRelationships.</summary>
     public List<string>? Requires { get; set; }
     public List<string>? Recommended { get; set; }
     public List<string>? ConflictsWith { get; set; }
@@ -137,23 +120,17 @@ public class ManagedObject
     public List<string>? Alternative { get; set; }
     public string? ConflictExplanation { get; set; }
 
-    /// <summary>Structured relationships for navigation and effective-layer resolution.</summary>
     public List<SettingRelationship> StructuredRelationships { get; set; } = new();
 
-    // ========== OBSERVATION (runtime, filled by binders) ==========
+    // ========== OBSERVATION (runtime) ==========
 
-    /// <summary>Legacy flat current value — kept for CLI/report compatibility.</summary>
     public string? CurrentState { get; set; }
     public DateTime? LastVerified { get; set; }
 
-    /// <summary>Structured runtime observation (layers + effective state).</summary>
     public SettingObservation Observation { get; set; } = new();
 
-    // ========== DESIRED STATE (optional baseline, compare-only) ==========
+    // ========== DESIRED STATE ==========
 
-    /// <summary>Legacy desired value string.</summary>
     public string DesiredState { get; set; } = string.Empty;
-
-    /// <summary>Structured desired/baseline info (not enforced).</summary>
     public DesiredStateInfo? Desired { get; set; }
 }

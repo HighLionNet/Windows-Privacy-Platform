@@ -11,8 +11,11 @@ namespace WindowsPrivacyPlatform.App.Services;
 
 /// <summary>
 /// Controlled registry changes for catalog-backed settings.
-/// Contract: success is returned ONLY when an independent read-back matches the intended state.
-/// Requires ElevationService.IsModifyAuthorized. Every attempt is audited (before, after, verify).
+/// Contract:
+/// - DEFAULT deny. Only settings with an explicit complete WritableTarget may be modified.
+/// - Write target comes ONLY from WritableTarget (never from Observation or DiscoveryMethod).
+/// - RegistryValueKind comes from WritableTarget (no guessing from user text).
+/// - Success is returned ONLY when an independent read-back of the exact target matches.
 /// </summary>
 public sealed class PolicyChangeService
 {
@@ -26,7 +29,7 @@ public sealed class PolicyChangeService
     }
 
     /// <summary>
-    /// Apply a catalog value. rawValue null/empty = delete value (Not configured).
+    /// Apply a catalog value. rawValue null/empty = delete value (Not configured) when SupportsDeletion.
     /// Returns true only when the system registry read-back matches the intended state.
     /// </summary>
     public bool TryApply(ManagedObject mo, string? rawValue, Window? owner, out string message)
@@ -46,19 +49,62 @@ public sealed class PolicyChangeService
             return false;
         }
 
-        if (!TryResolveTarget(mo, out var hive, out var subKey, out var valueName, out var resolveError))
+        // ---- DENY BY DEFAULT: require explicit WritableTarget ----
+        var target = mo.WritableTarget;
+        if (target is null || !target.IsComplete)
         {
-            message = resolveError;
-            _log.Change("PolicyChangeService", $"RESOLVE_FAIL {mo.ObjectId}: {resolveError}");
+            message = "Modification is not supported for this setting (no explicit write target in catalog).";
+            _log.Change("PolicyChangeService", $"DENIED {mo.ObjectId}: no WritableTarget.");
             return false;
         }
 
+        // Firewall domain hard boundary: refuse unless explicitly marked (future profile writes only)
+        if (mo.ProductDomain == ProductDomain.Firewall)
+        {
+            message = "Firewall rule and profile mutation through WPP is restricted. Use native Windows Firewall tools for rules.";
+            _log.Change("PolicyChangeService", $"DENIED {mo.ObjectId}: firewall domain boundary.");
+            return false;
+        }
+
+        if (!TryParseHive(target.Hive, out var hive))
+        {
+            message = "Invalid hive on WritableTarget: " + target.Hive;
+            return false;
+        }
+
+        var view = MapView(target.View);
+        var subKey = target.SubKey.Trim();
+        var valueName = target.ValueName.Trim();
         var targetPath = $"{FormatHive(hive)}\\{subKey}\\{valueName}";
+
         var intendedDelete = string.IsNullOrWhiteSpace(rawValue);
+        if (intendedDelete && !target.SupportsDeletion)
+        {
+            message = "Deletion (Not configured) is not supported for this setting.";
+            return false;
+        }
+
+        if (!intendedDelete)
+        {
+            // Supported raw values gate
+            if (target.SupportedRawValues.Count > 0 &&
+                !target.SupportedRawValues.Any(v => string.Equals(v, rawValue, StringComparison.OrdinalIgnoreCase)))
+            {
+                message = $"Value '{rawValue}' is not in the supported set for this setting.";
+                return false;
+            }
+
+            if (target.ValueKind == RegistryValueKindExpected.Unsupported)
+            {
+                message = "This setting uses an unsupported registry value type and cannot be changed.";
+                return false;
+            }
+        }
+
         var intendedDisplay = intendedDelete ? "(absent / Not configured)" : rawValue!;
 
-        // --- Pre-read (independent of catalog observation) ---
-        var before = ReadValue(hive, subKey, valueName);
+        // --- Pre-read exact target ---
+        var before = ReadValue(hive, view, subKey, valueName);
         _log.Change("PolicyChangeService",
             $"BEFORE {mo.ObjectId} | {targetPath} | present={before.Present} kind={before.Kind} value={before.Normalized ?? "(absent)"}");
 
@@ -67,7 +113,7 @@ public sealed class PolicyChangeService
             $"Change setting:\n\n" +
             $"{mo.ObjectName}\n" +
             $"ObjectId: {mo.ObjectId}\n\n" +
-            $"Registry: {targetPath}\n" +
+            $"Registry: {targetPath} ({target.View})\n" +
             $"Current (system): {(before.Present ? before.Normalized : "Not configured")}\n" +
             $"Intended: {intendedDisplay}\n\n" +
             "The change is only accepted if a fresh registry read-back matches.\n" +
@@ -84,8 +130,7 @@ public sealed class PolicyChangeService
             return false;
         }
 
-        // Idempotent short-circuit: already at intended state
-        if (StateMatches(before, rawValue))
+        if (StateMatches(before, rawValue, target.ValueKind))
         {
             message = $"Already at intended state (verified): {intendedDisplay}";
             _log.Change("PolicyChangeService", $"NOOP_VERIFIED {mo.ObjectId} | {targetPath} = {intendedDisplay}");
@@ -96,7 +141,7 @@ public sealed class PolicyChangeService
         {
             if (intendedDelete)
             {
-                if (!TryDeleteValue(hive, subKey, valueName, out var delError))
+                if (!TryDeleteValue(hive, view, subKey, valueName, out var delError))
                 {
                     message = delError;
                     _log.Change("PolicyChangeService", $"DELETE_FAIL {mo.ObjectId}: {delError}");
@@ -105,7 +150,7 @@ public sealed class PolicyChangeService
             }
             else
             {
-                if (!TryWriteValue(hive, subKey, valueName, rawValue!, before.Kind, out var writeError))
+                if (!TryWriteValue(hive, view, subKey, valueName, rawValue!, target.ValueKind, out var writeError))
                 {
                     message = writeError;
                     _log.Change("PolicyChangeService", $"WRITE_FAIL {mo.ObjectId}: {writeError}");
@@ -113,14 +158,13 @@ public sealed class PolicyChangeService
                 }
             }
 
-            // --- Mandatory independent read-back ---
-            // Close handles above before reading. Small retry for registry propagation.
+            // --- Mandatory independent read-back of the EXACT same target ---
             RegistryRead after = default;
             var verified = false;
             for (var attempt = 1; attempt <= 3; attempt++)
             {
-                after = ReadValue(hive, subKey, valueName);
-                verified = StateMatches(after, rawValue);
+                after = ReadValue(hive, view, subKey, valueName);
+                verified = StateMatches(after, rawValue, target.ValueKind);
                 if (verified)
                     break;
                 System.Threading.Thread.Sleep(40 * attempt);
@@ -162,7 +206,7 @@ public sealed class PolicyChangeService
         }
     }
 
-    // ---------- registry primitives ----------
+    // ---------- registry primitives (exact view) ----------
 
     private readonly struct RegistryRead
     {
@@ -172,58 +216,54 @@ public sealed class PolicyChangeService
         public object? Raw { get; init; }
     }
 
-    private static RegistryRead ReadValue(RegistryHive hive, string subKey, string valueName)
+    private static RegistryRead ReadValue(RegistryHive hive, RegistryView view, string subKey, string valueName)
     {
-        // Prefer 64-bit view (Policies live here). Fall back to default view if needed.
-        foreach (var view in new[] { RegistryView.Registry64, RegistryView.Default })
+        try
         {
-            try
-            {
-                using var baseKey = RegistryKey.OpenBaseKey(hive, view);
-                using var key = baseKey.OpenSubKey(subKey, writable: false);
-                if (key is null)
-                    continue;
+            using var baseKey = RegistryKey.OpenBaseKey(hive, view);
+            using var key = baseKey.OpenSubKey(subKey, writable: false);
+            if (key is null)
+                return new RegistryRead { Present = false };
 
+            var raw = key.GetValue(valueName, defaultValue: null, options: RegistryValueOptions.DoNotExpandEnvironmentNames);
+            if (raw is null)
+            {
+                // Distinguish missing value vs null default
                 var names = key.GetValueNames();
-                var exists = names.Any(n => string.Equals(n, valueName, StringComparison.OrdinalIgnoreCase))
-                             || (string.IsNullOrEmpty(valueName) && key.GetValue(null) is not null);
-
-                // GetValueNames does not include default value; handle named values only for policies.
-                var raw = key.GetValue(valueName, defaultValue: null, options: RegistryValueOptions.DoNotExpandEnvironmentNames);
-                if (raw is null && !exists)
-                    continue; // try next view / treat as missing after both
-
-                if (raw is null)
+                var exists = names.Any(n => string.Equals(n, valueName, StringComparison.OrdinalIgnoreCase));
+                if (!exists)
                     return new RegistryRead { Present = false };
-
-                var kind = key.GetValueKind(valueName);
-                return new RegistryRead
-                {
-                    Present = true,
-                    Kind = kind,
-                    Raw = raw,
-                    Normalized = NormalizeRaw(raw, kind)
-                };
             }
-            catch
+
+            if (raw is null)
+                return new RegistryRead { Present = false };
+
+            var kind = key.GetValueKind(valueName);
+            return new RegistryRead
             {
-                // try next view
-            }
+                Present = true,
+                Kind = kind,
+                Raw = raw,
+                Normalized = NormalizeRaw(raw, kind)
+            };
         }
-
-        return new RegistryRead { Present = false };
+        catch
+        {
+            return new RegistryRead { Present = false };
+        }
     }
 
     private static bool TryWriteValue(
         RegistryHive hive,
+        RegistryView view,
         string subKey,
         string valueName,
         string rawValue,
-        RegistryValueKind existingKind,
+        RegistryValueKindExpected expectedKind,
         out string error)
     {
         error = string.Empty;
-        using var baseKey = RegistryKey.OpenBaseKey(hive, RegistryView.Registry64);
+        using var baseKey = RegistryKey.OpenBaseKey(hive, view);
         using var key = baseKey.CreateSubKey(subKey, writable: true);
         if (key is null)
         {
@@ -231,54 +271,60 @@ public sealed class PolicyChangeService
             return false;
         }
 
-        // Match existing kind when present; otherwise DWORD for pure digits, String otherwise.
-        if (IsAllDigits(rawValue))
+        switch (expectedKind)
         {
-            if (!int.TryParse(rawValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var dword))
+            case RegistryValueKindExpected.DWord:
             {
-                error = "Invalid numeric value.";
+                if (!int.TryParse(rawValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var dword))
+                {
+                    error = "Invalid DWord value (invariant integer required).";
+                    return false;
+                }
+                key.SetValue(valueName, dword, RegistryValueKind.DWord);
+                break;
+            }
+            case RegistryValueKindExpected.QWord:
+            {
+                if (!long.TryParse(rawValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var qword))
+                {
+                    error = "Invalid QWord value (invariant integer required).";
+                    return false;
+                }
+                key.SetValue(valueName, qword, RegistryValueKind.QWord);
+                break;
+            }
+            case RegistryValueKindExpected.String:
+            case RegistryValueKindExpected.ExpandString:
+            {
+                var kind = expectedKind == RegistryValueKindExpected.ExpandString
+                    ? RegistryValueKind.ExpandString
+                    : RegistryValueKind.String;
+                key.SetValue(valueName, rawValue, kind);
+                break;
+            }
+            default:
+                error = "Unsupported registry value kind.";
                 return false;
-            }
-
-            var kind = existingKind is RegistryValueKind.DWord or RegistryValueKind.QWord
-                ? RegistryValueKind.DWord
-                : RegistryValueKind.DWord;
-            key.SetValue(valueName, dword, kind);
-        }
-        else
-        {
-            // ConsentStore / string policies
-            if (existingKind == RegistryValueKind.DWord && int.TryParse(rawValue, out var asDword))
-            {
-                key.SetValue(valueName, asDword, RegistryValueKind.DWord);
-            }
-            else
-            {
-                key.SetValue(valueName, rawValue, RegistryValueKind.String);
-            }
         }
 
         key.Flush();
         return true;
     }
 
-    private static bool TryDeleteValue(RegistryHive hive, string subKey, string valueName, out string error)
+    private static bool TryDeleteValue(RegistryHive hive, RegistryView view, string subKey, string valueName, out string error)
     {
         error = string.Empty;
-        using var baseKey = RegistryKey.OpenBaseKey(hive, RegistryView.Registry64);
+        using var baseKey = RegistryKey.OpenBaseKey(hive, view);
         using var key = baseKey.OpenSubKey(subKey, writable: true);
         if (key is null)
-        {
-            // Key missing ⇒ value is already absent
-            return true;
-        }
+            return true; // already absent
 
         key.DeleteValue(valueName, throwOnMissingValue: false);
         key.Flush();
         return true;
     }
 
-    private static bool StateMatches(RegistryRead read, string? intendedRaw)
+    private static bool StateMatches(RegistryRead read, string? intendedRaw, RegistryValueKindExpected expectedKind)
     {
         var wantAbsent = string.IsNullOrWhiteSpace(intendedRaw);
         if (wantAbsent)
@@ -287,6 +333,7 @@ public sealed class PolicyChangeService
         if (!read.Present || read.Normalized is null)
             return false;
 
+        // Type-aware comparison using invariant normalization
         return string.Equals(
             read.Normalized.Trim(),
             intendedRaw!.Trim(),
@@ -307,96 +354,34 @@ public sealed class PolicyChangeService
         };
     }
 
-    private static bool TryResolveTarget(
-        ManagedObject mo,
-        out RegistryHive hive,
-        out string subKey,
-        out string valueName,
-        out string error)
+    private static bool TryParseHive(string hive, out RegistryHive result)
     {
-        hive = RegistryHive.LocalMachine;
-        subKey = string.Empty;
-        valueName = string.Empty;
-        error = string.Empty;
-
-        var path = mo.Observation?.Layers?
-            .Select(l => l.SourcePath)
-            .FirstOrDefault(p => !string.IsNullOrWhiteSpace(p) &&
-                                 (p.StartsWith("HKLM", StringComparison.OrdinalIgnoreCase) ||
-                                  p.StartsWith("HKCU", StringComparison.OrdinalIgnoreCase) ||
-                                  p.StartsWith("HKEY_", StringComparison.OrdinalIgnoreCase)));
-
-        if (string.IsNullOrWhiteSpace(path))
-            path = mo.DiscoveryMethod;
-
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            error = "No registry path is defined for this setting.";
+        result = RegistryHive.LocalMachine;
+        if (string.IsNullOrWhiteSpace(hive))
             return false;
-        }
 
-        if (path.Contains("...", StringComparison.Ordinal) ||
-            path.Contains('*') ||
-            path.StartsWith("ServiceController:", StringComparison.OrdinalIgnoreCase))
+        var h = hive.Trim();
+        if (h.Equals("HKLM", StringComparison.OrdinalIgnoreCase) ||
+            h.Equals("HKEY_LOCAL_MACHINE", StringComparison.OrdinalIgnoreCase))
         {
-            error = "This setting does not map to a single concrete registry value and cannot be changed safely here.";
-            return false;
+            result = RegistryHive.LocalMachine;
+            return true;
         }
-
-        path = path.Replace('/', '\\').Trim();
-
-        if (path.StartsWith("HKLM\\", StringComparison.OrdinalIgnoreCase))
+        if (h.Equals("HKCU", StringComparison.OrdinalIgnoreCase) ||
+            h.Equals("HKEY_CURRENT_USER", StringComparison.OrdinalIgnoreCase))
         {
-            hive = RegistryHive.LocalMachine;
-            path = path["HKLM\\".Length..];
+            result = RegistryHive.CurrentUser;
+            return true;
         }
-        else if (path.StartsWith("HKCU\\", StringComparison.OrdinalIgnoreCase))
-        {
-            hive = RegistryHive.CurrentUser;
-            path = path["HKCU\\".Length..];
-        }
-        else if (path.StartsWith("HKEY_LOCAL_MACHINE\\", StringComparison.OrdinalIgnoreCase))
-        {
-            hive = RegistryHive.LocalMachine;
-            path = path["HKEY_LOCAL_MACHINE\\".Length..];
-        }
-        else if (path.StartsWith("HKEY_CURRENT_USER\\", StringComparison.OrdinalIgnoreCase))
-        {
-            hive = RegistryHive.CurrentUser;
-            path = path["HKEY_CURRENT_USER\\".Length..];
-        }
-        else
-        {
-            error = "Unsupported path format: " + path;
-            return false;
-        }
-
-        var lastSlash = path.LastIndexOf('\\');
-        if (lastSlash <= 0 || lastSlash >= path.Length - 1)
-        {
-            error = "Could not split key and value name from: " + path;
-            return false;
-        }
-
-        subKey = path[..lastSlash];
-        valueName = path[(lastSlash + 1)..];
-
-        if (string.IsNullOrWhiteSpace(subKey) || string.IsNullOrWhiteSpace(valueName))
-        {
-            error = "Empty key or value name after parse.";
-            return false;
-        }
-
-        return true;
+        return false;
     }
 
-    private static bool IsAllDigits(string s)
+    private static RegistryView MapView(RegistryViewKind kind) => kind switch
     {
-        if (string.IsNullOrEmpty(s)) return false;
-        foreach (var c in s)
-            if (c is < '0' or > '9') return false;
-        return true;
-    }
+        RegistryViewKind.Registry32 => RegistryView.Registry32,
+        RegistryViewKind.Default => RegistryView.Default,
+        _ => RegistryView.Registry64
+    };
 
     private static string FormatHive(RegistryHive hive) =>
         hive == RegistryHive.LocalMachine ? "HKLM" : "HKCU";
