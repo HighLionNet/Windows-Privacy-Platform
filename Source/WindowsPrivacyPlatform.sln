@@ -16,6 +16,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WindowsPrivacyPlatform.Scan
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WindowsPrivacyPlatform.App", "WindowsPrivacyPlatform.App\WindowsPrivacyPlatform.App.csproj", "{B8C9D0E1-F2A3-4567-1234-678901234567}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WindowsPrivacyPlatform.Tests", "WindowsPrivacyPlatform.Tests\WindowsPrivacyPlatform.Tests.csproj", "{C9D0E1F2-A3B4-5678-9012-345678901234}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -50,6 +52,10 @@ Global
 		{B8C9D0E1-F2A3-4567-1234-678901234567}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B8C9D0E1-F2A3-4567-1234-678901234567}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B8C9D0E1-F2A3-4567-1234-678901234567}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C9D0E1F2-A3B4-5678-9012-345678901234}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C9D0E1F2-A3B4-5678-9012-345678901234}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C9D0E1F2-A3B4-5678-9012-345678901234}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C9D0E1F2-A3B4-5678-9012-345678901234}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
