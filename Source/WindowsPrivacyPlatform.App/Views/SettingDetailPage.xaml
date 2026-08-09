@@ -3,27 +3,23 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <StackPanel>
 
-    <!-- Page header -->
     <TextBlock x:Name="TitleText" Style="{StaticResource SectionTitle}" />
     <TextBlock x:Name="DomainPathText" Style="{StaticResource SectionSubtitle}" />
-    <StackPanel x:Name="BadgeRow" Orientation="Horizontal" Margin="0,8,0,6" />
     <Border Style="{StaticResource HeaderRule}" />
 
-    <!-- Primary: State property sheet -->
-    <Border Style="{StaticResource PropertySheet}" Margin="0,0,0,12">
+    <!-- Status only -->
+    <Border Style="{StaticResource PropertySheet}" Margin="0,0,0,16">
       <StackPanel>
         <Border Style="{StaticResource PropertySheetHeader}">
-          <TextBlock Text="State" FontWeight="SemiBold" FontSize="12"
+          <TextBlock Text="Status" FontWeight="SemiBold" FontSize="12"
                      Foreground="{StaticResource BrushTextSecondary}" />
         </Border>
-        <Grid Margin="0,4,0,6">
+        <Grid Margin="0,6,0,8">
           <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="120" />
+            <ColumnDefinition Width="100" />
             <ColumnDefinition Width="*" />
           </Grid.ColumnDefinitions>
           <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -35,64 +31,23 @@
 
           <TextBlock Grid.Row="1" Text="Effective" Style="{StaticResource SheetLabel}" FontWeight="SemiBold" />
           <TextBlock x:Name="EffectiveText" Grid.Row="1" Grid.Column="1" Style="{StaticResource SheetValue}"
-                     FontSize="15" FontWeight="SemiBold"
+                     FontSize="14" FontWeight="SemiBold"
                      FontFamily="Cascadia Code, Consolas, Segoe UI" />
 
           <TextBlock Grid.Row="2" Text="Source" Style="{StaticResource SheetLabel}" />
           <TextBlock x:Name="SourceText" Grid.Row="2" Grid.Column="1" Style="{StaticResource SheetValue}" />
-
-          <TextBlock Grid.Row="3" Text="Confidence" Style="{StaticResource SheetLabel}" />
-          <TextBlock x:Name="ConfidenceText" Grid.Row="3" Grid.Column="1" Style="{StaticResource SheetValue}" />
-
-          <TextBlock Grid.Row="4" Text="Reason" Style="{StaticResource SheetLabel}" />
-          <TextBlock x:Name="ReasonText" Grid.Row="4" Grid.Column="1" Style="{StaticResource SheetValue}"
-                     Foreground="{StaticResource BrushTextSecondary}" />
         </Grid>
       </StackPanel>
     </Border>
 
-    <!-- Options: compact table, only when ValueSemantics exist -->
-    <Border x:Name="OptionsSheet" Style="{StaticResource PropertySheet}" Margin="0,0,0,12" Visibility="Collapsed">
-      <StackPanel>
-        <Border Style="{StaticResource PropertySheetHeader}">
-          <TextBlock Text="Available values" FontWeight="SemiBold" FontSize="12"
-                     Foreground="{StaticResource BrushTextSecondary}" />
-        </Border>
-        <ItemsControl x:Name="OptionsList" Margin="8,6,8,8" />
-      </StackPanel>
-    </Border>
+    <!-- Single organized explanation -->
+    <TextBlock Text="Explanation" Style="{StaticResource GroupHeader}" Margin="0,0,0,6" />
+    <TextBlock x:Name="ExplanationText" Style="{StaticResource ValueText}"
+               TextWrapping="Wrap" LineHeight="20" />
 
-    <!-- Summary -->
-    <TextBlock Text="Summary" Style="{StaticResource GroupHeader}" Margin="0,0,0,4" />
-    <TextBlock x:Name="WhatText" Style="{StaticResource ValueText}" Margin="0,0,0,10" />
+    <TextBlock Margin="0,16,0,0" FontSize="11"
+               Foreground="{StaticResource BrushTextMuted}"
+               Text="To change this setting, use the value buttons on the category list (Modify mode)." />
 
-    <!-- Why / Impact (always visible, minimal) -->
-    <TextBlock Text="Why / Impact" Style="{StaticResource GroupHeader}" Margin="0,4,0,4" />
-    <TextBlock x:Name="WhyText" Style="{StaticResource ValueText}" Margin="0,0,0,6" />
-    <TextBlock x:Name="ImpactText" Style="{StaticResource ValueText}" Margin="0,0,0,10" />
-
-    <!-- Misconception / Limits -->
-    <TextBlock x:Name="MisconceptionText" Style="{StaticResource ValueText}" Margin="0,0,0,4"
-               Foreground="{StaticResource BrushWarning}" />
-    <TextBlock x:Name="UnknownsText" Style="{StaticResource ValueText}" Margin="0,0,0,10"
-               Foreground="{StaticResource BrushTextMuted}" />
-
-    <!-- Observed layers -->
-    <TextBlock Text="Observed layers" Style="{StaticResource GroupHeader}" Margin="0,4,0,4" />
-    <ItemsControl x:Name="LayersList" Margin="0,0,0,10" />
-
-    <!-- Related -->
-    <TextBlock Text="Related settings" Style="{StaticResource GroupHeader}" Margin="0,4,0,4" />
-    <Border Style="{StaticResource ListContainer}" Margin="0,0,0,8">
-      <ItemsControl x:Name="RelatedList" />
-    </Border>
-
-    <Border Style="{StaticResource SectionRule}" />
-    <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
-      <TextBlock x:Name="ObjectIdText" Style="{StaticResource MetaText}" VerticalAlignment="Center" />
-      <Button x:Name="CopyIdButton" Content="Copy ObjectId" Style="{StaticResource LinkButton}"
-              Margin="12,0,0,0" Click="CopyIdButton_Click"
-              ToolTip="Copy ObjectId to clipboard" />
-    </StackPanel>
   </StackPanel>
 </UserControl>
