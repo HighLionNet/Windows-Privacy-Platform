@@ -1,82 +1,37 @@
-# Windows Privacy Platform
-## Architecture
+# Architecture — Windows Privacy Platform v2.1
 
-**Applies to:** **Version 1.0**  
-**Last updated:** 2026-07-24  
-**Document role:** Engineering architecture reference. Do not redesign without explicit approval.
+**Applies to:** Version 2.1
 
----
+## Product shape
 
-## 1. Design goals
+- Primary product: **WPF GUI** (`WindowsPrivacyPlatform.App`)
+- Libraries: Models, Core, Logging, KnowledgeBase, Scanner, Validator
+- CLI project folder may remain on disk for history but is **not** in the solution and is not a product surface.
 
-- Models free of OS I/O  
-- Discovery isolated in Scanner collectors  
-- Catalog / ValueSemantics own Windows meaning  
-- Precedence only in PolicyPrecedenceResolver  
-- CLI / TUI / **App** are presentation hosts only  
-- Unknown preserved  
+## Layers
 
----
+1. **Models** — ManagedObject catalog, WritableTarget, ValueSemantics, ScanResult diagnostics, inventory snapshot shapes. No OS I/O.
+2. **Scanner** — Collectors + binders + PolicyPrecedenceResolver. Fail-soft collectors with structured diagnostics.
+3. **Validator** — Schema / catalog integrity.
+4. **App** — WPF shell, ScanService, ElevationService, PolicyChangeService.
 
-## 2. Solution structure
+## Write safety contract
 
-```
-Source/
-  WindowsPrivacyPlatform.sln
-  WindowsPrivacyPlatform.Models/
-  WindowsPrivacyPlatform.Core/
-  WindowsPrivacyPlatform.Logging/
-  WindowsPrivacyPlatform.KnowledgeBase/
-  WindowsPrivacyPlatform.Validator/
-  WindowsPrivacyPlatform.Scanner/
-  WindowsPrivacyPlatform.CLI/
-  WindowsPrivacyPlatform.App/          # v1.0 WPF presentation
-```
+- Default: read-only Inspect mode.
+- Modify requires explicit session authorization **and** (when Required) elevation.
+- Only catalog entries with an explicit complete `WritableTarget` are writable.
+- `DiscoveryMethod` never authorizes a write.
+- Write path: pre-read → confirm → write with catalog kind → independent read-back verifying value **and** kind.
+- Firewall domain is observation-only.
 
-Dependency direction:
+See `Status/Safety_Model.md`.
 
-```
-Models → Core → Logging → KnowledgeBase → Validator → Scanner → CLI
-                                                              ↘ App
-```
+## Scan contract
 
-App and CLI both depend on Scanner; neither depends on the other.
+- Collectors report through `ScanResult` / `CollectorDiagnostic`.
+- Cancellation is supported; canceled or failed scans do not replace the last successful UI scan state.
+- Process-backed collectors use `SafeProcessRunner`.
 
----
+## Version source
 
-## 3. Presentation contract
-
-UI consumes only:
-
-- `MachineOverview`
-- `SettingsQuery`
-- `NavigationBuilder` / `SettingDetailView`
-- `SettingExplanation`
-- `ManagedObject` observation fields already bound by Scanner
-
-`ScanService` (App) mirrors CLI composition. No registry logic in App.
-
-Presentation (v1.0 final):
-- Grouped navigation and breadcrumbs are pure UI state
-- Mode control (Inspect/Modify) is UX scaffold only; Modify is disabled and performs no writes
-- Expandable disclosure and visual hierarchy are XAML-only
-- Domain/Search/Conflicts/Knowledge use denser list rows; Setting Detail is property-sheet oriented
-- Window/sidebar preferences stored under LocalApplicationData (geometry only)
-
----
-
-## 4. Safety architecture
-
-No writes; no elevation; fail-soft collectors; untrusted inventory never executed.
-
----
-
-## 5. Extension checklist
-
-- [ ] Read-only?  
-- [ ] No elevation?  
-- [ ] Models free of OS I/O?  
-- [ ] Meanings in catalog ValueSemantics?  
-- [ ] Precedence only in PolicyPrecedenceResolver?  
-- [ ] UI free of business decisions?  
-- [ ] Unknown preserved?  
+Single authoritative version: `Directory.Build.props` (currently 2.1.0).
