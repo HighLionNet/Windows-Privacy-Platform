@@ -1,7 +1,7 @@
 # Windows Privacy Platform
 ## AI / Engineer Handoff Document
 
-**Applies to:** **Version 1.6**  
+**Applies to:** **Version 1.6.2**  
 **Last updated:** 2026-08-09  
 
 **Read this file, then `Status/Current_Status.md` before changing code.**
@@ -24,6 +24,7 @@ Understand first. Change deliberately — confirmed, elevated, audited.
 6. Category list owns change buttons; detail page is explanation-only.  
 7. Never invent Enabled/disabled from Unknown.  
 8. Update Status after verification.  
+9. DiscoveryMethod for any writable setting must be a concrete hive + subkey + value name (no `...`, wildcards, or ServiceController).
 
 ---
 
@@ -40,12 +41,24 @@ App services:
 
 ---
 
-## v1.6 notes
+## v1.6.2 notes
 
-- CategoryView: tall cards, short blurb, value buttons
-- SettingDetailPage: status + single explanation paragraph
-- Modify writes DWORD/string/clear for resolved DiscoveryMethod paths
-- Firewall/service paths refused
+- Catalog: all ConsentStore DiscoveryMethod paths are full concrete registry locations.
+- ContentDelivery path concrete.
+- Firewall service / logging remain non-writable observation surfaces.
+- CategoryView: tall cards, short blurb, value buttons; full rescan after verified change.
+- SettingDetailPage: status + single explanation paragraph.
+- Modify writes DWORD/string/clear for resolved DiscoveryMethod paths only.
+
+---
+
+## Remaining work (ordered)
+
+1. Elevation-by-default option for accurate system-wide reads (Inspect still never writes).
+2. Full firewall rule inventory (read-only; no mutation).
+3. Evidence-pack export (JSON).
+4. OSS surface: LICENSE, SECURITY.md, CONTRIBUTING.md, accurate README.
+5. Validator / relationship edge integrity pass.
 
 ---
 
