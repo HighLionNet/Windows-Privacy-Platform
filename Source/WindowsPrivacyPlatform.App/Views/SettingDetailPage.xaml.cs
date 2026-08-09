@@ -7,8 +7,8 @@ using WindowsPrivacyPlatform.Models;
 namespace WindowsPrivacyPlatform.App.Views;
 
 /// <summary>
-/// Setting detail: primary state comparison, compact options, secondary knowledge in expanders.
-/// Consumes SettingDetailView only. v1.4: single state sheet (no side-by-side card layout).
+/// Setting detail: primary state, compact options, always-visible minimal knowledge blocks.
+/// Consumes SettingDetailView only. v1.5: no expanders.
 /// </summary>
 public partial class SettingDetailPage : UserControl
 {
@@ -44,6 +44,18 @@ public partial class SettingDetailPage : UserControl
 
         PopulateOptions(detail);
 
+        ImpactText.Text = detail.Explanation.ImpactLabel + " — " + detail.Explanation.RiskSummary;
+
+        if (!string.IsNullOrWhiteSpace(detail.Explanation.CommonMisconceptions))
+            MisconceptionText.Text = "Misconception: " + detail.Explanation.CommonMisconceptions;
+        else
+            MisconceptionText.Visibility = Visibility.Collapsed;
+
+        if (!string.IsNullOrWhiteSpace(detail.Explanation.Unknowns))
+            UnknownsText.Text = "Limits: " + detail.Explanation.Unknowns;
+        else
+            UnknownsText.Visibility = Visibility.Collapsed;
+
         if (detail.Layers.Count == 0)
         {
             LayersList.Items.Add(new TextBlock
@@ -68,16 +80,6 @@ public partial class SettingDetailPage : UserControl
                 });
             }
         }
-
-        ImpactText.Text = detail.Explanation.ImpactLabel + " — " + detail.Explanation.RiskSummary;
-        UserImpactText.Text = "User: " + (detail.Explanation.UserImpact ?? "—");
-        EnterpriseText.Text = "Enterprise: " + (detail.Explanation.EnterpriseImpact ?? "—");
-
-        if (!string.IsNullOrWhiteSpace(detail.Explanation.CommonMisconceptions))
-            MisconceptionText.Text = "Misconception: " + detail.Explanation.CommonMisconceptions;
-
-        if (!string.IsNullOrWhiteSpace(detail.Explanation.Unknowns))
-            UnknownsText.Text = "Limits: " + detail.Explanation.Unknowns;
 
         if (detail.Related.Count == 0)
         {
@@ -130,7 +132,6 @@ public partial class SettingDetailPage : UserControl
 
         OptionsSheet.Visibility = Visibility.Visible;
 
-        // Compact header row
         var header = new Grid { Margin = new Thickness(0, 0, 0, 6) };
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(100) });
         header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(140) });
