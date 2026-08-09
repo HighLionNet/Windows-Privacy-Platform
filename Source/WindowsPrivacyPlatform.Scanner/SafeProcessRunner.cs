@@ -72,30 +72,30 @@ internal static class SafeProcessRunner
             var stdoutTask = process.StandardOutput.ReadToEndAsync();
             var stderrTask = process.StandardError.ReadToEndAsync();
 
-            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            linkedCts.CancelAfter(timeout);
+            // Process.WaitForExit only accepts milliseconds (no CancellationToken overload).
+            // Register cancellation to kill the child; use timeout on WaitForExit.
+            using var cancelReg = cancellationToken.Register(() => TryKill(process));
 
-            try
-            {
-                process.WaitForExit(linkedCts.Token);
-            }
-            catch (OperationCanceledException)
+            var timeoutMs = (int)Math.Clamp(timeout.TotalMilliseconds, 1, int.MaxValue);
+            var exited = process.WaitForExit(timeoutMs);
+
+            if (cancellationToken.IsCancellationRequested)
             {
                 TryKill(process);
-
-                if (cancellationToken.IsCancellationRequested)
+                return new ProcessRunResult
                 {
-                    return new ProcessRunResult
-                    {
-                        Started = true,
-                        Canceled = true,
-                        FailureCategory = "Canceled",
-                        Elapsed = sw.Elapsed,
-                        StdOut = SafeGet(stdoutTask),
-                        StdErr = SafeGet(stderrTask)
-                    };
-                }
+                    Started = true,
+                    Canceled = true,
+                    FailureCategory = "Canceled",
+                    Elapsed = sw.Elapsed,
+                    StdOut = SafeGet(stdoutTask),
+                    StdErr = SafeGet(stderrTask)
+                };
+            }
 
+            if (!exited)
+            {
+                TryKill(process);
                 return new ProcessRunResult
                 {
                     Started = true,
