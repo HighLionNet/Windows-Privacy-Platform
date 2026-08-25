@@ -27,6 +27,7 @@ public static class ManagedObjectCatalog
             mo.ConfidenceSource = "Catalog-v2.1";
             ApplyKnownSemantics(mo);
             AttachWritableTarget(mo);
+            CatalogNarrativeAuthoring.Apply(mo);
         }
         return batch;
     }
@@ -224,8 +225,10 @@ public static class ManagedObjectCatalog
         if (mo.ObjectId.StartsWith("privacy.consentstore.", StringComparison.OrdinalIgnoreCase))
         {
             mo.ValueSemantics = [V("Allow", "Allow", "Allow", "Applications may use this capability when they request it (subject to higher policy)."), V("Deny", "Deny", "Deny", "Applications are blocked from this capability under the current user."), V("Prompt", "Prompt", "Prompt", "Windows prompts the user when an application requests this capability.")];
-            mo.WhenIgnored ??= "Machine AppPrivacy (LetApps*) policy can force allow or force deny and override this ConsentStore value.";
-            mo.CommonMisconception ??= "A ConsentStore Deny is not always the whole story; machine AppPrivacy policy can still force access.";
+            if (string.IsNullOrWhiteSpace(mo.WhenIgnored))
+                mo.WhenIgnored = "Machine AppPrivacy (LetApps*) policy can force allow or force deny and override this ConsentStore value.";
+            if (string.IsNullOrWhiteSpace(mo.CommonMisconception))
+                mo.CommonMisconception = "A ConsentStore Deny is not always the whole story; machine AppPrivacy policy can still force access.";
             mo.SupportedWindowsVersions ??= ["Windows 10", "Windows 11"];
             return;
         }

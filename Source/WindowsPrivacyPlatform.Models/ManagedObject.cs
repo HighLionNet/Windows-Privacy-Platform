@@ -33,10 +33,16 @@ public class ManagedObject
     public string? Rationale { get; set; }
     public List<string>? References { get; set; }
 
-    public string? WhenIgnored { get; set; }
-    public string? CommonMisconception { get; set; }
-    public string? TypicalEnterpriseUse { get; set; }
-    public string? ConsumerImpact { get; set; }
+    public string WhenIgnored { get; set; } = string.Empty;
+    public string CommonMisconception { get; set; } = string.Empty;
+    public string TypicalEnterpriseUse { get; set; } = string.Empty;
+    public string ConsumerImpact { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Complete, setting-specific decision-support content. Catalog finalization must populate this
+    /// with authored material; presentation fallbacks are not accepted for catalog entries.
+    /// </summary>
+    public SettingNarrative Narrative { get; set; } = new();
 
     public List<ValueMeaning> ValueSemantics { get; set; } = new();
 

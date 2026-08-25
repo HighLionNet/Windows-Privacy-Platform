@@ -231,6 +231,7 @@ public sealed class ScanService
             CommonMisconception = src.CommonMisconception,
             TypicalEnterpriseUse = src.TypicalEnterpriseUse,
             ConsumerImpact = src.ConsumerImpact,
+            Narrative = src.Narrative,
             ValueSemantics = src.ValueSemantics,
             InterfaceName = src.InterfaceName,
             InterfaceScope = src.InterfaceScope,
