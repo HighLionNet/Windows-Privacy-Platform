@@ -272,6 +272,17 @@ public static class NavigationBuilder
         ProductDomain.Biometrics => "Biometrics",
         ProductDomain.Device => "Device find & recovery",
         ProductDomain.Speech => "Speech recognition",
+        ProductDomain.Recall => "Windows Recall",
+        ProductDomain.Copilot => "Copilot & Windows AI",
+        ProductDomain.ExploitProtection => "Exploit protection & ASR",
+        ProductDomain.LocalSecurity => "Local security policy",
+        ProductDomain.WindowsHello => "Windows Hello",
+        ProductDomain.Storage => "Storage Sense",
+        ProductDomain.Widgets => "Widgets",
+        ProductDomain.Clipboard => "Clipboard",
+        ProductDomain.Network => "Network privacy",
+        ProductDomain.Accessibility => "Accessibility",
+        ProductDomain.FamilySafety => "Family Safety",
         ProductDomain.Firewall => "Windows Firewall",
         _ => domain.ToString()
     };

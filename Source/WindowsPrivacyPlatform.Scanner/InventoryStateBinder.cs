@@ -17,7 +17,8 @@ namespace WindowsPrivacyPlatform.Scanner
         private static readonly IStateBinder[] Binders =
         {
             new PrivacyBinder(),
-            new PolicyBinder()
+            new PolicyBinder(),
+            new InventoryAnchorBinder()
         };
 
         private static readonly RelationshipBinder Relationships = new();

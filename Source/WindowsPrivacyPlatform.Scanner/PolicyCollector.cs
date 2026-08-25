@@ -29,6 +29,7 @@ namespace WindowsPrivacyPlatform.Scanner
             new("policy.telemetry.allowtelemetry.currentversion", "Telemetry", RegistryHive.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\DataCollection", "AllowTelemetry"),
             new("policy.telemetry.donotshowfeedback", "Telemetry", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\DataCollection", "DoNotShowFeedbackNotifications"),
             new("policy.telemetry.allowdevicename", "Telemetry", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\DataCollection", "AllowDeviceNameInTelemetry"),
+            new("policy.telemetry.limitdiagnosticlogs", "Telemetry", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\DataCollection", "LimitDiagnosticLogCollection"),
 
             new("policy.update.noautoupdate", "WindowsUpdate", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU", "NoAutoUpdate"),
             new("policy.update.auoptions", "WindowsUpdate", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU", "AUOptions"),
@@ -54,7 +55,7 @@ namespace WindowsPrivacyPlatform.Scanner
             new("policy.update.managepreviewbuilds", "WindowsUpdate", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate", "ManagePreviewBuilds"),
             new("policy.update.allowmuupdateservice", "WindowsUpdate", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate", "AllowMUUpdateService"),
             new("policy.update.elevatednonadmins", "WindowsUpdate", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU", "ElevateNonAdmins"),
-            new("policy.update.seteduperiod", "WindowsUpdate", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate", "SetEDURestart"),
+            new("policy.update.setedurestart", "WindowsUpdate", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate", "SetEDURestart"),
             new("policy.update.disabledualscan", "WindowsUpdate", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate", "DisableDualScan"),
 
             new("policy.defender.disableantispyware", "Defender", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender", "DisableAntiSpyware"),
@@ -74,14 +75,15 @@ namespace WindowsPrivacyPlatform.Scanner
 
             new("policy.smartscreen.enable", "SmartScreen", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\System", "EnableSmartScreen"),
             new("policy.smartscreen.shelllevel", "SmartScreen", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\System", "ShellSmartScreenLevel"),
-            new("policy.smartscreen.preventoverride", "SmartScreen", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\System", "EnableSmartScreen"),
 
             new("policy.search.allowcortana", "Search", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\Windows Search", "AllowCortana"),
             new("policy.search.disablewebsearch", "Search", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\Windows Search", "DisableWebSearch"),
             new("policy.search.connectedsearchuseweb", "Search", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\Windows Search", "ConnectedSearchUseWeb"),
             new("policy.search.allowsearchlocation", "Search", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\Windows Search", "AllowSearchToUseLocation"),
             new("policy.search.allowcloudsearch", "Search", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\Windows Search", "AllowCloudSearch"),
-            new("policy.search.disableindexedlocationsinlib", "Search", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\Windows Search", "DisableIndexedSearch"),
+            new("policy.search.disableremovabledriveindexing", "Search", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\Windows Search", "DisableRemovableDriveIndexing"),
+            new("policy.search.highlights", "Search", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\Windows Search", "EnableDynamicContentInWSB"),
+            new("policy.search.disablesearch", "Search", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\Windows Search", "DisableSearch"),
 
             new("policy.activity.enableactivityfeed", "ActivityHistory", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\System", "EnableActivityFeed"),
             new("policy.activity.publishuseractivities", "ActivityHistory", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\System", "PublishUserActivities"),
@@ -121,7 +123,8 @@ namespace WindowsPrivacyPlatform.Scanner
             new("policy.feedback.numberoffeedbacksiuf", "Feedback", RegistryHive.CurrentUser, @"SOFTWARE\Microsoft\Siuf\Rules", "NumberOfSIUFInPeriod"),
             new("policy.feedback.periodinsiuf", "Feedback", RegistryHive.CurrentUser, @"SOFTWARE\Microsoft\Siuf\Rules", "PeriodInNanoSeconds"),
 
-            new("policy.onedrive.disablefilesonDemand", "CloudContent", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\OneDrive", "DisableFileSyncNGSC"),
+            new("policy.onedrive.disablefilesyncngsc", "CloudContent", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\OneDrive", "DisableFileSyncNGSC"),
+            new("policy.onedrive.filesondemand", "CloudContent", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\OneDrive", "FilesOnDemandEnabled"),
             new("policy.explorer.allowonlinecontent", "Explorer", RegistryHive.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer", "AllowOnlineTips"),
             new("policy.explorer.norecentserverdocs", "Explorer", RegistryHive.CurrentUser, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer", "NoRecentDocsHistory"),
 
@@ -152,6 +155,54 @@ namespace WindowsPrivacyPlatform.Scanner
             new("policy.edge.metricsreporting", "Edge", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Edge", "MetricsReportingEnabled"),
             new("policy.edge.sendsitinfo", "Edge", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Edge", "SendSiteInfoToImproveServices"),
             new("policy.edge.trackingprevention", "Edge", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Edge", "TrackingPrevention")
+            ,new("policy.edge.m365copiloticon", "Edge", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Edge", "Microsoft365CopilotChatIconEnabled")
+            ,new("policy.edge.familysafety", "Edge", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Edge", "FamilySafetySettingsEnabled")
+
+            ,new("policy.recall.disableaidataanalysis", "WindowsAI", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\WindowsAI", "DisableAIDataAnalysis")
+            ,new("policy.recall.allowenablement", "WindowsAI", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\WindowsAI", "AllowRecallEnablement")
+            ,new("policy.recall.allowexport", "WindowsAI", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\WindowsAI", "AllowRecallExport")
+            ,new("policy.recall.denyapplist", "WindowsAI", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\WindowsAI", "SetDenyAppListForRecall")
+            ,new("policy.recall.denyurilist", "WindowsAI", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\WindowsAI", "SetDenyUriListForRecall")
+            ,new("policy.recall.maxstorage", "WindowsAI", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\WindowsAI", "SetMaximumStorageSpaceForRecallSnapshots")
+            ,new("policy.recall.maxduration", "WindowsAI", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\WindowsAI", "SetMaximumStorageDurationForRecallSnapshots")
+            ,new("policy.recall.disableclicktodo", "WindowsAI", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\WindowsAI", "DisableClickToDo")
+            ,new("policy.copilot.turnoffwindowscopilot", "WindowsAI", RegistryHive.CurrentUser, @"SOFTWARE\Policies\Microsoft\Windows\WindowsCopilot", "TurnOffWindowsCopilot")
+            ,new("policy.copilot.removemicrosoftcopilotapp", "WindowsAI", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\WindowsAI", "RemoveMicrosoftCopilotApp")
+            ,new("policy.copilot.disablesettingsagent", "WindowsAI", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\WindowsAI", "DisableSettingsAgent")
+
+            ,new("policy.asr.vulnerablesigneddrivers", "DefenderASR", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules", "56a863a9-875e-4185-98a7-b882c64b5ce5")
+            ,new("policy.asr.lsasscredentialtheft", "DefenderASR", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules", "9e6c4e1f-7d60-472f-ba1a-a39ef669e4b2")
+            ,new("policy.asr.officechildprocess", "DefenderASR", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules", "d4f940ab-401b-4efc-aadc-ad5f3c50688a")
+            ,new("policy.asr.officeexecutablecontent", "DefenderASR", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules", "3b576869-a4ec-4529-8536-b80a7769e899")
+            ,new("policy.asr.officecodeinjection", "DefenderASR", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules", "75668c1f-73b5-4cf0-bb93-3ecf5cb7cc84")
+            ,new("policy.asr.officemacrowin32", "DefenderASR", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules", "92e97fa1-2edf-4476-bdd6-9dd0b4dddc7b")
+            ,new("policy.asr.scriptdownload", "DefenderASR", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules", "d3e037e1-3eb8-44c8-a917-57927947596d")
+            ,new("policy.asr.emailwebmailcontent", "DefenderASR", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules", "be9ba2d9-53ea-4cdc-84e5-9b1eeee46550")
+            ,new("policy.asr.advancedransomware", "DefenderASR", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules", "c1db55ab-c21a-4637-bb3f-a12568109d35")
+            ,new("policy.asr.prevalenceage", "DefenderASR", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows Defender\Windows Defender Exploit Guard\ASR\Rules", "01443614-cd74-433a-b99e-2ecdc07bfc25")
+
+            ,new("policy.hello.enabled", "WindowsHello", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\PassportForWork", "Enabled")
+            ,new("policy.hello.requiresecuritydevice", "WindowsHello", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\PassportForWork", "RequireSecurityDevice")
+            ,new("policy.hello.usebiometrics", "WindowsHello", RegistryHive.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\WinBio\Credential Provider", "Domain Accounts")
+            ,new("policy.hello.enhancedsigninsecurity", "WindowsHello", RegistryHive.LocalMachine, @"SOFTWARE\Microsoft\Policies\PassportForWork\Biometrics", "EnableESSwithSupportedPeripherals")
+            ,new("policy.hello.pinrecovery", "WindowsHello", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\PassportForWork", "EnablePinRecovery")
+            ,new("policy.hello.minpinlength", "WindowsHello", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\PassportForWork\PINComplexity", "MinimumPINLength")
+            ,new("policy.hello.pinexpiration", "WindowsHello", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\PassportForWork\PINComplexity", "Expiration")
+            ,new("policy.hello.cloudtrust", "WindowsHello", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\PassportForWork", "UseCloudTrustForOnPremAuth")
+
+            ,new("policy.storage.senseglobal", "StorageSense", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\StorageSense", "AllowStorageSenseGlobal")
+            ,new("policy.storage.temporaryfiles", "StorageSense", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\StorageSense", "AllowStorageSenseTemporaryFilesCleanup")
+            ,new("policy.storage.cadence", "StorageSense", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\StorageSense", "ConfigStorageSenseGlobalCadence")
+            ,new("policy.storage.recyclebinthreshold", "StorageSense", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\StorageSense", "ConfigStorageSenseRecycleBinCleanupThreshold")
+            ,new("policy.storage.downloadsthreshold", "StorageSense", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\StorageSense", "ConfigStorageSenseDownloadsCleanupThreshold")
+            ,new("policy.storage.clouddehydration", "StorageSense", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\StorageSense", "ConfigStorageSenseCloudContentDehydrationThreshold")
+            ,new("policy.widgets.allow", "Widgets", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Dsh", "AllowNewsAndInterests")
+
+            ,new("policy.accessibility.disablesettingssync", "Accessibility", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\SettingSync", "DisableAccessibilitySettingSync")
+
+            ,new("policy.network.dohmode", "Network", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows NT\DNSClient", "DoHPolicy")
+            ,new("policy.network.dohsetting", "Network", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows NT\DNSClient", "DohPolicySetting")
+            ,new("policy.network.blocknondomain", "Network", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\WcmSvc\GroupPolicy", "fBlockNonDomain")
         };
 
         public void Collect(InventorySnapshot snapshot)
@@ -178,6 +229,55 @@ namespace WindowsPrivacyPlatform.Scanner
                     });
                 }
             }
+
+            snapshot.PolicySettings.Add(ReadRandomMacState());
+        }
+
+        private static PolicySettingInfo ReadRandomMacState()
+        {
+            const string subKey = @"SOFTWARE\Microsoft\WlanSvc\Interfaces";
+            var info = new PolicySettingInfo
+            {
+                Name = "network.wifi.randommac",
+                Category = "Network",
+                Hive = "HKLM",
+                Path = subKey + @"\*",
+                ValueName = "RandomMacState",
+                Value = "Not configured"
+            };
+
+            try
+            {
+                using var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64);
+                using var interfaces = baseKey.OpenSubKey(subKey, writable: false);
+                if (interfaces is null)
+                    return info;
+
+                var observed = interfaces.GetSubKeyNames()
+                    .Select(interfaceName =>
+                    {
+                        using var key = interfaces.OpenSubKey(interfaceName, writable: false);
+                        if (key is null || !key.GetValueNames().Any(name =>
+                                name.Equals("RandomMacState", StringComparison.OrdinalIgnoreCase)))
+                            return null;
+
+                        var raw = key.GetValue("RandomMacState", null, RegistryValueOptions.DoNotExpandEnvironmentNames);
+                        return raw is null
+                            ? null
+                            : $"{interfaceName}={FormatValue(raw, key.GetValueKind("RandomMacState"))}";
+                    })
+                    .Where(value => !string.IsNullOrWhiteSpace(value))
+                    .ToList();
+
+                if (observed.Count > 0)
+                    info.Value = string.Join("; ", observed!);
+            }
+            catch (Exception ex)
+            {
+                info.Value = "Error reading: " + ex.Message;
+            }
+
+            return info;
         }
 
         private static PolicySettingInfo ReadProbe(Probe probe)

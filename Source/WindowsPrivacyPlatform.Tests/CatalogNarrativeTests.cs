@@ -30,6 +30,22 @@ public sealed class CatalogNarrativeTests
     }
 
     [Fact]
+    public void Decision_support_paragraphs_are_not_reused_between_settings()
+    {
+        var narratives = ManagedObjectCatalog.All.Select(setting => setting.Narrative).ToList();
+
+        AssertUnique(narratives.Select(item => item.WhyItMatters), nameof(SettingNarrative.WhyItMatters));
+        AssertUnique(narratives.Select(item => item.ConsumerImpact), nameof(SettingNarrative.ConsumerImpact));
+        AssertUnique(narratives.Select(item => item.TypicalEnterpriseUse), nameof(SettingNarrative.TypicalEnterpriseUse));
+        AssertUnique(narratives.Select(item => item.WhenIgnored), nameof(SettingNarrative.WhenIgnored));
+        AssertUnique(narratives.Select(item => item.KnownSideEffects), nameof(SettingNarrative.KnownSideEffects));
+        AssertUnique(narratives.Select(item => item.CommonMisconception), nameof(SettingNarrative.CommonMisconception));
+        AssertUnique(narratives.Select(item => item.PrivacyImpact), nameof(SettingNarrative.PrivacyImpact));
+        AssertUnique(narratives.Select(item => item.SecurityImpact), nameof(SettingNarrative.SecurityImpact));
+        AssertUnique(narratives.Select(item => item.DecisionGuidance), nameof(SettingNarrative.DecisionGuidance));
+    }
+
+    [Fact]
     public void Explanation_factory_uses_authored_catalog_fields()
     {
         foreach (var setting in ManagedObjectCatalog.All)
@@ -39,5 +55,13 @@ public sealed class CatalogNarrativeTests
             Assert.Equal(setting.Narrative.KnownSideEffects, explanation.SideEffects);
             Assert.Equal(setting.Narrative.CommonMisconception, explanation.CommonMisconceptions);
         }
+    }
+
+    private static void AssertUnique(IEnumerable<string> paragraphs, string field)
+    {
+        var values = paragraphs.ToList();
+        Assert.True(
+            values.Count == values.Distinct(StringComparer.Ordinal).Count(),
+            $"{field} contains a paragraph reused by multiple settings.");
     }
 }

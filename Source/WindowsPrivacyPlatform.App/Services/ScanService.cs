@@ -63,6 +63,7 @@ public sealed class ScanService
                 new ScheduledTaskCollector(),
                 new PrivacyCollector(),
                 new PolicyCollector(),
+                new LocalSecurityPolicyCollector(),
                 new FirewallCollector()
             };
 

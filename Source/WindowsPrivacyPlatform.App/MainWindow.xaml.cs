@@ -390,9 +390,12 @@ public partial class MainWindow : Window
         ProductDomain.ConsentStore or ProductDomain.AppPrivacy or ProductDomain.Telemetry
             or ProductDomain.Advertising or ProductDomain.Location or ProductDomain.ActivityHistory
             or ProductDomain.CloudContent => "Privacy",
-        ProductDomain.Defender or ProductDomain.Firewall or ProductDomain.Biometrics => "Security",
-        ProductDomain.WindowsUpdate or ProductDomain.Search or ProductDomain.Speech or ProductDomain.Device => "Windows",
-        ProductDomain.Edge => "Applications",
+        ProductDomain.Defender or ProductDomain.Firewall or ProductDomain.Biometrics
+            or ProductDomain.ExploitProtection or ProductDomain.LocalSecurity or ProductDomain.WindowsHello => "Security",
+        ProductDomain.WindowsUpdate or ProductDomain.Search or ProductDomain.Speech or ProductDomain.Device
+            or ProductDomain.Storage or ProductDomain.Widgets or ProductDomain.Clipboard
+            or ProductDomain.Network or ProductDomain.Accessibility or ProductDomain.FamilySafety => "Windows",
+        ProductDomain.Edge or ProductDomain.Recall or ProductDomain.Copilot => "Applications",
         _ => "Domains"
     };
 

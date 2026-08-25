@@ -148,7 +148,7 @@ public static class CatalogNarrativeAuthoring
     private static string BuildWhenIgnored(ManagedObject setting, string location)
     {
         if (!string.IsNullOrWhiteSpace(setting.WhenIgnored))
-            return setting.WhenIgnored.Trim();
+            return $"{setting.ObjectName}: {setting.WhenIgnored.Trim()}";
         if (setting.FeatureCategory is FeatureCategory.WindowsService or FeatureCategory.ScheduledTask or FeatureCategory.AppxPackage or FeatureCategory.WindowsCapability)
             return $"This inventory signal is not a policy command. Windows may keep {setting.ObjectName} installed or registered while another dependency, edition restriction, feature flag, or service condition prevents its behavior from running.";
         return $"Windows can ignore the value at {location} when the current build or edition does not implement the policy, when a more authoritative policy source wins precedence, or when a required component or hardware condition is absent.";
@@ -172,13 +172,13 @@ public static class CatalogNarrativeAuthoring
     private static string BuildMisconception(ManagedObject setting, string location)
     {
         if (!string.IsNullOrWhiteSpace(setting.CommonMisconception))
-            return setting.CommonMisconception.Trim();
+            return $"{setting.ObjectName}: {setting.CommonMisconception.Trim()}";
         return $"Observing {setting.ObjectName} at {location} does not prove the entire feature is enabled, disabled, secure, or private. It proves only the state of this named mechanism at the time of the scan; related policy stores and runtime state can differ.";
     }
 
     private static string BuildPrivacyImpact(ManagedObject setting)
     {
-        var direct = setting.ProductDomain is ProductDomain.ConsentStore or ProductDomain.AppPrivacy or ProductDomain.Telemetry or ProductDomain.Advertising or ProductDomain.Location or ProductDomain.Speech or ProductDomain.ActivityHistory or ProductDomain.CloudContent;
+        var direct = setting.ProductDomain is ProductDomain.ConsentStore or ProductDomain.AppPrivacy or ProductDomain.Telemetry or ProductDomain.Advertising or ProductDomain.Location or ProductDomain.Speech or ProductDomain.ActivityHistory or ProductDomain.CloudContent or ProductDomain.Recall or ProductDomain.Copilot or ProductDomain.Clipboard or ProductDomain.Network;
         return direct
             ? $"{setting.ObjectName} has direct privacy relevance because it controls or evidences the data access, collection, synchronization, personalization, or cloud interaction described by this setting. Scope is limited to this mechanism; it does not disable unrelated Windows or application data flows."
             : $"{setting.ObjectName} has indirect privacy relevance. Its state can affect exposure, local retention, or component availability, but it is not by itself a complete measure of data collection or user privacy.";

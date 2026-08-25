@@ -80,6 +80,9 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
             if (hive.Equals("HKCU", StringComparison.OrdinalIgnoreCase))
                 return ConfigurationLayer.UserPreference;
 
+            if (hive.Equals("SECEDIT", StringComparison.OrdinalIgnoreCase))
+                return ConfigurationLayer.MachinePolicy;
+
             // Alternate machine policy store (CurrentVersion\Policies vs SOFTWARE\Policies)
             if (path.Contains(@"CurrentVersion\Policies", StringComparison.OrdinalIgnoreCase))
                 return ConfigurationLayer.AlternatePolicyStore;

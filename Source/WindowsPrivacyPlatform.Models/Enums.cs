@@ -45,6 +45,17 @@ public enum ProductDomain
     Biometrics,
     Device,
     Speech,
+    Recall,
+    Copilot,
+    ExploitProtection,
+    LocalSecurity,
+    WindowsHello,
+    Storage,
+    Widgets,
+    Clipboard,
+    Network,
+    Accessibility,
+    FamilySafety,
     Firewall,
     Other
 }

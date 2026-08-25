@@ -13,6 +13,7 @@ public static class ManagedObjectCatalog
         CreatePolicyBatch()
             .Concat(CreateExtendedPolicyBatch())
             .Concat(CatalogExpansion.CreateCoverageBatch())
+            .Concat(CatalogV21Expansion.CreateBatch())
             .ToList());
     public static IReadOnlyList<ManagedObject> FirewallSettings { get; } = Finalize(CreateFirewallBatch());
     public static IReadOnlyList<ManagedObject> All { get; } =
@@ -282,6 +283,20 @@ public static class ManagedObjectCatalog
             && !mo.ObjectId.Contains("tracking", StringComparison.OrdinalIgnoreCase)
             && !mo.ObjectId.Contains("shelllevel", StringComparison.OrdinalIgnoreCase)
             && !mo.ObjectId.Contains("encryptionmethod", StringComparison.OrdinalIgnoreCase)
+            && !mo.ObjectId.StartsWith("policy.security.", StringComparison.OrdinalIgnoreCase)
+            && !mo.ObjectId.StartsWith("policy.feedback.", StringComparison.OrdinalIgnoreCase)
+            && !mo.ObjectId.StartsWith("policy.update.ux.", StringComparison.OrdinalIgnoreCase)
+            && !mo.ObjectId.StartsWith("policy.update.scheduled", StringComparison.OrdinalIgnoreCase)
+            && !mo.ObjectId.Equals("policy.update.detectionfrequency", StringComparison.OrdinalIgnoreCase)
+            && !mo.ObjectId.Equals("policy.update.wuserver", StringComparison.OrdinalIgnoreCase)
+            && !mo.ObjectId.Equals("policy.update.wustatusserver", StringComparison.OrdinalIgnoreCase)
+            && !mo.ObjectId.StartsWith("policy.recall.deny", StringComparison.OrdinalIgnoreCase)
+            && !mo.ObjectId.StartsWith("policy.recall.max", StringComparison.OrdinalIgnoreCase)
+            && !mo.ObjectId.Equals("policy.hello.minpinlength", StringComparison.OrdinalIgnoreCase)
+            && !mo.ObjectId.Equals("policy.hello.pinexpiration", StringComparison.OrdinalIgnoreCase)
+            && !mo.ObjectId.Contains("threshold", StringComparison.OrdinalIgnoreCase)
+            && !mo.ObjectId.Equals("policy.storage.clouddehydration", StringComparison.OrdinalIgnoreCase)
+            && !mo.ObjectId.Equals("policy.network.dohsetting", StringComparison.OrdinalIgnoreCase)
             && !mo.ObjectId.StartsWith("service.", StringComparison.OrdinalIgnoreCase))
         {
             mo.ValueSemantics = [V("0", "Disabled", "Off / Not forced", "Policy value 0."), V("1", "Enabled", "On / Forced", "Policy value 1.")];
@@ -359,8 +374,8 @@ public static class ManagedObjectCatalog
             Pol("policy.smartscreen.enable", "Enable SmartScreen", "Enables Windows SmartScreen.", "Reputation checks.", RiskLevel.High, FeatureCategory.RegistryPolicy, ComponentOwner.Other, ControlLevel.AdministratorControlled, ProductDomain.Defender, "SmartScreen", @"HKLM\SOFTWARE\Policies\Microsoft\Windows\System\EnableSmartScreen"),
             Pol("policy.smartscreen.shelllevel", "Shell SmartScreen Level", "Warn or Block for shell.", "Block more restrictive.", RiskLevel.High, FeatureCategory.RegistryPolicy, ComponentOwner.Other, ControlLevel.AdministratorControlled, ProductDomain.Defender, "SmartScreen", @"HKLM\SOFTWARE\Policies\Microsoft\Windows\System\ShellSmartScreenLevel"),
             Pol("policy.edge.trackingprevention", "Edge Tracking Prevention", "Tracking prevention level.", "Higher reduces tracking.", RiskLevel.Medium, FeatureCategory.EdgePolicy, ComponentOwner.MicrosoftEdge, ControlLevel.AdministratorControlled, ProductDomain.Edge, "Edge", @"HKLM\SOFTWARE\Policies\Microsoft\Edge\TrackingPrevention"),
-            Pol("policy.clipboard.allowhistory", "Allow Clipboard History", "Clipboard history on/off.", "Stores multiple items.", RiskLevel.Medium, FeatureCategory.RegistryPolicy, ComponentOwner.Other, ControlLevel.AdministratorControlled, ProductDomain.Other, "Clipboard", @"HKLM\SOFTWARE\Policies\Microsoft\Windows\System\AllowClipboardHistory"),
-            Pol("policy.clipboard.allowcrossdevice", "Allow Cross-Device Clipboard", "Cross-device clipboard sync.", "Cloud sync of clipboard.", RiskLevel.Medium, FeatureCategory.RegistryPolicy, ComponentOwner.Other, ControlLevel.AdministratorControlled, ProductDomain.Other, "Clipboard", @"HKLM\SOFTWARE\Policies\Microsoft\Windows\System\AllowCrossDeviceClipboard")
+            Pol("policy.clipboard.allowhistory", "Allow Clipboard History", "Clipboard history on/off.", "Stores multiple items.", RiskLevel.Medium, FeatureCategory.RegistryPolicy, ComponentOwner.Other, ControlLevel.AdministratorControlled, ProductDomain.Clipboard, "Clipboard", @"HKLM\SOFTWARE\Policies\Microsoft\Windows\System\AllowClipboardHistory"),
+            Pol("policy.clipboard.allowcrossdevice", "Allow Cross-Device Clipboard", "Cross-device clipboard sync.", "Cloud sync of clipboard.", RiskLevel.Medium, FeatureCategory.RegistryPolicy, ComponentOwner.Other, ControlLevel.AdministratorControlled, ProductDomain.Clipboard, "Clipboard", @"HKLM\SOFTWARE\Policies\Microsoft\Windows\System\AllowCrossDeviceClipboard")
         };
         return list.AsReadOnly();
     }
