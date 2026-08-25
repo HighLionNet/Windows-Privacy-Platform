@@ -70,7 +70,7 @@
                      Foreground="{StaticResource BrushTextSecondary}" />
         </Border>
         <TextBlock Style="{StaticResource SheetValue}" Margin="12,8,12,10"
-                   Text="https://github.com/HighLionNet/Windows-Privacy-Platform&#10;.NET 8 · Windows 11 · v2.0" />
+                   Text="https://github.com/HighLionNet/Windows-Privacy-Platform&#10;.NET 8 · Windows 11 · v2.1" />
       </StackPanel>
     </Border>
   </StackPanel>

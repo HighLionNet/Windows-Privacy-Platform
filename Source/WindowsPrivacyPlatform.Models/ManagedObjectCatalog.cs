@@ -426,13 +426,31 @@ public static class ManagedObjectCatalog
     {
         return new ManagedObject
         {
-            ObjectId = id, ObjectName = name, ObjectType = objectType, Description = description, Rationale = rationale,
-            FeatureCategory = category, ProductDomain = domain, SubCategory = subCategory, RiskLevel = risk,
-            ImpactLevel = ImpactLevel.Security, LifecycleState = LifecycleState.Active, InterfaceName = iface,
-            ConfigurationType = cfg, DiscoveryMethod = discovery, CanonicalPath = id, ControlLevel = control,
-            ComponentOwner = owner, PriorityLevel = PriorityLevel.Recommended, Reversibility = Reversibility.Reversible,
-            RebootRequirement = RebootRequirement.None, SchemaVersion = "2.1", CreatedBy = "ManagedObjectCatalog",
-            CreatedTimestamp = DateTime.UtcNow, ConfidenceScore = 80, ConfidenceSource = "Catalog-v2.1"
+            ObjectId = id,
+            ObjectName = name,
+            ObjectType = objectType,
+            Description = description,
+            Rationale = rationale,
+            FeatureCategory = category,
+            ProductDomain = domain,
+            SubCategory = subCategory,
+            RiskLevel = risk,
+            ImpactLevel = ImpactLevel.Security,
+            LifecycleState = LifecycleState.Active,
+            InterfaceName = iface,
+            ConfigurationType = cfg,
+            DiscoveryMethod = discovery,
+            CanonicalPath = id,
+            ControlLevel = control,
+            ComponentOwner = owner,
+            PriorityLevel = PriorityLevel.Recommended,
+            Reversibility = Reversibility.Reversible,
+            RebootRequirement = RebootRequirement.None,
+            SchemaVersion = "2.1",
+            CreatedBy = "ManagedObjectCatalog",
+            CreatedTimestamp = DateTime.UtcNow,
+            ConfidenceScore = 80,
+            ConfidenceSource = "Catalog-v2.1"
         };
     }
 }

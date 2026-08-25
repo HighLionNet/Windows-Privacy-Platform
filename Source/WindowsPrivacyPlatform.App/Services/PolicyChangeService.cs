@@ -316,34 +316,34 @@ public sealed class PolicyChangeService
         switch (expectedKind)
         {
             case RegistryValueKindExpected.DWord:
-            {
-                if (!int.TryParse(rawValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var dword))
                 {
-                    error = "Invalid DWord value (invariant integer required).";
-                    return false;
+                    if (!int.TryParse(rawValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var dword))
+                    {
+                        error = "Invalid DWord value (invariant integer required).";
+                        return false;
+                    }
+                    key.SetValue(valueName, dword, RegistryValueKind.DWord);
+                    break;
                 }
-                key.SetValue(valueName, dword, RegistryValueKind.DWord);
-                break;
-            }
             case RegistryValueKindExpected.QWord:
-            {
-                if (!long.TryParse(rawValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var qword))
                 {
-                    error = "Invalid QWord value (invariant integer required).";
-                    return false;
+                    if (!long.TryParse(rawValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var qword))
+                    {
+                        error = "Invalid QWord value (invariant integer required).";
+                        return false;
+                    }
+                    key.SetValue(valueName, qword, RegistryValueKind.QWord);
+                    break;
                 }
-                key.SetValue(valueName, qword, RegistryValueKind.QWord);
-                break;
-            }
             case RegistryValueKindExpected.String:
             case RegistryValueKindExpected.ExpandString:
-            {
-                var kind = expectedKind == RegistryValueKindExpected.ExpandString
-                    ? RegistryValueKind.ExpandString
-                    : RegistryValueKind.String;
-                key.SetValue(valueName, rawValue, kind);
-                break;
-            }
+                {
+                    var kind = expectedKind == RegistryValueKindExpected.ExpandString
+                        ? RegistryValueKind.ExpandString
+                        : RegistryValueKind.String;
+                    key.SetValue(valueName, rawValue, kind);
+                    break;
+                }
             default:
                 error = "Unsupported registry value kind.";
                 return false;

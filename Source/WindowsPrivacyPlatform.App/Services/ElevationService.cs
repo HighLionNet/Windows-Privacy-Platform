@@ -58,15 +58,15 @@ public sealed class ElevationService
             return true;
         }
 
-            if (!elevated)
+        if (!elevated)
+        {
+            _log.Auth("ElevationService", "Process not elevated — starting user-requested UAC relaunch.");
+            if (TryRelaunchElevated())
             {
-                _log.Auth("ElevationService", "Process not elevated — starting user-requested UAC relaunch.");
-                if (TryRelaunchElevated())
-                {
-                    _log.Auth("ElevationService", "UAC relaunch started. Current process will exit.");
-                    Application.Current.Shutdown();
-                    return false; // current process is going away
-                }
+                _log.Auth("ElevationService", "UAC relaunch started. Current process will exit.");
+                Application.Current.Shutdown();
+                return false; // current process is going away
+            }
 
             _log.Auth("ElevationService", "UAC relaunch failed or was cancelled.");
             MessageBox.Show(

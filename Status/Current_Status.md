@@ -1,35 +1,42 @@
-# Current Status — Windows Privacy Platform **v2.1**
+# Current Status — Windows Privacy Platform v2.1
 
-**Date:** 2026-08-09
+**Date:** 2026-08-25
+**Authoritative application version:** **2.1.0** (`Directory.Build.props`)
 
-## Product
+## Release state
 
-WPF GUI only. Application version **2.1.0**.
+v2.1 is implemented on `release/v2.1` and ready for pull-request review. The WPF GUI remains the only product surface.
 
-## Hardening (completed)
+## Completed in v2.1
 
-- Explicit WritableTarget ObjectId whitelist (DiscoveryMethod never authorizes)
-- Kind-aware write verification; read errors ≠ Not configured
-- SafeProcessRunner; CapabilityCollector + ScheduledTaskCollector on it
-- Scan diagnostics + last-good scan preservation + catalog clone per scan
-- Tests project + CI
-- Safety_Model.md, LICENSE, SECURITY.md, CONTRIBUTING.md
+- Fixed semantic conflict false positives by comparing canonical values before raw registry encodings; regression tests cover alternate policy stores and layer-rank resolution.
+- Added the startup Inspect/Modify chooser and `--resume-modify` elevation handoff, leaving one deliberate session-authorization confirmation after UAC.
+- Added global dispatcher/domain exception logging and graceful error presentation.
+- Added normalized smooth scrolling to the main scroll surfaces and generated domain navigation from the catalog.
+- Corrected probe/catalog mismatches and added UAC, BitLocker policy, Recall, Copilot, ASR, Windows Hello, Storage Sense, Widgets, Search, accessibility, Edge, network, and diagnostic-data observations.
+- Added elevated read-only live BitLocker WMI status; non-elevated scans report `Requires Modify mode to observe`.
+- Added read-only local security-policy export through `secedit`, plus curated service/task/package/capability inventory binding.
+- Routed package inventory through `SafeProcessRunner` and removed the stale duplicate root `KnowledgeBase/` source tree.
+- Expanded the catalog from 135 to **257** entries across 26 represented product domains.
+- Made complete per-setting narratives mandatory, removed explanation-factory category defaults from the normal path, and added tests for completeness, no fallback, and paragraph reuse.
 
-## Coverage expansion (completed)
+## Safety state
 
-- CatalogExpansion: full AppPrivacy LetApps* set, Defender depth, Windows Update policies, Search/Activity/Cloud, Location/Device/Biometrics, UAC observation, BitLocker **policy** observation, Edge privacy policies, key service anchors (observation-only)
-- AppPrivacy writable via explicit whitelist
-- BitLocker / UAC master switches / services remain non-writable by design
-- Conflicts page: concise Effective + writable status (no UI clutter)
+The deny-by-default boundary is unchanged. Only complete, ObjectId-whitelisted `WritableTarget` entries can write. UAC master switches, BitLocker, firewall, services, scheduled tasks, packages, capabilities, ASR rules, and local security policy are observation-only.
 
-## Explicit non-goals retained
+The write sequence remains pre-read → confirm → typed write → independent value-and-kind read-back → local audit log.
 
-No bulk modify, profiles, rollback, privacy score, CLI product, firewall rule writing, generic service/task editors.
+## Validation
 
-## Local verify
+The release validation target is:
 
 ```powershell
-cd Source
-dotnet build WindowsPrivacyPlatform.sln -c Release
-dotnet test WindowsPrivacyPlatform.sln -c Release
+dotnet restore Source\WindowsPrivacyPlatform.sln
+dotnet build Source\WindowsPrivacyPlatform.sln -c Release
+dotnet test Source\WindowsPrivacyPlatform.sln -c Release
+dotnet publish Source\WindowsPrivacyPlatform.App\WindowsPrivacyPlatform.App.csproj -c Release -r win-x64 --self-contained false
 ```
+
+See `Status/AI_Handoff.md` for implementation details and the final observed validation results.
+
+Final local result: locked restore passed; Release build passed with 0 warnings and 0 errors; 19/19 tests passed; win-x64 publish passed; hidden WPF startup smoke remained responsive.

@@ -10,10 +10,10 @@
 
 ## Layers
 
-1. **Models** — ManagedObject catalog, WritableTarget, ValueSemantics, ScanResult diagnostics, inventory snapshot shapes. No OS I/O.
-2. **Scanner** — Collectors + binders + PolicyPrecedenceResolver. Fail-soft collectors with structured diagnostics.
-3. **Validator** — Schema / catalog integrity.
-4. **App** — WPF shell, ScanService, ElevationService, PolicyChangeService.
+1. **Models** — 257-entry `ManagedObject` catalog, required `SettingNarrative`, `WritableTarget`, `ValueSemantics`, scan diagnostics, and inventory shapes. No OS I/O.
+2. **Scanner** — registry/WMI/process collectors, domain binders, `InventoryAnchorBinder`, and `PolicyPrecedenceResolver`. Collectors are read-only and fail soft with structured diagnostics.
+3. **Validator** — schema, required narrative, fallback rejection, and catalog integrity.
+4. **App** — WPF shell, startup mode chooser, `ScanService`, `ElevationService`, and `PolicyChangeService`.
 
 ## Write safety contract
 
@@ -31,6 +31,15 @@ See `Status/Safety_Model.md`.
 - Collectors report through `ScanResult` / `CollectorDiagnostic`.
 - Cancellation is supported; canceled or failed scans do not replace the last successful UI scan state.
 - Process-backed collectors use `SafeProcessRunner`.
+- Local security policy is exported read-only with fixed `secedit` arguments and parsed through a field whitelist.
+- Curated services, tasks, packages, and capabilities are bound as inventory evidence only.
+- Live BitLocker protection status is queried only when elevated; an ordinary scan preserves the explicit insufficient-access state.
+
+## Explanation contract
+
+- Catalog finalization requires a complete, setting-specific `SettingNarrative`.
+- The presentation factory projects catalog narrative fields; it does not generate normal explanations from risk/domain switches.
+- Emergency fallback text is visibly flagged and rejected by catalog validation/tests.
 
 ## Version source
 

@@ -1,64 +1,60 @@
 # Windows Privacy Platform
 
-**Version 2.1**
+**Version 2.1.0**
 
-Evidence-driven Windows privacy and configuration inspection and management.
+Evidence-driven Windows privacy and security inspection with deliberately constrained, one-setting-at-a-time modification.
 
 > **Understand first. Change deliberately. Never invent certainty.**
 
----
-
 ## What it is
 
-A local WPF tool for inspecting and carefully changing **native Windows** privacy and security configuration.
+Windows Privacy Platform is a local .NET 8/WPF application for understanding native Windows configuration. It starts with a clear choice between **Inspect** (recommended, read-only, no administrator rights) and **Modify** (administrator elevation plus an explicit session authorization).
 
-It is **not**:
+It is not an optimizer, debloater, privacy score, generic registry editor, bulk hardening tool, or cloud service.
 
-- an optimizer or “debloater”
-- a privacy score product
-- a generic registry / service / task / firewall editor
-- a one-click hardening suite
+## v2.1 coverage
 
-## What it does
+The catalog contains **257 setting-specific entries** across Windows privacy, security, servicing, applications, and system inventory. Important surfaces include:
 
-- **Inspect (default):** ConsentStore app permissions, Group Policy / registry-backed policies, Defender, SmartScreen, Windows Update policies, AppPrivacy, UAC and BitLocker **policy** observation, services, scheduled tasks, capabilities, identity, firewall **profile** state.
-- **Modify (explicit):** After UAC elevation and session authorize, only catalog settings with an explicit `WritableTarget` can be changed — **one setting at a time**. Every change is pre-read, confirmed, written with the catalog type, and verified by independent read-back.
+- ConsentStore and AppPrivacy permissions, diagnostic data, activity, location, speech, advertising, clipboard, and cloud content
+- Windows Recall, Windows Copilot, Edge, Widgets, Search, Family Safety, and accessibility settings synchronization
+- Microsoft Defender, Attack Surface Reduction rules, SmartScreen, Windows Hello, UAC, BitLocker policy, local security policy, and firewall profiles
+- Windows Update and WSUS, Storage Sense, encrypted DNS, network isolation, and Wi-Fi random-address state
+- curated read-only anchors for relevant services, scheduled tasks, AppX packages, and Windows capabilities
 
-### Evidence states
+Every catalog item carries complete decision-support text, value/source evidence, and an explicit distinction between configured, absent, unobserved, and failed collection states.
+
+## Safety contract
+
+- Inspect mode is always read-only and never elevates automatically.
+- Modify mode requires UAC elevation and one explicit authorization for the session.
+- A setting is writable only when its catalog entry has a complete, explicitly whitelisted `WritableTarget`; discovery metadata never grants write access.
+- Every write performs pre-read → user confirmation → typed write → independent value-and-kind read-back verification → local audit logging.
+- BitLocker and UAC master switches, firewall, services, scheduled tasks, packages, capabilities, ASR rules, and local security policy remain observation-only.
+- External tools run only through timeout-bound `SafeProcessRunner`; there is no arbitrary command surface.
+
+Live BitLocker protection status is queried only in an elevated process. A normal Inspect session reports **Requires Modify mode to observe** rather than inventing a state.
+
+Full details: [Status/Safety_Model.md](Status/Safety_Model.md).
+
+## Evidence states
 
 | State | Meaning |
-|-------|---------|
-| **Unknown** | Insufficient evidence. Never treated as configured or absent. |
-| **Not configured** | Location was checked; value is absent. |
-| **Not observed** | This scan did not collect this setting. |
-| **Error / Access denied** | Collection failed. Not the same as absent. |
-
-### Hard rules
-
-- No privacy “score”. No optimizer. No bulk apply. No rollback system. No profiles.
-- No application telemetry. No cloud backend.
-- Firewall **rules** are observation-only.
-- Services and scheduled tasks are observation-focused (no generic kill/edit UI).
-- BitLocker low-level operations are not exposed as a generic editor; policy observation is available.
-- Modification is **deny-by-default**: only explicit catalog `WritableTarget` entries are writable. `DiscoveryMethod` never grants write permission.
-
-Primary target: **Windows 11**. Windows 10 is supported where the same implementation is naturally correct.
-
----
+|---|---|
+| **Unknown** | Evidence is insufficient; the app does not infer a state. |
+| **Not configured** | The exact location was checked and the value was absent. |
+| **Not observed** | This scan did not collect the setting. |
+| **Error / Access denied** | Collection failed; this is never treated as absence. |
 
 ## Architecture
 
-```
+```text
 Models → Core → Logging → KnowledgeBase → Validator → Scanner → App (WPF)
 ```
 
-CLI is not part of the product. The WPF GUI is the product.
+The WPF application is the product; there is no supported CLI surface. See [Status/Architecture.md](Status/Architecture.md) for the collector, binder, narrative, and write-boundary design.
 
-Safety details: `Status/Safety_Model.md`
-
----
-
-## Building
+## Build and test
 
 ```powershell
 cd Source
@@ -67,25 +63,22 @@ dotnet build WindowsPrivacyPlatform.sln -c Release
 dotnet test WindowsPrivacyPlatform.sln -c Release
 ```
 
-### Publish (win-x64)
+Publish a framework-dependent Windows x64 build from the repository root:
 
 ```powershell
-dotnet publish ".\Source\WindowsPrivacyPlatform.App\WindowsPrivacyPlatform.App.csproj" -c Release -r win-x64 --self-contained false -o ".\publish"
+dotnet publish ".\Source\WindowsPrivacyPlatform.App\WindowsPrivacyPlatform.App.csproj" `
+  -c Release -r win-x64 --self-contained false -o ".\publish"
 ```
-
-For accurate HKLM reads and Modify mode, run elevated or use the in-app Modify elevation path.
-
----
 
 ## Local data
 
-- Window prefs: `%LocalAppData%\WindowsPrivacyPlatform\window.prefs`
-- Audit logs: under the same app data folder (`changes.log`, `auth.log`)
+- Window preferences: `%LocalAppData%\WindowsPrivacyPlatform\window.prefs`
+- Audit logs: the same local application-data directory (`changes.log`, `auth.log`)
 
----
+The app has no telemetry, cloud backend, or network phone-home.
 
-## Contributing / security
+## Project information
 
-See `CONTRIBUTING.md` and `SECURITY.md`.
+See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), and the [v2.1 status](Status/Current_Status.md).
 
 Repository: [HighLionNet/Windows-Privacy-Platform](https://github.com/HighLionNet/Windows-Privacy-Platform)

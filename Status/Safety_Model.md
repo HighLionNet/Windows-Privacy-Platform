@@ -11,9 +11,9 @@
 
 ## Explicit Modify authorization
 
-1. User chooses Modify.
-2. If the process is not elevated, UAC relaunch is offered. The old process exits.
-3. After elevation, the user must again explicitly authorize Modify for the session.
+1. The startup chooser presents Inspect (recommended) and Modify as distinct choices.
+2. If Modify is chosen while non-elevated, the app relaunches through UAC with `--resume-modify`. The old process exits.
+3. After elevation, the app proceeds directly to one explicit Modify authorization for the session; it does not make the user select Modify again.
 4. Elevation alone never grants Modify authorization.
 
 ## WritableTarget (deny-by-default)
@@ -22,6 +22,7 @@
 - `DiscoveryMethod` is observation metadata only. It **never** creates write permission.
 - Authorization is ObjectId-whitelisted in the catalog.
 - Firewall domain is hard-blocked from writes.
+- UAC master switches, BitLocker, services, scheduled tasks, packages, capabilities, ASR rules, and local security policy remain observation-only.
 
 Each WritableTarget specifies:
 

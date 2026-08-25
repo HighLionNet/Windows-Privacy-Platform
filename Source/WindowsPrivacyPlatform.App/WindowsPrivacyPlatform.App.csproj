@@ -11,7 +11,7 @@
     <RootNamespace>WindowsPrivacyPlatform.App</RootNamespace>
     <AssemblyName>WindowsPrivacyPlatform</AssemblyName>
     <AssemblyTitle>Windows Privacy Platform</AssemblyTitle>
-    <!-- Version comes from Directory.Build.props (2.0.0) -->
+    <!-- Version comes from Directory.Build.props (2.1.0) -->
   </PropertyGroup>
 
   <ItemGroup>
