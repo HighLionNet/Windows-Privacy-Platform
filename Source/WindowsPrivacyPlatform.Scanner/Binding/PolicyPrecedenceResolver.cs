@@ -223,7 +223,7 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
 
             if (primaryOk && alternateOk)
             {
-                var conflict = !string.Equals(primaryRaw, alternateRaw, StringComparison.OrdinalIgnoreCase);
+                var conflict = !AreSemanticallyEquivalent(primaryDefinition, primaryRaw, alternateRaw);
                 return new ConfigurationResolution
                 {
                     RawObservations = observations,
@@ -342,13 +342,14 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
 
             var ordered = list.OrderByDescending(l => LayerRank(l.Layer)).ToList();
             var winner = ordered[0];
+            var winnerRaw = ExtractRawPolicyValue(winner.RawValue);
             var sameRankDifferentValue = ordered
                 .Where(l => LayerRank(l.Layer) == LayerRank(winner.Layer))
-                .Select(l => ExtractRawPolicyValue(l.RawValue))
-                .Where(IsConfiguredValue)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .Take(2)
-                .Count() > 1;
+                .Skip(1)
+                .Any(l => !AreSemanticallyEquivalent(
+                    definition,
+                    winnerRaw,
+                    ExtractRawPolicyValue(l.RawValue)));
 
             if (sameRankDifferentValue)
             {
@@ -368,12 +369,11 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
             }
 
             var conflict = ordered.Skip(1).Any(l =>
-                !string.Equals(
-                    ExtractRawPolicyValue(l.RawValue),
-                    ExtractRawPolicyValue(winner.RawValue),
-                    StringComparison.OrdinalIgnoreCase));
+                !AreSemanticallyEquivalent(
+                    definition,
+                    winnerRaw,
+                    ExtractRawPolicyValue(l.RawValue)));
 
-            var winnerRaw = ExtractRawPolicyValue(winner.RawValue);
             var meaning = ValueSemanticsInterpreter.Interpret(definition, winnerRaw);
 
             return new ConfigurationResolution
@@ -393,6 +393,32 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
                 SemanticDisplay = meaning?.DisplayLabel,
                 HasConflict = conflict
             };
+        }
+
+        /// <summary>
+        /// Compare the catalog meaning first. Raw encodings are compared only when either value
+        /// has no semantic mapping. This avoids reporting a conflict when two policy stores encode
+        /// the same effective state with different numeric or textual representations.
+        /// </summary>
+        private static bool AreSemanticallyEquivalent(
+            ManagedObject? definition,
+            string? leftRaw,
+            string? rightRaw)
+        {
+            var left = ExtractRawPolicyValue(leftRaw);
+            var right = ExtractRawPolicyValue(rightRaw);
+            var leftMeaning = ValueSemanticsInterpreter.Interpret(definition, left);
+            var rightMeaning = ValueSemanticsInterpreter.Interpret(definition, right);
+
+            if (leftMeaning is not null && rightMeaning is not null)
+            {
+                return string.Equals(
+                    leftMeaning.Canonical,
+                    rightMeaning.Canonical,
+                    StringComparison.OrdinalIgnoreCase);
+            }
+
+            return string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
         }
     }
 }

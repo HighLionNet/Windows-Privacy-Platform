@@ -31,9 +31,11 @@ public partial class MainWindow : Window
     private bool _sidebarCollapsed;
     private readonly string _prefsPath;
     private bool _modeChangeInProgress;
+    private readonly bool _startupModifyRequested;
 
-    public MainWindow()
+    public MainWindow(bool startupModifyRequested = false)
     {
+        _startupModifyRequested = startupModifyRequested;
         // Must construct before InitializeComponent: ModeCombo SelectionChanged fires during XAML load.
         _elevation = new ElevationService(_log);
         _changes = new PolicyChangeService(_elevation, _log);
@@ -50,6 +52,7 @@ public partial class MainWindow : Window
 
         Loaded += async (_, _) =>
         {
+            BuildDomainNavigation();
             CollectNavButtons();
             if (_sidebarCollapsed)
             {
@@ -58,6 +61,8 @@ public partial class MainWindow : Window
             }
             UpdateBreadcrumbs("Machine Overview");
             ShowWelcome();
+            if (_startupModifyRequested)
+                EnterModifyMode();
             await RunScanAsync();
         };
 
@@ -68,6 +73,65 @@ public partial class MainWindow : Window
                     StatusText.Text = status;
             });
     }
+
+    private void BuildDomainNavigation()
+    {
+        DomainNavPanel.Children.Clear();
+
+        var domains = ManagedObjectCatalog.All
+            .Select(m => m.ProductDomain)
+            .Distinct()
+            .OrderBy(DomainGroupOrder)
+            .ThenBy(NavigationBuilder.HumanizeDomain)
+            .GroupBy(DomainGroup);
+
+        foreach (var group in domains)
+        {
+            DomainNavPanel.Children.Add(new Border
+            {
+                Style = (Style)FindResource("SectionRule"),
+                Margin = new Thickness(10, 8, 10, 2)
+            });
+
+            var label = new TextBlock
+            {
+                Text = group.Key.ToUpperInvariant(),
+                Style = (Style)FindResource("SidebarGroupLabel")
+            };
+
+            var brushKey = group.Key switch
+            {
+                "Privacy" => "BrushDomainPrivacy",
+                "Security" => "BrushDomainSecurity",
+                "Windows" => "BrushDomainWindows",
+                "Applications" => "BrushDomainApps",
+                _ => "BrushTextMuted"
+            };
+            label.Foreground = (Brush)FindResource(brushKey);
+            DomainNavPanel.Children.Add(label);
+
+            foreach (var domain in group)
+            {
+                var button = new Button
+                {
+                    Content = NavigationBuilder.HumanizeDomain(domain),
+                    Style = (Style)FindResource("SidebarButton"),
+                    Tag = $"domain:{domain}"
+                };
+                button.Click += Nav_Click;
+                DomainNavPanel.Children.Add(button);
+            }
+        }
+    }
+
+    private static int DomainGroupOrder(ProductDomain domain) => DomainGroup(domain) switch
+    {
+        "Privacy" => 0,
+        "Security" => 1,
+        "Windows" => 2,
+        "Applications" => 3,
+        _ => 4
+    };
 
     private void CollectNavButtons()
     {
@@ -490,30 +554,38 @@ public partial class MainWindow : Window
 
         if (ModeCombo.SelectedIndex == 1)
         {
-            _modeChangeInProgress = true;
-            try
-            {
-                if (!_elevation.TryEnterModifyMode(this))
-                {
-                    ModeCombo.SelectedIndex = 0;
-                    return;
-                }
-
-                StatusText.Text = "Modify mode authorized — use value buttons on category pages to change settings.";
-                _log.Change("MainWindow", "Modify mode entered. Registry writes enabled with confirmation.");
-                // Rebuild current view so value buttons become enabled.
-                Navigate(_currentNav);
-            }
-            finally
-            {
-                _modeChangeInProgress = false;
-            }
+            EnterModifyMode();
         }
         else
         {
             _elevation.ExitModifyMode();
             StatusText.Text = "Inspect mode · read-only.";
             Navigate(_currentNav);
+        }
+    }
+
+    private void EnterModifyMode()
+    {
+        if (_modeChangeInProgress)
+            return;
+
+        _modeChangeInProgress = true;
+        try
+        {
+            if (!_elevation.TryEnterModifyMode(this))
+            {
+                ModeCombo.SelectedIndex = 0;
+                return;
+            }
+
+            ModeCombo.SelectedIndex = 1;
+            StatusText.Text = "Modify mode authorized — use value buttons on category pages to change settings.";
+            _log.Change("MainWindow", "Modify mode entered. Registry writes enabled with confirmation.");
+            Navigate(_currentNav);
+        }
+        finally
+        {
+            _modeChangeInProgress = false;
         }
     }
 

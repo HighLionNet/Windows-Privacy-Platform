@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Management;
 using System.Runtime.InteropServices;
+using System.Security.Principal;
 using Microsoft.Win32;
 using WindowsPrivacyPlatform.Models;
 
@@ -250,14 +251,99 @@ namespace WindowsPrivacyPlatform.Scanner
                 notes.Add("Domain membership could not be verified with available read-only sources.");
             }
 
-            // Secure Boot / TPM / BitLocker are often restricted; leave Unknown with notes.
+            // Secure Boot / TPM and Entra state still require additional providers.
             snapshot.Identity.SecureBootState = "Unknown";
             snapshot.Identity.TpmPresent = "Unknown";
             snapshot.Identity.TpmVersion = "Unknown";
-            snapshot.Identity.BitLockerProtectionStatus = "Unknown";
             snapshot.Identity.AzureAdJoined = "Unknown";
-            notes.Add("Secure Boot, TPM, BitLocker, and Entra join state require additional providers or elevation on many hosts; reported as Unknown.");
+            notes.Add("Secure Boot, TPM, and Entra join state require additional providers on many hosts; reported as Unknown.");
+
+            TryCollectBitLockerStatus(snapshot, notes);
         }
+
+        private static void TryCollectBitLockerStatus(InventorySnapshot snapshot, List<string> notes)
+        {
+            if (!IsProcessElevated())
+            {
+                snapshot.Identity.BitLockerProtectionStatus = "Requires Modify mode to observe";
+                notes.Add("Live BitLocker volume status was not queried because this Inspect-mode process is not elevated.");
+                return;
+            }
+
+            try
+            {
+                var scope = new ManagementScope(@"\\.\root\CIMV2\Security\MicrosoftVolumeEncryption");
+                scope.Connect();
+                using var searcher = new ManagementObjectSearcher(
+                    scope,
+                    new ObjectQuery("SELECT DriveLetter, ProtectionStatus, ConversionStatus FROM Win32_EncryptableVolume"));
+                using var results = searcher.Get();
+                var volumes = new List<string>();
+
+                foreach (ManagementObject volume in results)
+                {
+                    using (volume)
+                    {
+                        var drive = volume["DriveLetter"]?.ToString();
+                        if (string.IsNullOrWhiteSpace(drive))
+                            drive = "Volume";
+
+                        var protection = ToUInt32(volume["ProtectionStatus"]);
+                        var conversion = ToUInt32(volume["ConversionStatus"]);
+                        volumes.Add($"{drive}: {FormatProtection(protection)}, {FormatConversion(conversion)}");
+                    }
+                }
+
+                snapshot.Identity.BitLockerProtectionStatus = volumes.Count > 0
+                    ? string.Join("; ", volumes)
+                    : "No encryptable volumes reported";
+                notes.Add("Live BitLocker protection state queried from Win32_EncryptableVolume using the elevated read token.");
+            }
+            catch (Exception ex)
+            {
+                snapshot.Identity.BitLockerProtectionStatus = "Unavailable (elevated query failed)";
+                notes.Add($"Live BitLocker WMI query failed while elevated ({ex.GetType().Name}); no protection state was inferred.");
+            }
+        }
+
+        private static bool IsProcessElevated()
+        {
+            try
+            {
+                using var identity = WindowsIdentity.GetCurrent();
+                return new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static uint? ToUInt32(object? value)
+        {
+            if (value is uint typed)
+                return typed;
+            return uint.TryParse(value?.ToString(), out var parsed) ? parsed : null;
+        }
+
+        private static string FormatProtection(uint? value) => value switch
+        {
+            0 => "protection off",
+            1 => "protection on",
+            2 => "protection unknown",
+            _ => "protection unavailable"
+        };
+
+        private static string FormatConversion(uint? value) => value switch
+        {
+            0 => "fully decrypted",
+            1 => "fully encrypted",
+            2 => "encryption in progress",
+            3 => "decryption in progress",
+            4 => "encryption paused",
+            5 => "decryption paused",
+            _ => "conversion state unavailable"
+        };
 
         private static void TryPowerShellVersion(InventorySnapshot snapshot, List<string> notes)
         {

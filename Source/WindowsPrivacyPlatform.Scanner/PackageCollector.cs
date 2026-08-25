@@ -1,7 +1,7 @@
 // Source/WindowsPrivacyPlatform.Scanner/PackageCollector.cs
 using System;
-using System.Diagnostics;
 using System.Text;
+using System.Threading;
 using WindowsPrivacyPlatform.Models;
 
 namespace WindowsPrivacyPlatform.Scanner
@@ -22,25 +22,18 @@ namespace WindowsPrivacyPlatform.Scanner
             try
             {
                 // -AllUsers requires elevation; omit it to stay non-elevated.
-                var psi = new ProcessStartInfo
-                {
-                    FileName = "powershell.exe",
-                    Arguments = "-NoProfile -NonInteractive -Command \"Get-AppxPackage | Select-Object -ExpandProperty Name\"",
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    StandardOutputEncoding = Encoding.UTF8
-                };
+                var result = SafeProcessRunner.Run(
+                    "powershell.exe",
+                    "-NoProfile -NonInteractive -Command \"Get-AppxPackage | Select-Object -ExpandProperty Name\"",
+                    TimeSpan.FromSeconds(20),
+                    CancellationToken.None,
+                    Encoding.UTF8);
 
-                using var process = Process.Start(psi);
-                if (process is null)
+                if (!result.Started || result.TimedOut || result.Canceled ||
+                    (result.ExitCode != 0 && string.IsNullOrWhiteSpace(result.StdOut)))
                     return;
 
-                var output = process.StandardOutput.ReadToEnd();
-                process.WaitForExit(20000);
-
-                foreach (var line in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+                foreach (var line in result.StdOut.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
                 {
                     var name = line.Trim();
                     if (!string.IsNullOrWhiteSpace(name))

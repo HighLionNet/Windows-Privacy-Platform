@@ -58,31 +58,15 @@ public sealed class ElevationService
             return true;
         }
 
-        if (!elevated)
-        {
-            _log.Auth("ElevationService", "Process not elevated — offering UAC relaunch.");
-            var relaunch = MessageBox.Show(
-                owner,
-                "Modify mode requires Administrator privileges.\n\n" +
-                "Windows will prompt for elevation (UAC). The application will restart elevated.\n\n" +
-                "Continue?",
-                "Elevation required",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning,
-                MessageBoxResult.No);
-
-            if (relaunch != MessageBoxResult.Yes)
+            if (!elevated)
             {
-                _log.Auth("ElevationService", "UAC relaunch declined by user.");
-                return false;
-            }
-
-            if (TryRelaunchElevated())
-            {
-                _log.Auth("ElevationService", "UAC relaunch started. Current process will exit.");
-                Application.Current.Shutdown();
-                return false; // current process is going away
-            }
+                _log.Auth("ElevationService", "Process not elevated — starting user-requested UAC relaunch.");
+                if (TryRelaunchElevated())
+                {
+                    _log.Auth("ElevationService", "UAC relaunch started. Current process will exit.");
+                    Application.Current.Shutdown();
+                    return false; // current process is going away
+                }
 
             _log.Auth("ElevationService", "UAC relaunch failed or was cancelled.");
             MessageBox.Show(
@@ -146,6 +130,7 @@ public sealed class ElevationService
             var psi = new ProcessStartInfo
             {
                 FileName = exePath,
+                Arguments = "--resume-modify",
                 UseShellExecute = true,
                 Verb = "runas",
                 WorkingDirectory = Path.GetDirectoryName(exePath) ?? Environment.CurrentDirectory

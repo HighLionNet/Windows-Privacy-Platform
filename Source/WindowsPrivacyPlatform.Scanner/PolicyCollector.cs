@@ -28,7 +28,7 @@ namespace WindowsPrivacyPlatform.Scanner
             new("policy.telemetry.allowtelemetry", "Telemetry", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\DataCollection", "AllowTelemetry"),
             new("policy.telemetry.allowtelemetry.currentversion", "Telemetry", RegistryHive.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\DataCollection", "AllowTelemetry"),
             new("policy.telemetry.donotshowfeedback", "Telemetry", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\DataCollection", "DoNotShowFeedbackNotifications"),
-            new("policy.telemetry.disablecommercialid", "Telemetry", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\DataCollection", "AllowDeviceNameInTelemetry"),
+            new("policy.telemetry.allowdevicename", "Telemetry", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\DataCollection", "AllowDeviceNameInTelemetry"),
 
             new("policy.update.noautoupdate", "WindowsUpdate", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU", "NoAutoUpdate"),
             new("policy.update.auoptions", "WindowsUpdate", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU", "AUOptions"),
@@ -127,6 +127,17 @@ namespace WindowsPrivacyPlatform.Scanner
 
             new("policy.biometrics.enabled", "Biometrics", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Biometrics", "Enabled"),
             new("policy.biometrics.facialfeatures", "Biometrics", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Biometrics\FacialFeatures", "EnhancedAntiSpoofing"),
+
+            new("policy.uac.enablelua", "UAC", RegistryHive.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System", "EnableLUA"),
+            new("policy.uac.consentpromptbehavioradmin", "UAC", RegistryHive.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System", "ConsentPromptBehaviorAdmin"),
+            new("policy.uac.filteradministratortoken", "UAC", RegistryHive.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System", "FilterAdministratorToken"),
+            new("policy.uac.promptonsecuredesktop", "UAC", RegistryHive.LocalMachine, @"SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System", "PromptOnSecureDesktop"),
+
+            new("policy.bitlocker.enablob", "BitLocker", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\FVE", "UseAdvancedStartup"),
+            new("policy.bitlocker.preventdeviceencryption", "BitLocker", RegistryHive.LocalMachine, @"SYSTEM\CurrentControlSet\Control\BitLocker", "PreventDeviceEncryption"),
+            new("policy.bitlocker.encryptionmethod", "BitLocker", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\FVE", "EncryptionMethodWithXtsOs"),
+            new("policy.bitlocker.recoverypassword", "BitLocker", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\FVE", "OSRecoveryPassword"),
+            new("policy.bitlocker.activeDirectoryBackup", "BitLocker", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\FVE", "OSActiveDirectoryBackup"),
 
             new("policy.clipboard.allowhistory", "Clipboard", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\System", "AllowClipboardHistory"),
             new("policy.clipboard.allowcrossdevice", "Clipboard", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Windows\System", "AllowCrossDeviceClipboard"),
