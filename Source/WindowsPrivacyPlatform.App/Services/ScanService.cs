@@ -102,7 +102,16 @@ public sealed class ScanService
             Report("Loading knowledge catalog…");
 
             // Fresh catalog instances for this scan (avoid stale observation mutation across scans).
-            var catalog = ManagedObjectCatalog.All.Select(CloneDefinition).ToList();
+            // Live collectors own component inventory. Static component anchors are omitted to
+            // prevent duplicates and to keep native component control outside the product surface.
+            var catalog = ManagedObjectCatalog.All
+                .Where(item => item.FeatureCategory is not (
+                    FeatureCategory.WindowsService or FeatureCategory.ScheduledTask or
+                    FeatureCategory.AppxPackage or FeatureCategory.ProvisionedPackage or
+                    FeatureCategory.OptionalFeature or FeatureCategory.WindowsCapability or
+                    FeatureCategory.FirewallRule))
+                .Select(CloneDefinition)
+                .ToList();
 
             if (snapshot is not null)
             {

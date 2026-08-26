@@ -8,7 +8,7 @@ namespace WindowsPrivacyPlatform.Models;
 
 public static class ManagedObjectCatalog
 {
-    public const string CatalogVersion = "2.2";
+    public const string CatalogVersion = "2.3";
     public static IReadOnlyList<ManagedObject> PrivacySettings { get; } = Finalize(CreatePrivacyBatch());
     public static IReadOnlyList<ManagedObject> PolicySettings { get; } = Finalize(
         CreatePolicyBatch()
@@ -33,6 +33,7 @@ public static class ManagedObjectCatalog
             ApplyExclusionDecision(mo);
             ApplyNativeToolLink(mo);
             mo.Bucket = CatalogPolicy.ResolveBucket(mo);
+            HubTaxonomy.Apply(mo);
             CatalogNarrativeAuthoring.Apply(mo);
         }
         return batch;
@@ -219,6 +220,19 @@ public static class ManagedObjectCatalog
             "policy.edge.sendsitinfo" or
             "policy.clipboard.allowhistory" or
             "policy.clipboard.allowcrossdevice" or
+            "policy.copilot.turnoff" or
+            "policy.recall.disableaidataanalysis" or
+            "policy.recall.disableclicktodo" or
+            "policy.widgets.allow" or
+            "policy.widgets.disableboard" or
+            "policy.onedrive.disablefilesync" or
+            "policy.onedrive.disablepersonal" or
+            "policy.onedrive.filesondemand" or
+            "policy.network.llmnr" or
+            "policy.network.bridge" or
+            "policy.remote.rdp" or
+            "policy.remote.assistance" or
+            "policy.remote.unsolicited" or
             "policy.update.targetreleaseversion" or
             "policy.update.disabledualscan" or
             "policy.update.managepreviewbuilds" or

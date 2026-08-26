@@ -5,14 +5,14 @@ namespace WindowsPrivacyPlatform.Tests;
 
 public class WritableTargetAuthorizationTests
 {
-    public static IEnumerable<object[]> CuratedNativeCases() =>
+    public static IEnumerable<object[]> CuratedRegistryCases() =>
         CuratedWriteAuthorizations.Targets
             .OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase)
             .Select(pair => new object[] { pair.Key, pair.Value.SupportedRawValues[0] });
 
     [Theory]
-    [MemberData(nameof(CuratedNativeCases))]
-    public void Every_curated_native_authorization_is_present_complete_and_round_trips(
+    [MemberData(nameof(CuratedRegistryCases))]
+    public void Every_curated_registry_authorization_is_present_complete_and_round_trips(
         string objectId,
         string requestedValue)
     {
@@ -86,7 +86,7 @@ public class WritableTargetAuthorizationTests
             Assert.False(item.IsWritable, item.ObjectId);
             Assert.Equal(ExclusionReason.HighRiskIrreversible, item.ExclusionReason);
             Assert.True(item.NativeTool is { IsComplete: true }, item.ObjectId);
-            Assert.Equal(CatalogBucket.Settings, item.Bucket);
+            Assert.Equal(CatalogBucket.InternalReference, item.Bucket);
         });
     }
 

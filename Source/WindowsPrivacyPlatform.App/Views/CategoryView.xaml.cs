@@ -13,9 +13,7 @@ using WindowsPrivacyPlatform.Models;
 namespace WindowsPrivacyPlatform.App.Views;
 
 /// <summary>
-/// Category page: compact two-column cards.
-/// Left: name, short blurb, path/type, current value.
-/// Right: option buttons — button content is ONLY the raw value; note is DisplayLabel.
+/// Compact category page. Every visible item has an approved write contract.
 /// </summary>
 public partial class CategoryView : UserControl
 {
@@ -73,9 +71,7 @@ public partial class CategoryView : UserControl
             m.Observation?.Resolution?.HasConflict == true ||
             m.Observation?.Effective?.HasConflict == true);
 
-        var modeHint = _elevation.IsModifyAuthorized
-            ? "Modify — options on the right apply changes (verified)"
-            : "Inspect — switch to Modify to change values";
+        var modeHint = _elevation.IsModifyAuthorized ? "Modify mode" : "Inspect mode";
 
         SubtitleText.Text = conflicts > 0
             ? $"{NavigationBuilder.HumanizeDomain(domain)} · {items.Count} settings · {conflicts} conflict(s) · {modeHint}"
@@ -111,32 +107,21 @@ public partial class CategoryView : UserControl
 
         var left = new StackPanel();
 
-        var heading = new DockPanel { LastChildFill = false };
-
-        var name = new TextBlock
+        var heading = new DockPanel { LastChildFill = true };
+        var id = mo.ObjectId;
+        var name = new Button
         {
-            Text = mo.ObjectName,
+            Content = mo.ObjectName,
+            Style = (Style)FindResource("LinkButton"),
             FontWeight = FontWeights.SemiBold,
             FontSize = 13,
-            Foreground = (Brush)FindResource("BrushTextPrimary"),
-            TextWrapping = TextWrapping.Wrap
-        };
-        var id = mo.ObjectId;
-        DockPanel.SetDock(name, Dock.Left);
-        heading.Children.Add(name);
-        var details = new Button
-        {
-            Content = "Details",
-            Style = (Style)FindResource("LinkButton"),
-            Margin = new Thickness(8, 0, 0, 0),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Padding = new Thickness(0),
             ToolTip = "Open setting details"
         };
-        details.Click += (_, _) => openSetting(id);
-        AutomationProperties.SetName(details, $"Open details for {mo.ObjectName}");
-        DockPanel.SetDock(details, Dock.Right);
-        heading.Children.Add(details);
-        if (!mo.IsWritable)
-            heading.Children.Add(BuildBadge("VIEW ONLY", "BadgeUnknown"));
+        name.Click += (_, _) => openSetting(id);
+        AutomationProperties.SetName(name, $"Open {mo.ObjectName}");
+        heading.Children.Add(name);
         if (!mo.IsApplicableHere)
             heading.Children.Add(BuildBadge(CatalogPolicy.ApplicabilityBadgeText(mo.Applicability), "BadgeWarning"));
         left.Children.Add(heading);
@@ -156,7 +141,7 @@ public partial class CategoryView : UserControl
 
         left.Children.Add(new TextBlock
         {
-            Text = mo.TechnicalLocation,
+            Text = TechnicalLocationFormatter.DirectPath(mo.TechnicalLocation),
             FontSize = 10,
             FontFamily = new FontFamily("Cascadia Code, Consolas, Segoe UI"),
             Foreground = (Brush)FindResource("BrushTextMuted"),
@@ -213,7 +198,6 @@ public partial class CategoryView : UserControl
 
                 var row = new DockPanel { Margin = new Thickness(0, 0, 0, 3) };
 
-                // Button = raw value only.
                 var btn = MakeValueButton(
                     opt.RawDisplay,
                     isCurrent,
@@ -252,7 +236,6 @@ public partial class CategoryView : UserControl
     {
         public string? Raw;
         public string RawDisplay = string.Empty;
-        /// <summary>Short human label shown next to the button (DisplayLabel / meaning).</summary>
         public string Note = string.Empty;
         /// <summary>Longer explanation for tooltip.</summary>
         public string? Tooltip;
@@ -261,8 +244,7 @@ public partial class CategoryView : UserControl
     }
 
     /// <summary>
-    /// Options from ValueSemantics only. Button = raw value. Note = clear DisplayLabel.
-    /// Never invent 0/1. Never show "Policy value 0." as the note.
+    /// Options come only from catalog semantics and approved supported values.
     /// </summary>
     private static List<OptionItem> BuildOptionList(ManagedObject mo, string windowsVersion, string edition)
     {
@@ -277,16 +259,14 @@ public partial class CategoryView : UserControl
                 if (list.Any(o => string.Equals(o.Raw, v.RawValue, StringComparison.OrdinalIgnoreCase)))
                     continue;
 
-                // Prefer DisplayLabel for the visible note — never dump raw Description if it is generic.
-                var note = FormatOptionNote(v);
-                var tip = string.IsNullOrWhiteSpace(v.Description) ? note : v.Description;
+                var copy = SettingOptionLanguage.For(mo, v);
 
                 list.Add(new OptionItem
                 {
                     Raw = v.RawValue,
-                    RawDisplay = v.RawValue,
-                    Note = note,
-                    Tooltip = tip,
+                    RawDisplay = copy.Action,
+                    Note = copy.Effect,
+                    Tooltip = $"Registry value: {v.RawValue}\n{copy.Effect}",
                     IsApplicable = ApplicabilityEvaluator.IsValueApplicable(v, windowsVersion, edition)
                 });
                 if (!list[^1].IsApplicable)
@@ -296,38 +276,17 @@ public partial class CategoryView : UserControl
 
         if (list.Count > 0 && mo.WritableTarget is { Kind: WritableTargetKind.Registry, SupportsDeletion: true })
         {
+            var clear = SettingOptionLanguage.Clear();
             list.Add(new OptionItem
             {
                 Raw = null,
-                RawDisplay = "—",
-                Note = "Not configured (delete value)",
+                RawDisplay = clear.Action,
+                Note = clear.Effect,
                 Tooltip = "Remove the registry value so Windows treats this setting as not configured.",
                 IsClear = true
             });
         }
         return list;
-    }
-
-    /// <summary>
-    /// Build a clear short note for the UI. Avoids generic "Policy value 0." style text.
-    /// </summary>
-    private static string FormatOptionNote(ValueMeaning v)
-    {
-        if (!string.IsNullOrWhiteSpace(v.DisplayLabel) &&
-            !v.DisplayLabel.StartsWith("Policy value", StringComparison.OrdinalIgnoreCase))
-            return v.DisplayLabel.Trim();
-
-        if (!string.IsNullOrWhiteSpace(v.Canonical) &&
-            !v.Canonical.Equals(v.RawValue, StringComparison.OrdinalIgnoreCase))
-            return v.Canonical.Trim();
-
-        if (!string.IsNullOrWhiteSpace(v.Description) &&
-            !v.Description.StartsWith("Policy value", StringComparison.OrdinalIgnoreCase) &&
-            v.Description.Length <= 48)
-            return v.Description.Trim().TrimEnd('.');
-
-        // Last resort: canonical or raw
-        return !string.IsNullOrWhiteSpace(v.Canonical) ? v.Canonical : (v.RawValue ?? string.Empty);
     }
 
     private Button MakeValueButton(string label, bool isCurrent, Action onClick, string? effectTooltip, bool targetAvailable)

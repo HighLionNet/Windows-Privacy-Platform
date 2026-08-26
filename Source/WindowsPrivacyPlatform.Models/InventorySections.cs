@@ -2,7 +2,7 @@ namespace WindowsPrivacyPlatform.Models;
 
 /// <summary>
 /// Domain-organized read-only observations used by the machine overview, settings evidence,
-/// and System Inventory surfaces.
+/// and System Explorer surfaces.
 /// </summary>
 
 public class IdentityInventory

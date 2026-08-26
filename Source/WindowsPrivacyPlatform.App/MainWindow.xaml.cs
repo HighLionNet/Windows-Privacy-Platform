@@ -8,6 +8,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using WindowsPrivacyPlatform.App.Services;
 using WindowsPrivacyPlatform.App.Views;
 using WindowsPrivacyPlatform.Logging;
@@ -49,7 +50,6 @@ public partial class MainWindow : Window
         var product = ProductInfoReader.Read();
         Title = product.Name;
         ProductNameText.Text = product.Name;
-        ProductMarkText.Text = product.Mark;
         HeaderVersionText.Text = "v" + product.Version;
         FooterVersionText.Text = "v" + product.Version;
 
@@ -77,7 +77,7 @@ public partial class MainWindow : Window
                 SidebarColumn.Width = new GridLength(0);
                 NavPanel.Visibility = Visibility.Collapsed;
             }
-            UpdateBreadcrumbs("Machine Overview");
+            UpdateBreadcrumbs("Overview");
             ShowWelcome();
             if (modifyRequested)
                 ModeCombo.SelectedIndex = 1;
@@ -112,14 +112,14 @@ public partial class MainWindow : Window
 
     private void ShowWelcome()
     {
-        ContentHost.Content = new TextBlock
+        SetContent(new TextBlock
         {
-            Text = "Press Scan (F5) to collect local configuration and system inventory.\n\nInspect mode is read-only. Modify mode requires administrator authorization and enables approved setting controls.",
+            Text = "Scan to review Windows privacy and security policies.\n\nInspect is read-only. Modify enables only the verified settings shown in this app.",
             FontSize = 13,
             Foreground = (Brush)FindResource("BrushTextSecondary"),
             TextWrapping = TextWrapping.Wrap,
             Margin = new Thickness(4)
-        };
+        });
         UpdateBreadcrumbs("Ready");
     }
 
@@ -130,8 +130,6 @@ public partial class MainWindow : Window
 
     private void MenuHome_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("home");
     private void MenuInventory_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("inventory");
-    private void MenuConflicts_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("conflicts");
-    private void MenuKnowledge_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("knowledge");
     private void MenuAbout_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("about");
 
     private void MenuSearch_Click(object sender, RoutedEventArgs e)
@@ -155,6 +153,7 @@ public partial class MainWindow : Window
         _cts = new CancellationTokenSource();
         ScanButton.IsEnabled = false;
         ScanButton.Content = "Scanning…";
+        ScanProgress.Visibility = Visibility.Visible;
 
         try
         {
@@ -166,6 +165,7 @@ public partial class MainWindow : Window
         {
             ScanButton.IsEnabled = true;
             ScanButton.Content = "Scan";
+            ScanProgress.Visibility = Visibility.Collapsed;
         }
     }
 
@@ -174,22 +174,18 @@ public partial class MainWindow : Window
         if (_scan.Overview is not null)
         {
             ScanTimeLabel.Text = $"Scanned {_scan.Overview.LastScanUtc:yyyy-MM-dd HH:mm} UTC";
-            CatalogCountLabel.Text = $"Objects: {_scan.Catalog.Count}";
-            ValidationLabel.Text = _scan.ValidationFailed == 0
-                ? $"Validation: {_scan.ValidationPassed} ok"
-                : $"Validation: {_scan.ValidationPassed} ok / {_scan.ValidationFailed} fail";
-            ValidationLabel.ToolTip = _scan.ValidationFailed == 0
-                ? "All catalog and live inventory entries passed structural validation."
-                : string.Join("\n", _scan.ValidationResults
-                    .Where(result => !result.IsValid)
-                    .Take(8)
-                    .Select(result => $"{result.ObjectId}: {string.Join("; ", result.Errors)}"));
+            CatalogCountLabel.Text = $"Settings: {_scan.SettingsCatalog.Count}";
+            ConflictCountLabel.Text = $"Explorer: {_scan.InventoryCatalog.Count}";
 
-            var conflicts = _scan.Query?.GetConflicts().Count() ?? 0;
-            ConflictCountLabel.Text = $"Conflicts: {conflicts}";
-            ConflictCountLabel.Foreground = conflicts > 0
-                ? (Brush)FindResource("BrushConflict")
-                : (Brush)FindResource("BrushTextMuted");
+            var visibleDomains = _scan.SettingsCatalog.Select(item => item.ProductDomain).ToHashSet();
+            foreach (var button in _navButtons)
+            {
+                if (button.Tag is not string tag || !tag.StartsWith("domain:", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                button.Visibility = Enum.TryParse<ProductDomain>(tag["domain:".Length..], out var domain) && visibleDomains.Contains(domain)
+                    ? Visibility.Visible
+                    : Visibility.Collapsed;
+            }
         }
     }
 
@@ -222,35 +218,21 @@ public partial class MainWindow : Window
 
         if (tag == "home")
         {
-            ContentHost.Content = new HomeView(_scan, OpenSetting, NavigateDomain, OpenConflicts);
-            UpdateBreadcrumbs("Machine Overview");
+            SetContent(new HomeView(_scan, OpenSetting));
+            UpdateBreadcrumbs("Overview");
             return;
         }
 
         if (tag == "inventory")
         {
-            ContentHost.Content = new SystemInventoryView(_scan, OpenSetting);
-            UpdateBreadcrumbs("System Inventory");
-            return;
-        }
-
-        if (tag == "conflicts")
-        {
-            ContentHost.Content = new ConflictsView(_scan, OpenSetting);
-            UpdateBreadcrumbs("Conflicts");
-            return;
-        }
-
-        if (tag == "knowledge")
-        {
-            ContentHost.Content = new KnowledgeExplorerView(_scan, OpenSetting);
-            UpdateBreadcrumbs("Knowledge Explorer");
+            SetContent(new SystemInventoryView(_scan, OpenSetting));
+            UpdateBreadcrumbs("System Explorer");
             return;
         }
 
         if (tag == "about")
         {
-            ContentHost.Content = new AboutView(_scan);
+            SetContent(new AboutView(_scan));
             UpdateBreadcrumbs("About");
             return;
         }
@@ -260,7 +242,7 @@ public partial class MainWindow : Window
             var name = tag["domain:".Length..];
             if (Enum.TryParse<ProductDomain>(name, out var domain))
             {
-                ContentHost.Content = new DomainView(_scan, domain, OpenCategory, OpenSetting);
+                SetContent(new DomainView(_scan, domain, OpenCategory, OpenSetting));
                 UpdateBreadcrumbs(
                     NavigationBuilder.HumanizeDomain(domain),
                     group: DomainGroup(domain),
@@ -280,7 +262,7 @@ public partial class MainWindow : Window
                 var category = rest[(sep + 1)..];
                 if (Enum.TryParse<ProductDomain>(domainName, out var domain))
                 {
-                    ContentHost.Content = new CategoryView(
+                    SetContent(new CategoryView(
                         _scan,
                         domain,
                         category,
@@ -288,7 +270,7 @@ public partial class MainWindow : Window
                         _elevation,
                         _changes,
                         RunScanAsync,
-                        this);
+                        this));
                     UpdateBreadcrumbs(
                         category,
                         group: DomainGroup(domain),
@@ -308,16 +290,6 @@ public partial class MainWindow : Window
         }
 
         ShowWelcome();
-    }
-
-    private void OpenConflicts()
-    {
-        NavigateFromMenu("conflicts");
-    }
-
-    private void NavigateDomain(ProductDomain domain)
-    {
-        NavigateFromMenu($"domain:{domain}");
     }
 
     private void OpenCategory(ProductDomain domain, string category)
@@ -348,13 +320,13 @@ public partial class MainWindow : Window
             ? mo.ProductDomain.ToString()
             : mo.SubCategory!;
 
-        ContentHost.Content = new SettingDetailPage(detail, OpenSetting);
+        SetContent(new SettingDetailPage(detail, OpenSetting));
         if (mo.Bucket == CatalogBucket.SystemInventory)
         {
             BreadcrumbPanel.Children.Clear();
             AddBreadcrumbLink("Home", "home");
             AddBreadcrumbSep();
-            AddBreadcrumbLink("System Inventory", "inventory");
+            AddBreadcrumbLink("System Explorer", "inventory");
             AddBreadcrumbSep();
             AddBreadcrumbText(detail.Title);
             _currentNav = $"setting:{objectId}";
@@ -375,12 +347,11 @@ public partial class MainWindow : Window
     {
         ProductDomain.ConsentStore or ProductDomain.AppPrivacy or ProductDomain.Telemetry
             or ProductDomain.Advertising or ProductDomain.Location or ProductDomain.ActivityHistory
-            or ProductDomain.CloudContent => "Privacy",
+            or ProductDomain.CloudContent or ProductDomain.Device or ProductDomain.Speech or ProductDomain.Other => "Privacy",
         ProductDomain.Defender or ProductDomain.Firewall or ProductDomain.Biometrics or ProductDomain.LocalSecurity
             or ProductDomain.Network or ProductDomain.RemoteAccess => "Security",
-        ProductDomain.WindowsUpdate or ProductDomain.Search or ProductDomain.Speech or ProductDomain.Device
-            or ProductDomain.Widgets or ProductDomain.Storage or ProductDomain.Copilot or ProductDomain.Recall => "Windows",
-        ProductDomain.Edge or ProductDomain.OneDrive => "Applications",
+        ProductDomain.Search or ProductDomain.Widgets or ProductDomain.Copilot or ProductDomain.Recall
+            or ProductDomain.Edge or ProductDomain.OneDrive => "Windows Apps",
         _ => "Domains"
     };
 
@@ -417,7 +388,7 @@ public partial class MainWindow : Window
                 AddBreadcrumbLink(categoryName, categoryTag);
         }
 
-        var isRoot = string.Equals(current, "Machine Overview", StringComparison.Ordinal)
+        var isRoot = string.Equals(current, "Overview", StringComparison.Ordinal)
                      || string.Equals(current, "Ready", StringComparison.Ordinal);
         var domainAlreadyShown = !string.IsNullOrEmpty(domainName)
                                   && string.Equals(current, domainName, StringComparison.Ordinal);
@@ -480,6 +451,18 @@ public partial class MainWindow : Window
         BreadcrumbPanel.Children.Add(btn);
     }
 
+    private void SetContent(object content)
+    {
+        ContentHost.Content = content;
+        ContentHost.Opacity = 0;
+        ContentHost.RenderTransform = new TranslateTransform(0, 4);
+        var ease = new QuadraticEase { EasingMode = EasingMode.EaseOut };
+        ContentHost.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(150)) { EasingFunction = ease });
+        ((TranslateTransform)ContentHost.RenderTransform).BeginAnimation(
+            TranslateTransform.YProperty,
+            new DoubleAnimation(4, 0, TimeSpan.FromMilliseconds(170)) { EasingFunction = ease });
+    }
+
     private void SearchBox_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Escape)
@@ -503,7 +486,7 @@ public partial class MainWindow : Window
         if (string.IsNullOrEmpty(q) || _scan.Query is null)
             return;
 
-        ContentHost.Content = new SearchResultsView(_scan, q, OpenSetting);
+        SetContent(new SearchResultsView(_scan, q, OpenSetting));
         UpdateBreadcrumbs($"Search: {q}");
     }
 

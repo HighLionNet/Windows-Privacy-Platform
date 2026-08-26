@@ -20,9 +20,16 @@ public static class CatalogPolicy
             FeatureCategory.WindowsCapability or
             FeatureCategory.FirewallRule;
 
-        return inventoryKind && !mo.IsWritable
-            ? CatalogBucket.SystemInventory
-            : CatalogBucket.Settings;
+        if (inventoryKind)
+            return CatalogBucket.SystemInventory;
+
+        // The public Settings surface is a curated policy editor, not a catalog browser.
+        // Definitions without a verified write contract remain available to validation and
+        // relationships, but are deliberately absent from navigation.
+        if (!mo.IsWritable || mo.ProductDomain is ProductDomain.WindowsUpdate or ProductDomain.Storage)
+            return CatalogBucket.InternalReference;
+
+        return CatalogBucket.Settings;
     }
 
     public static string ExclusionReasonText(ExclusionReason reason) => reason switch

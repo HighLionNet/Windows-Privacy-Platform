@@ -4,7 +4,7 @@
 
 - The WPF application is the sole product; do not restore the removed prototype CLI or duplicate source tree.
 - `Directory.Build.props` is the only literal app-version source. UI identity must continue to use `ProductInfoReader`.
-- Settings and System Inventory are separate data flows. Dynamic inventory must never gain a `WritableTarget`.
+- Settings and System Explorer are separate data flows. Dynamic inventory must never gain a `WritableTarget`.
 - Every static catalog entry requires a complete plain-language narrative and either a complete target or non-default `ExclusionReason`.
 - Registry and native targets are deny-by-default. Keep one authorization/round-trip theory row per curated allowlist entry.
 - BitLocker, User Account Control, and arbitrary firewall-rule writes are permanent exclusions with native-tool handoff.

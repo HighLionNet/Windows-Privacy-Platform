@@ -22,13 +22,11 @@ public sealed class PolicyChangeService
 {
     private readonly ElevationService _elevation;
     private readonly IAuditLogger _log;
-    private readonly IManagedWriteBackend _nativeBackend;
 
     public PolicyChangeService(ElevationService elevation, IAuditLogger log)
     {
         _elevation = elevation ?? throw new ArgumentNullException(nameof(elevation));
         _log = log ?? throw new ArgumentNullException(nameof(log));
-        _nativeBackend = new NativeSystemWriteBackend();
     }
 
     /// <summary>
@@ -85,7 +83,11 @@ public sealed class PolicyChangeService
         }
 
         if (target.Kind != WritableTargetKind.Registry)
-            return TryApplyNative(mo, target, rawValue, owner, out message);
+        {
+            message = "Only verified registry policies can be changed in this release.";
+            _log.Change("PolicyChangeService", $"DENIED {mo.ObjectId}: non-registry target {target.Kind}.");
+            return false;
+        }
 
         if (!TryParseHive(target.Hive, out var hive))
         {
@@ -241,82 +243,6 @@ public sealed class PolicyChangeService
             _log.Change("PolicyChangeService", $"EXCEPTION {mo.ObjectId}: {ex}");
             return false;
         }
-    }
-
-    private bool TryApplyNative(
-        ManagedObject mo,
-        WritableTarget target,
-        string? rawValue,
-        Window? owner,
-        out string message)
-    {
-        if (string.IsNullOrWhiteSpace(rawValue) ||
-            !target.SupportedRawValues.Contains(rawValue, StringComparer.OrdinalIgnoreCase))
-        {
-            message = "The requested native state is outside the explicit allowlist.";
-            _log.Change("PolicyChangeService", $"DENIED {mo.ObjectId}: unsupported native value '{rawValue}'.");
-            return false;
-        }
-
-        var before = _nativeBackend.Read(target);
-        if (!before.Readable)
-        {
-            message = "Current system state could not be read. No change was attempted. " + before.Detail;
-            _log.Change("PolicyChangeService", $"PRE_READ_FAIL {mo.ObjectId} | {target.Kind}:{target.Identifier} | {before.Detail}");
-            return false;
-        }
-
-        _log.Change("PolicyChangeService", $"BEFORE {mo.ObjectId} | {target.Kind}:{target.Identifier} | {before.Value}");
-
-        var recovery = string.IsNullOrWhiteSpace(target.RecoveryHint)
-            ? string.Empty
-            : "\n\nRecovery: " + target.RecoveryHint;
-        var confirm = MessageBox.Show(
-            owner,
-            $"Change {mo.ObjectName}?\n\n" +
-            $"Current system state: {before.Value}\n" +
-            $"Requested state: {rawValue}\n" +
-            $"Target: {mo.TechnicalLocation}" + recovery + "\n\n" +
-            "The application will perform one typed operation and accept success only after an independent read-back matches.",
-            "Confirm verified change",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning,
-            MessageBoxResult.No);
-
-        if (confirm != MessageBoxResult.Yes)
-        {
-            message = "Change cancelled.";
-            _log.Change("PolicyChangeService", $"CANCELLED {mo.ObjectId} → {rawValue}");
-            return false;
-        }
-
-        if (VerifiedWriteContract.Matches(target.Kind, before.Value, rawValue))
-        {
-            message = $"Already at the requested state (verified): {rawValue}";
-            _log.Change("PolicyChangeService", $"NOOP_VERIFIED {mo.ObjectId} = {rawValue}");
-            return true;
-        }
-
-        if (!_nativeBackend.Write(target, rawValue, out var error))
-        {
-            message = "The native operation failed. " + error;
-            _log.Change("PolicyChangeService", $"WRITE_FAIL {mo.ObjectId}: {error}");
-            return false;
-        }
-
-        var after = _nativeBackend.Read(target);
-        if (!after.Readable || !VerifiedWriteContract.Matches(target.Kind, after.Value, rawValue))
-        {
-            message = after.Readable
-                ? $"The operation returned, but read-back was '{after.Value}' instead of '{rawValue}'."
-                : "The operation returned, but independent read-back failed. " + after.Detail;
-            _log.Change("PolicyChangeService", $"VERIFY_FAIL {mo.ObjectId} | intended={rawValue} | actual={after.Value} | {after.Detail}");
-            return false;
-        }
-
-        message = $"Change verified: {after.Value}";
-        _log.Change("PolicyChangeService", $"AFTER_VERIFIED {mo.ObjectId} | {target.Kind}:{target.Identifier} | {after.Value}");
-        return true;
     }
 
     // ---------- registry primitives (exact view) ----------

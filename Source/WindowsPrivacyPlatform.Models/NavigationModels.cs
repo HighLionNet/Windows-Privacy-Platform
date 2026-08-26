@@ -185,11 +185,12 @@ public static class NavigationBuilder
             foreach (var v in mo.ValueSemantics)
             {
                 if (v is null) continue;
+                var copy = SettingOptionLanguage.For(mo, v);
                 view.Options.Add(new OptionDisplay
                 {
                     RawValue = v.RawValue ?? string.Empty,
-                    Label = string.IsNullOrWhiteSpace(v.DisplayLabel) ? v.Canonical : v.DisplayLabel,
-                    Description = string.IsNullOrWhiteSpace(v.Description) ? null : v.Description
+                    Label = copy.Action,
+                    Description = copy.Effect
                 });
             }
         }
@@ -275,29 +276,30 @@ public static class NavigationBuilder
 
     public static string HumanizeDomain(ProductDomain domain) => domain switch
     {
-        ProductDomain.ConsentStore => "Privacy — App permissions",
-        ProductDomain.AppPrivacy => "Privacy — App policy overrides",
-        ProductDomain.Telemetry => "Telemetry & diagnostics",
+        ProductDomain.ConsentStore => "App permissions",
+        ProductDomain.AppPrivacy => "App policy controls",
+        ProductDomain.Telemetry => "Diagnostics & feedback",
         ProductDomain.WindowsUpdate => "Windows Update",
         ProductDomain.Defender => "Microsoft Defender",
-        ProductDomain.Search => "Search & Cortana",
+        ProductDomain.Search => "Search privacy",
         ProductDomain.Edge => "Microsoft Edge",
-        ProductDomain.ActivityHistory => "Activity History",
-        ProductDomain.CloudContent => "Cloud content & suggestions",
-        ProductDomain.Advertising => "Advertising ID",
+        ProductDomain.ActivityHistory => "Activity",
+        ProductDomain.CloudContent => "Personalization",
+        ProductDomain.Advertising => "Advertising",
         ProductDomain.Location => "Location services",
         ProductDomain.Biometrics => "Biometrics",
-        ProductDomain.Device => "Device find & recovery",
-        ProductDomain.Speech => "Speech recognition",
+        ProductDomain.Device => "Device privacy",
+        ProductDomain.Speech => "Online speech",
         ProductDomain.Firewall => "Windows Firewall",
         ProductDomain.Network => "Network security",
         ProductDomain.RemoteAccess => "Remote access",
         ProductDomain.LocalSecurity => "Local security",
-        ProductDomain.Copilot => "Windows Copilot",
-        ProductDomain.Recall => "Recall and screen analysis",
+        ProductDomain.Copilot => "Copilot",
+        ProductDomain.Recall => "Recall & Click to Do",
         ProductDomain.Widgets => "Widgets",
         ProductDomain.OneDrive => "OneDrive",
         ProductDomain.Storage => "Storage Sense",
+        ProductDomain.Other => "Clipboard",
         _ => domain.ToString()
     };
 

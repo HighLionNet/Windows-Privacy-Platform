@@ -1,7 +1,6 @@
 using System.Windows;
-using System.Windows.Automation;
 using System.Windows.Controls;
-using System.Windows.Media;
+using System.Windows.Threading;
 using WindowsPrivacyPlatform.App.Services;
 using WindowsPrivacyPlatform.Models;
 
@@ -11,133 +10,95 @@ public partial class SystemInventoryView : UserControl
 {
     private readonly IReadOnlyList<ManagedObject> _items;
     private readonly Action<string> _openSetting;
+    private readonly DispatcherTimer _debounce;
 
     public SystemInventoryView(ScanService scan, Action<string> openSetting)
     {
         InitializeComponent();
         _items = scan.InventoryCatalog;
         _openSetting = openSetting;
+        _debounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(140) };
+        _debounce.Tick += (_, _) => { _debounce.Stop(); Refresh(); };
 
-        CategoryFilter.Items.Add("All inventory");
-        foreach (var category in _items.Select(i => i.SubCategory ?? i.FeatureCategory.ToString())
-                     .Distinct(StringComparer.OrdinalIgnoreCase)
-                     .OrderBy(value => value, StringComparer.OrdinalIgnoreCase))
-            CategoryFilter.Items.Add(category);
-        CategoryFilter.SelectedIndex = 0;
+        TypeFilter.Items.Add("All component types");
+        foreach (var type in _items.Select(i => SystemExplorerGrouping.TypeLabel(i.FeatureCategory)).Distinct().OrderBy(x => x))
+            TypeFilter.Items.Add(type);
+        TypeFilter.SelectedIndex = 0;
 
-        FilterBox.TextChanged += (_, _) => Refresh();
-        CategoryFilter.SelectionChanged += (_, _) => Refresh();
+        FilterBox.TextChanged += (_, _) => { _debounce.Stop(); _debounce.Start(); };
+        TypeFilter.SelectionChanged += (_, _) => { PopulateGroups(); Refresh(); };
+        GroupFilter.SelectionChanged += (_, _) => Refresh();
+        PopulateGroups();
         Refresh();
+    }
+
+    private void PopulateGroups()
+    {
+        var selected = GroupFilter.SelectedItem as string;
+        var type = TypeFilter.SelectedItem as string ?? "All component types";
+        GroupFilter.Items.Clear();
+        GroupFilter.Items.Add("All groups");
+        foreach (var group in _items
+                     .Where(i => type == "All component types" || SystemExplorerGrouping.TypeLabel(i.FeatureCategory) == type)
+                     .Select(SystemExplorerGrouping.GroupFor).Distinct().OrderBy(x => x))
+            GroupFilter.Items.Add(group);
+        GroupFilter.SelectedItem = GroupFilter.Items.Contains(selected) ? selected : "All groups";
     }
 
     private void Refresh()
     {
-        var text = FilterBox.Text?.Trim() ?? string.Empty;
-        var category = CategoryFilter.SelectedItem as string ?? "All inventory";
-        var filtered = _items
-            .Where(item => category == "All inventory" ||
-                           string.Equals(item.SubCategory ?? item.FeatureCategory.ToString(), category, StringComparison.OrdinalIgnoreCase))
-            .Where(item => string.IsNullOrEmpty(text) || Matches(item, text))
-            .OrderBy(item => CategoryOrder(item.FeatureCategory))
-            .ThenBy(item => item.SubCategory, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(item => item.ObjectName, StringComparer.OrdinalIgnoreCase)
+        if (ExplorerList is null || GroupFilter is null) return;
+        var term = FilterBox.Text?.Trim() ?? string.Empty;
+        var type = TypeFilter.SelectedItem as string ?? "All component types";
+        var group = GroupFilter.SelectedItem as string ?? "All groups";
+
+        var rows = _items
+            .Select(i => new ExplorerRow(i))
+            .Where(r => type == "All component types" || r.Type == type)
+            .Where(r => group == "All groups" || r.Group == group)
+            .Where(r => string.IsNullOrEmpty(term) || r.Search.Contains(term, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(r => TypeOrder(r.Type)).ThenBy(r => r.Group).ThenBy(r => r.Name)
             .ToList();
 
-        CountText.Text = $"{filtered.Count:N0} of {_items.Count:N0} observed inventory items";
-        InventoryList.Items.Clear();
-        foreach (var item in filtered)
-            InventoryList.Items.Add(BuildRow(item));
-
-        if (filtered.Count == 0)
-        {
-            InventoryList.Items.Add(new TextBlock
-            {
-                Text = "No inventory items match the current filters.",
-                Margin = new Thickness(12, 12, 12, 12),
-                Foreground = (Brush)FindResource("BrushTextMuted")
-            });
-        }
+        ExplorerList.ItemsSource = rows;
+        CountText.Text = $"{rows.Count:N0} of {_items.Count:N0}";
     }
 
-    private Button BuildRow(ManagedObject item)
+    private void ExplorerRow_Click(object sender, RoutedEventArgs e)
     {
-        var row = new Button { Style = (Style)FindResource("ListRowButton"), ToolTip = "Open inventory details" };
-        var grid = new Grid();
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(220) });
-
-        var left = new StackPanel();
-        var heading = new DockPanel { LastChildFill = true };
-        var badge = new Border
-        {
-            Style = (Style)FindResource("BadgeUnknown"),
-            Margin = new Thickness(8, 0, 0, 0),
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        badge.Child = new TextBlock { Text = "VIEW ONLY", FontSize = 9, FontWeight = FontWeights.SemiBold };
-        DockPanel.SetDock(badge, Dock.Right);
-        heading.Children.Add(badge);
-        heading.Children.Add(new TextBlock
-        {
-            Text = item.ObjectName,
-            FontWeight = FontWeights.SemiBold,
-            FontSize = 12,
-            TextWrapping = TextWrapping.Wrap
-        });
-        left.Children.Add(heading);
-        left.Children.Add(new TextBlock
-        {
-            Text = $"{item.SubCategory} · {item.Narrative.Summary}",
-            FontSize = 11,
-            Foreground = (Brush)FindResource("BrushTextSecondary"),
-            TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(0, 2, 10, 0)
-        });
-        left.Children.Add(new TextBlock
-        {
-            Text = item.TechnicalLocation,
-            FontSize = 10,
-            FontFamily = new FontFamily("Cascadia Mono, Consolas"),
-            Foreground = (Brush)FindResource("BrushTextMuted"),
-            TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(0, 4, 10, 0)
-        });
-        grid.Children.Add(left);
-
-        var state = new TextBlock
-        {
-            Text = NavigationBuilder.DisplayValue(item.CurrentState),
-            FontFamily = new FontFamily("Cascadia Mono, Consolas"),
-            TextWrapping = TextWrapping.Wrap,
-            VerticalAlignment = VerticalAlignment.Center,
-            Foreground = (Brush)FindResource("BrushTextPrimary")
-        };
-        Grid.SetColumn(state, 1);
-        grid.Children.Add(state);
-
-        row.Content = grid;
-        AutomationProperties.SetName(row,
-            $"{item.ObjectName}. View only. Observed state: {NavigationBuilder.DisplayValue(item.CurrentState)}.");
-        row.Click += (_, _) => _openSetting(item.ObjectId);
-        return row;
+        if (sender is Button { Tag: string id }) _openSetting(id);
     }
 
-    private static bool Matches(ManagedObject item, string term) =>
-        item.ObjectName.Contains(term, StringComparison.OrdinalIgnoreCase) ||
-        item.ObjectId.Contains(term, StringComparison.OrdinalIgnoreCase) ||
-        item.TechnicalLocation.Contains(term, StringComparison.OrdinalIgnoreCase) ||
-        item.Description.Contains(term, StringComparison.OrdinalIgnoreCase) ||
-        (item.CurrentState?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false);
-
-    private static int CategoryOrder(FeatureCategory category) => category switch
+    private static int TypeOrder(string type) => type switch
     {
-        FeatureCategory.WindowsService => 0,
-        FeatureCategory.ScheduledTask => 1,
-        FeatureCategory.AppxPackage => 2,
-        FeatureCategory.ProvisionedPackage => 3,
-        FeatureCategory.OptionalFeature => 4,
-        FeatureCategory.WindowsCapability => 5,
-        FeatureCategory.FirewallRule => 6,
+        "Services" => 0,
+        "Scheduled tasks" => 1,
+        "Installed apps" => 2,
+        "Provisioned apps" => 3,
+        "Optional features" => 4,
+        "Capabilities" => 5,
+        "Firewall rules" => 6,
         _ => 7
     };
+
+    private sealed class ExplorerRow
+    {
+        public ExplorerRow(ManagedObject item)
+        {
+            ObjectId = item.ObjectId;
+            Name = item.ObjectName;
+            Type = SystemExplorerGrouping.TypeLabel(item.FeatureCategory);
+            Group = SystemExplorerGrouping.GroupFor(item);
+            Path = TechnicalLocationFormatter.DirectPath(item.TechnicalLocation);
+            State = NavigationBuilder.DisplayValue(item.CurrentState);
+            Search = $"{Name} {Type} {Group} {Path} {State} {ObjectId}";
+        }
+        public string ObjectId { get; }
+        public string Name { get; }
+        public string Type { get; }
+        public string Group { get; }
+        public string Path { get; }
+        public string State { get; }
+        public string Search { get; }
+    }
 }

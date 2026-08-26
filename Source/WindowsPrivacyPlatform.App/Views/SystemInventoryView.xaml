@@ -1,44 +1,82 @@
 <UserControl x:Class="WindowsPrivacyPlatform.App.Views.SystemInventoryView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-  <StackPanel>
-    <TextBlock Text="System Inventory" Style="{StaticResource SectionTitle}" />
-    <TextBlock x:Name="CountText" Style="{StaticResource SectionSubtitle}" />
-    <Border Style="{StaticResource HeaderRule}" />
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" HorizontalContentAlignment="Stretch">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
 
-    <Border Style="{StaticResource CardAccent}" Margin="0,0,0,14" Background="{StaticResource BrushAccentSoft}">
-      <StackPanel>
-        <TextBlock Text="Read-only diagnostic inventory" FontWeight="SemiBold" FontSize="13" />
-        <TextBlock Margin="0,4,0,0" TextWrapping="Wrap" LineHeight="18"
-                   Text="This is what is installed and running on this device. Most items are not intended to be changed here. Use this inventory to identify components and activity; use Settings for approved configuration changes." />
-      </StackPanel>
-    </Border>
+    <StackPanel>
+      <TextBlock Text="System Explorer" Style="{StaticResource SectionTitle}" />
+      <TextBlock Text="Read-only Windows components, grouped by purpose." Style="{StaticResource SectionSubtitle}" />
+      <Border Style="{StaticResource HeaderRule}" />
+    </StackPanel>
 
-    <Grid Margin="0,0,0,10">
+    <Grid Grid.Row="1" Margin="0,0,0,10">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="*" />
-        <ColumnDefinition Width="230" />
+        <ColumnDefinition Width="190" />
+        <ColumnDefinition Width="210" />
       </Grid.ColumnDefinitions>
-      <TextBox x:Name="FilterBox" Height="30" Padding="8,4" VerticalContentAlignment="Center"
-               ToolTip="Filter inventory by name, state, identifier, or technical location" />
-      <ComboBox x:Name="CategoryFilter" Grid.Column="1" Height="30" Margin="10,0,0,0"
-                VerticalContentAlignment="Center" />
+      <TextBox x:Name="FilterBox" Height="32" Padding="9,4" VerticalContentAlignment="Center"
+               ToolTip="Search name, state, group, or identifier" />
+      <ComboBox x:Name="TypeFilter" Grid.Column="1" Height="32" Margin="10,0,0,0" />
+      <ComboBox x:Name="GroupFilter" Grid.Column="2" Height="32" Margin="10,0,0,0" />
     </Grid>
 
-    <Border Style="{StaticResource ListContainer}">
-      <StackPanel>
-        <Border Style="{StaticResource ListHeader}">
-          <Grid>
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="*" />
-              <ColumnDefinition Width="220" />
-            </Grid.ColumnDefinitions>
-            <TextBlock Text="Inventory item" FontWeight="SemiBold" FontSize="11" />
-            <TextBlock Grid.Column="1" Text="Observed state" FontWeight="SemiBold" FontSize="11" />
-          </Grid>
-        </Border>
-        <ItemsControl x:Name="InventoryList" />
-      </StackPanel>
+    <DockPanel Grid.Row="2" Margin="2,0,2,8" LastChildFill="False">
+      <TextBlock Text="Observation only — changes belong in Windows management tools."
+                 Foreground="{StaticResource BrushTextMuted}" FontSize="11" />
+      <TextBlock x:Name="CountText" DockPanel.Dock="Right" Foreground="{StaticResource BrushTextSecondary}"
+                 FontSize="11" FontWeight="SemiBold" Margin="18,0,0,0" />
+    </DockPanel>
+
+    <Border Grid.Row="3" Style="{StaticResource ListContainer}" MaxHeight="610">
+      <ListBox x:Name="ExplorerList" BorderThickness="0" Background="Transparent"
+               ScrollViewer.CanContentScroll="True" ScrollViewer.VerticalScrollBarVisibility="Auto"
+               VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
+        <ListBox.ItemsPanel>
+          <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+        </ListBox.ItemsPanel>
+        <ListBox.ItemContainerStyle>
+          <Style TargetType="ListBoxItem">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0" />
+          </Style>
+        </ListBox.ItemContainerStyle>
+        <ListBox.ItemTemplate>
+          <DataTemplate>
+            <Button Style="{StaticResource ListRowButton}" Click="ExplorerRow_Click" Tag="{Binding ObjectId}"
+                    ToolTip="Open observed component details">
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="150" />
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="230" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Margin="0,1,12,1">
+                  <TextBlock Text="{Binding Type}" FontSize="10" FontWeight="SemiBold"
+                             Foreground="{StaticResource BrushAccent}" />
+                  <TextBlock Text="{Binding Group}" FontSize="10" TextWrapping="Wrap"
+                             Foreground="{StaticResource BrushTextMuted}" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Margin="0,1,16,1">
+                  <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap" />
+                  <TextBlock Text="{Binding Path}" FontSize="10" FontFamily="Cascadia Mono, Consolas"
+                             Foreground="{StaticResource BrushTextMuted}" TextWrapping="NoWrap"
+                             TextTrimming="CharacterEllipsis" Margin="0,3,0,0" />
+                </StackPanel>
+                <TextBlock Grid.Column="2" Text="{Binding State}" FontSize="11" FontFamily="Cascadia Mono, Consolas"
+                           VerticalAlignment="Center" TextWrapping="Wrap" />
+              </Grid>
+            </Button>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
     </Border>
-  </StackPanel>
+  </Grid>
 </UserControl>

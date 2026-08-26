@@ -73,7 +73,8 @@ public enum ExclusionReason
 public enum CatalogBucket
 {
     Settings = 0,
-    SystemInventory
+    SystemInventory,
+    InternalReference
 }
 
 public enum ApplicabilityState

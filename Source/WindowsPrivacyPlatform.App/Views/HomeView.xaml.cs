@@ -1,5 +1,3 @@
-using System;
-using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -10,49 +8,52 @@ namespace WindowsPrivacyPlatform.App.Views;
 
 public partial class HomeView : UserControl
 {
-    public HomeView(ScanService scan, Action<string> openSetting, Action<ProductDomain> navigateDomain, Action? openConflicts = null)
+    public HomeView(ScanService scan, Action<string> openSetting)
     {
         InitializeComponent();
-        var o = scan.Overview;
-        if (o is null) return;
+        var overview = scan.Overview;
+        if (overview is null) return;
 
-        OsText.Text = $"{Disp(o.WindowsVersion)} · {Disp(o.WindowsEdition)} · Build {o.BuildNumber}";
-        ArchText.Text = Disp(o.Architecture);
+        var posture = PostureAssessment.Build(scan.SettingsCatalog);
+        HighCountText.Text = posture.HighCount.ToString();
+        ReviewCountText.Text = posture.ReviewCount.ToString();
+        ProtectedCountText.Text = posture.ProtectedCount.ToString();
 
-        var device = $"{Disp(o.DeviceManufacturer)} {Disp(o.DeviceModel)}".Trim();
-        DeviceText.Text = string.IsNullOrWhiteSpace(device) || device == "Unknown Unknown"
-            ? "Unknown"
-            : device;
-
-        var mem = o.TotalPhysicalMemoryMiB > 0
-            ? $"{o.TotalPhysicalMemoryMiB} MiB"
-            : "Unknown";
-        HwText.Text = $"{Disp(o.Processor)} · {mem}";
-
-        DomainText.Text = $"{Disp(o.DomainMembership)} · Entra: {Disp(o.AzureAdJoined)}";
-
-        SecureBootText.Text = Disp(o.SecureBootState);
-        TpmText.Text = $"{Disp(o.TpmPresent)} / {Disp(o.TpmVersion)}";
-        BitLockerText.Text = Disp(o.BitLockerProtectionStatus);
-        FirewallText.Text = $"{Disp(o.FirewallServiceState)} · {Disp(o.FirewallProfilesSummary)}";
-        DefenderText.Text = Disp(o.DefenderServiceState);
-
-        ScanMetaText.Text =
-            $"{o.LastScanUtc:yyyy-MM-dd HH:mm:ss} UTC · Catalog {o.CatalogVersion} · Knowledge {o.KnowledgeBaseVersion} · Identity confidence: {o.IdentityConfidence}";
-
-        var conflictCount = scan.Query?.GetConflicts().Count() ?? 0;
-        if (conflictCount > 0)
+        foreach (var finding in posture.Findings.Take(6))
         {
-            ConflictsCard.Visibility = Visibility.Visible;
-            ConflictsText.Text = $"{conflictCount} setting(s) report a layer conflict.";
-            OpenConflictsBtn.Visibility = Visibility.Visible;
-            if (openConflicts is not null)
-                OpenConflictsBtn.Click += (_, _) => openConflicts();
+            var row = new Button { Style = (Style)FindResource("ListRowButton"), Tag = finding.ObjectId };
+            var grid = new Grid();
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(115) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.Children.Add(new TextBlock
+            {
+                Text = finding.Severity == PostureFindingSeverity.High ? "HIGH" : "REVIEW",
+                Foreground = (Brush)FindResource(finding.Severity == PostureFindingSeverity.High ? "BrushConflict" : "BrushWarning"),
+                FontWeight = FontWeights.SemiBold, FontSize = 10, VerticalAlignment = VerticalAlignment.Center
+            });
+            var copy = new StackPanel();
+            copy.Children.Add(new TextBlock { Text = finding.Title, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
+            copy.Children.Add(new TextBlock { Text = finding.Summary, FontSize = 11, Foreground = (Brush)FindResource("BrushTextSecondary") });
+            Grid.SetColumn(copy, 1); grid.Children.Add(copy); row.Content = grid;
+            row.Click += (_, _) => openSetting((string)row.Tag);
+            FindingsList.Children.Add(row);
         }
+
+        if (posture.Findings.Count == 0)
+            FindingsList.Children.Add(new TextBlock
+            {
+                Text = "No high-impact configured issues were found. Unconfigured and unknown values are not counted as safe.",
+                Margin = new Thickness(12, 10, 12, 10), TextWrapping = TextWrapping.Wrap,
+                Foreground = (Brush)FindResource("BrushTextSecondary")
+            });
+
+        SecureBootText.Text = Display(overview.SecureBootState);
+        TpmText.Text = $"{Display(overview.TpmPresent)} · {Display(overview.TpmVersion)}";
+        BitLockerText.Text = Display(overview.BitLockerProtectionStatus);
+        FirewallText.Text = $"{Display(overview.FirewallServiceState)} · {Display(overview.FirewallProfilesSummary)}";
+        DefenderText.Text = Display(overview.DefenderServiceState);
+        PlatformText.Text = $"{Display(overview.WindowsVersion)} · {Display(overview.WindowsEdition)} · build {overview.BuildNumber} · scanned {overview.LastScanUtc:yyyy-MM-dd HH:mm} UTC";
     }
 
-    private static string Disp(string? v) =>
-        string.IsNullOrWhiteSpace(v) || v.Equals("Unknown", StringComparison.OrdinalIgnoreCase)
-            ? "Unknown"
-            : v;
+    private static string Display(string? value) => string.IsNullOrWhiteSpace(value) ? "Unknown" : value;
 }

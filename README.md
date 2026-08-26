@@ -2,26 +2,28 @@
 
 <img src="Source/WindowsPrivacyPlatform.App/Assets/WindowsPrivacyPlatform.png" alt="Windows Privacy Platform shield mark" width="128" height="128">
 
-Windows Privacy Platform is a local Windows inspection and configuration console. It correlates privacy preferences, administrative policy, endpoint-security controls, services, scheduled tasks, packages, optional features, capabilities, and firewall posture without reducing the device to a misleading score.
+Windows Privacy Platform is a focused, local privacy and security policy hub for Windows 10 and Windows 11. It makes the settings that affect app access, data sharing, Defender, Firewall, networking, remote access, and Microsoft apps understandable without becoming a generic registry editor or diagnostics suite.
 
-The product is designed for a simple operating rule: inspect broadly, explain clearly, and change only a short list of explicitly authorized targets.
+The operating rule is simple: show only relevant, editable policy in Settings; observe the wider operating system in a separate, read-only System Explorer; deny every write that is not explicitly authorized.
 
 ## What the current release delivers
 
-- A full device scan with separate **Settings** and read-only **System Inventory** workspaces.
+- A concise **Privacy & Security Overview** that identifies high-attention policies, review items, and protections actually observed. It never treats unknown values as safe and does not invent a synthetic score.
+- Focused **Settings** categories containing only editable privacy and security policy.
+- A fast, searchable, purpose-grouped **System Explorer** for read-only services, tasks, packages, Windows features, capabilities, and firewall rules.
 - Clear evidence states for configured, not configured, not observed, unsupported, access denied, and unknown results.
-- Structured explanations covering mechanics, day-to-day impact, decision guidance, tradeoffs, and common misconceptions.
+- Direct registry/policy paths, compact descriptions, and plain-language option effects.
 - Edition/build applicability for Windows 10 and Windows 11 rather than pretending every control exists everywhere.
-- Curated, independently verified changes for registry policy, firewall profiles, selected diagnostic services and tasks, selected removable inbox apps, and selected optional Windows features.
-- Permanent observation-only handling for BitLocker, User Account Control, and arbitrary firewall rules, with direct links to the appropriate Windows management surface.
-- No application telemetry, cloud account, bulk hardening profile, generic command runner, or privacy score.
+- Curated, independently verified registry-policy changes, including the twelve bounded firewall-profile controls.
+- No service, scheduled-task, package, optional-feature, BitLocker, UAC, or arbitrary firewall-rule mutation.
+- No application telemetry, cloud account, bulk hardening profile, generic command runner, background agent, or remediation scripts.
 
 ## Run a downloaded release
 
 1. Install the [.NET 8 Desktop Runtime for Windows x64](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) if it is not already present.
 2. Download `WindowsPrivacyPlatform-win-x64.zip` from the repository's latest GitHub Release.
 3. Extract the entire archive to a permanent folder. Do not run the executable from inside the zip.
-4. Open `WindowsPrivacyPlatform.exe` and choose **Inspect** or **Modify**. Modify mode requests Windows elevation when a selected operation requires it.
+4. Open `WindowsPrivacyPlatform.exe` and choose **Inspect** or **Modify**. Modify mode requests Windows elevation for machine policy.
 5. Accept the one-time shortcut offer if you want Desktop and Start Menu entries that point to the extracted executable.
 
 The archive includes `START_HERE.md` with the same deployment guidance. There is no installer and the release does not silently persist services, drivers, or background agents.
@@ -34,7 +36,7 @@ Every writable object is deny-by-default. Discovery data never grants mutation r
 pre-read → explicit confirmation → typed operation → independent read-back → local audit
 ```
 
-Failure at any stage is reported as failure; a textual match with the wrong registry type is not accepted. Dynamic inventory is always read-only. See [Status/Safety_Model.md](Status/Safety_Model.md) for the full contract.
+Failure at any stage is reported as failure; a textual match with the wrong registry type is not accepted. System Explorer is always read-only, and the modification engine rejects every non-registry target. See [Status/Safety_Model.md](Status/Safety_Model.md) for the full contract.
 
 ## Build from source
 

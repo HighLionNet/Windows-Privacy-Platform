@@ -2,6 +2,18 @@ namespace WindowsPrivacyPlatform.Models;
 
 public static class TechnicalLocationFormatter
 {
+    public static string DirectPath(string? location)
+    {
+        if (string.IsNullOrWhiteSpace(location))
+            return "Not available";
+
+        var value = location.Trim();
+        foreach (var prefix in new[] { "Registry: ", "Service: ", "Scheduled task: ", "App package: ", "Optional feature: " })
+            if (value.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                return value[prefix.Length..];
+        return value;
+    }
+
     public static string FromDefinition(ManagedObject mo)
     {
         var discovery = mo.DiscoveryMethod?.Trim() ?? string.Empty;

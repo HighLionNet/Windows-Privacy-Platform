@@ -29,7 +29,7 @@ The product is not an optimizer, debloater, compliance score, or generic Windows
 
 Catalog entries are authored as conceptual settings, then finalized centrally. Finalization provides or validates technical location, semantics, narrative, applicability, workspace placement, native handoff, and a write/exclusion decision. Validation occurs before scan results are presented.
 
-Curated settings can bind against live observations. Non-curated live objects are projected into System Inventory after collection with stable derived IDs and read-only exclusion. This preserves discoverability without allowing the installed software population to alter product authority.
+Curated settings can bind against live observations. Live components are projected into System Explorer after collection with stable derived IDs and read-only exclusion. This preserves discoverability without allowing the installed software population to alter product authority.
 
 ## User experience model
 
@@ -37,7 +37,7 @@ Startup presents a factual Inspect/Modify choice. Inspect is safe for broad devi
 
 Settings navigation uses domains and meaningful categories, flattening very small categories to avoid empty-feeling drilldowns. Every row distinguishes writable, view-only, and not-applicable states. Details prioritize summary, day-to-day effect, guidance, consequences, limits, and misconception before technical location.
 
-System Inventory has a persistent diagnostic notice, search, category filtering, current state, and technical location. It does not reuse Settings action controls.
+System Explorer has debounced search, component and purpose filters, current state, technical location, and recycled list virtualization. It never reuses Settings action controls.
 
 ## Release and provenance
 
