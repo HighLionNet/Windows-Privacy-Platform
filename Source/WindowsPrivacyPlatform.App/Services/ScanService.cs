@@ -17,8 +17,8 @@ namespace WindowsPrivacyPlatform.App.Services;
 /// </summary>
 public sealed class ScanService
 {
-    public const string CatalogSchemaVersion = "2.1";
-    public const string KnowledgeBaseVersionValue = "2.1";
+    public const string CatalogSchemaVersion = ManagedObjectCatalog.CatalogVersion;
+    public const string KnowledgeBaseVersionValue = ManagedObjectCatalog.CatalogVersion;
 
     public IReadOnlyList<ManagedObject> Catalog { get; private set; } = Array.Empty<ManagedObject>();
     public SettingsQuery? Query { get; private set; }
@@ -27,9 +27,12 @@ public sealed class ScanService
     public NavigationNode? NavigationRoot { get; private set; }
     public int ValidationPassed { get; private set; }
     public int ValidationFailed { get; private set; }
+    public IReadOnlyList<ValidationResult> ValidationResults { get; private set; } = Array.Empty<ValidationResult>();
     public string LastError { get; private set; } = string.Empty;
     public ScanResult? LastScanResult { get; private set; }
     public bool HasScan => Overview is not null;
+    public IReadOnlyList<ManagedObject> SettingsCatalog => Catalog.Where(m => m.Bucket == CatalogBucket.Settings).ToList();
+    public IReadOnlyList<ManagedObject> InventoryCatalog => Catalog.Where(m => m.Bucket == CatalogBucket.SystemInventory).ToList();
 
     // Last known-good completed scan (not replaced by canceled/failed runs).
     private MachineOverview? _lastGoodOverview;
@@ -105,6 +108,30 @@ public sealed class ScanService
             {
                 Report("Binding observations…");
                 InventoryStateBinder.Bind(snapshot, catalog);
+
+                Report("Building system inventory…");
+                catalog.AddRange(DynamicInventoryCatalog.Create(snapshot, catalog));
+
+                foreach (var item in catalog)
+                {
+                    if (item.IsDynamicInventory)
+                        continue;
+                    var applicability = ApplicabilityEvaluator.Evaluate(
+                        item,
+                        snapshot.Identity.WindowsVersion,
+                        snapshot.Identity.Edition,
+                        snapshot.Identity.BuildNumber);
+                    item.Applicability = applicability.State;
+                    item.ApplicabilityReason = applicability.Reason;
+
+                    if (item.WritableTarget?.Kind is WritableTargetKind.Service or
+                        WritableTargetKind.ScheduledTask or WritableTargetKind.AppxPackage &&
+                        item.CurrentState?.Equals("Not installed", StringComparison.OrdinalIgnoreCase) == true)
+                    {
+                        item.Applicability = ApplicabilityState.NotPresentOnDevice;
+                        item.ApplicabilityReason = "This curated component is not installed on the scanned device.";
+                    }
+                }
             }
 
             foreach (var managedObject in catalog)
@@ -125,12 +152,13 @@ public sealed class ScanService
             Report("Validating catalog…");
 
             var validationResults = validator.ValidateAll(knowledgeBase.GetAll());
+            ValidationResults = validationResults;
             ValidationPassed = validationResults.Count(r => r.IsValid);
             ValidationFailed = validationResults.Count(r => !r.IsValid);
 
             Catalog = catalog;
             Query = new SettingsQuery(catalog);
-            NavigationRoot = NavigationBuilder.BuildDomainTree(catalog);
+            NavigationRoot = NavigationBuilder.BuildDomainTree(catalog.Where(m => m.Bucket == CatalogBucket.Settings).ToList());
 
             if (snapshot is not null)
             {
@@ -198,7 +226,7 @@ public sealed class ScanService
             {
                 Catalog = _lastGoodCatalog;
                 Query = new SettingsQuery(_lastGoodCatalog);
-                NavigationRoot = NavigationBuilder.BuildDomainTree(_lastGoodCatalog);
+                NavigationRoot = NavigationBuilder.BuildDomainTree(_lastGoodCatalog.Where(m => m.Bucket == CatalogBucket.Settings).ToList());
             }
         }
     }
@@ -215,6 +243,7 @@ public sealed class ScanService
             ObjectName = src.ObjectName,
             ObjectType = src.ObjectType,
             CanonicalPath = src.CanonicalPath,
+            TechnicalLocation = src.TechnicalLocation,
             FeatureCategory = src.FeatureCategory,
             ProductDomain = src.ProductDomain,
             SubCategory = src.SubCategory,
@@ -231,6 +260,7 @@ public sealed class ScanService
             CommonMisconception = src.CommonMisconception,
             TypicalEnterpriseUse = src.TypicalEnterpriseUse,
             ConsumerImpact = src.ConsumerImpact,
+            Narrative = src.Narrative,
             ValueSemantics = src.ValueSemantics,
             InterfaceName = src.InterfaceName,
             InterfaceScope = src.InterfaceScope,
@@ -278,6 +308,12 @@ public sealed class ScanService
             EvidenceLocation = src.EvidenceLocation,
             EvidenceHash = src.EvidenceHash,
             WritableTarget = src.WritableTarget,
+            ExclusionReason = src.ExclusionReason,
+            Bucket = src.Bucket,
+            IsDynamicInventory = src.IsDynamicInventory,
+            NativeTool = src.NativeTool,
+            Applicability = src.Applicability,
+            ApplicabilityReason = src.ApplicabilityReason,
             Requires = src.Requires,
             Recommended = src.Recommended,
             ConflictsWith = src.ConflictsWith,

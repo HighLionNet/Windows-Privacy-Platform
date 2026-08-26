@@ -1,69 +1,88 @@
-using System;
-using System.Text;
+using System.Diagnostics;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using WindowsPrivacyPlatform.Models;
 
 namespace WindowsPrivacyPlatform.App.Views;
 
-/// <summary>
-/// Minimal setting detail: status + one organized explanation paragraph.
-/// Changes are applied from the category list, not this page.
-/// </summary>
 public partial class SettingDetailPage : UserControl
 {
+    private readonly NativeToolLink? _nativeTool;
+
     public SettingDetailPage(SettingDetailView detail, Action<string> openSetting)
     {
         InitializeComponent();
+        _nativeTool = detail.NativeTool;
 
         TitleText.Text = detail.Title;
-        DomainPathText.Text = detail.DomainPath;
+        DomainPathText.Text = detail.Bucket == CatalogBucket.SystemInventory
+            ? "System Inventory · " + detail.DomainPath
+            : "Settings · " + detail.DomainPath;
 
         ObservedText.Text = detail.CurrentStateDisplay ?? "Unknown";
         EffectiveText.Text = detail.EffectiveValueDisplay ?? "Unknown";
         if (detail.HasConflict)
             EffectiveText.Foreground = (Brush)FindResource("BrushConflict");
-
         SourceText.Text = detail.EffectiveSourceDisplay ?? "Unknown";
 
-        ExplanationText.Text = BuildExplanation(detail);
+        SummaryText.Text = detail.Narrative.Summary;
+        MechanicsText.Text = detail.Narrative.Mechanics;
+        WhyItMattersText.Text = detail.Narrative.WhyItMatters;
+        DailyImpactText.Text = detail.Narrative.ConsumerImpact;
+        TechnicalLocationText.Text = detail.TechnicalLocation;
+        WhenIgnoredText.Text = detail.Narrative.WhenIgnored;
+        GuidanceText.Text = detail.Narrative.DecisionGuidance;
+        SideEffectsText.Text = detail.Narrative.SideEffects;
+        MisconceptionText.Text = detail.Narrative.CommonMisconception;
+        MisconceptionPanel.Visibility = string.IsNullOrWhiteSpace(MisconceptionText.Text)
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+
+        AccessBadgeText.Text = detail.IsWritable ? "CHANGE AVAILABLE" : "VIEW ONLY";
+        AccessBadge.Style = (Style)FindResource(detail.IsWritable ? "BadgeSuccess" : "BadgeUnknown");
+
+        if (!detail.IsWritable)
+        {
+            ViewOnlyPanel.Visibility = Visibility.Visible;
+            ExclusionText.Text = detail.ExclusionReasonText;
+            if (_nativeTool is { IsComplete: true })
+            {
+                NativeToolButton.Content = _nativeTool.Label;
+                NativeToolButton.Visibility = Visibility.Visible;
+            }
+        }
+
+        if (detail.Applicability != ApplicabilityState.Applicable)
+        {
+            ApplicabilityBadge.Visibility = Visibility.Visible;
+            ApplicabilityPanel.Visibility = Visibility.Visible;
+            ApplicabilityBadgeText.Text = CatalogPolicy.ApplicabilityBadgeText(detail.Applicability);
+            ApplicabilityText.Text = detail.ApplicabilityReason;
+        }
     }
 
-    private static string BuildExplanation(SettingDetailView detail)
+    private void NativeToolButton_Click(object sender, RoutedEventArgs e)
     {
-        var sb = new StringBuilder();
-
-        if (!string.IsNullOrWhiteSpace(detail.Explanation.WhatIsIt))
-            sb.Append(detail.Explanation.WhatIsIt.Trim());
-
-        if (!string.IsNullOrWhiteSpace(detail.Explanation.WhyItMatters))
+        if (_nativeTool is not { IsComplete: true })
+            return;
+        try
         {
-            if (sb.Length > 0) sb.Append(' ');
-            sb.Append(detail.Explanation.WhyItMatters.Trim());
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = _nativeTool.Executable,
+                Arguments = _nativeTool.Arguments,
+                UseShellExecute = true
+            });
         }
-
-        if (!string.IsNullOrWhiteSpace(detail.Explanation.RiskSummary))
+        catch (Exception ex)
         {
-            if (sb.Length > 0) sb.Append(' ');
-            sb.Append(detail.Explanation.RiskSummary.Trim());
+            MessageBox.Show(
+                Window.GetWindow(this),
+                "Windows could not open the native management tool. " + ex.Message,
+                "Native tool unavailable",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
         }
-
-        if (!string.IsNullOrWhiteSpace(detail.Explanation.CommonMisconceptions))
-        {
-            if (sb.Length > 0) sb.Append("\n\n");
-            sb.Append("Note: ");
-            sb.Append(detail.Explanation.CommonMisconceptions.Trim());
-        }
-
-        if (!string.IsNullOrWhiteSpace(detail.ResolutionReason))
-        {
-            if (sb.Length > 0) sb.Append("\n\n");
-            sb.Append(detail.ResolutionReason.Trim());
-        }
-
-        if (sb.Length == 0)
-            return "No additional explanation is available for this setting on the current scan.";
-
-        return sb.ToString();
     }
 }

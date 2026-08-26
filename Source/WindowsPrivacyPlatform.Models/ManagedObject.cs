@@ -17,6 +17,8 @@ public class ManagedObject
     public string ObjectName { get; set; } = string.Empty;
     public string ObjectType { get; set; } = string.Empty;
     public string CanonicalPath { get; set; } = string.Empty;
+    /// <summary>Technical source shown separately from all explanatory prose.</summary>
+    public string TechnicalLocation { get; set; } = string.Empty;
 
     public FeatureCategory FeatureCategory { get; set; }
     public ProductDomain ProductDomain { get; set; }
@@ -37,6 +39,9 @@ public class ManagedObject
     public string? CommonMisconception { get; set; }
     public string? TypicalEnterpriseUse { get; set; }
     public string? ConsumerImpact { get; set; }
+
+    /// <summary>Structured plain-language copy. Never contains a path, ObjectId, or discovery token.</summary>
+    public SettingNarrative Narrative { get; set; } = new();
 
     public List<ValueMeaning> ValueSemantics { get; set; } = new();
 
@@ -105,8 +110,25 @@ public class ManagedObject
     /// </summary>
     public WritableTarget? WritableTarget { get; set; }
 
+    /// <summary>Mandatory explicit decision whenever WritableTarget is absent.</summary>
+    public ExclusionReason ExclusionReason { get; set; }
+
+    /// <summary>Settings tree or read-only diagnostic inventory.</summary>
+    public CatalogBucket Bucket { get; set; } = CatalogBucket.Settings;
+
+    /// <summary>True for entries created from the live bulk inventory rather than the curated catalog.</summary>
+    public bool IsDynamicInventory { get; set; }
+
+    /// <summary>Optional supported native Windows tool for intentionally excluded operations.</summary>
+    public NativeToolLink? NativeTool { get; set; }
+
+    public ApplicabilityState Applicability { get; set; } = ApplicabilityState.Unknown;
+    public string ApplicabilityReason { get; set; } = string.Empty;
+
     /// <summary>Convenience: true only when an explicit complete WritableTarget is present.</summary>
     public bool IsWritable => WritableTarget is { IsComplete: true };
+
+    public bool IsApplicableHere => Applicability == ApplicabilityState.Applicable;
 
     // ========== RELATIONSHIPS ==========
 

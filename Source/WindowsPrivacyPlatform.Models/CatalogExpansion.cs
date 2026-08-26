@@ -1,5 +1,5 @@
 // Source/WindowsPrivacyPlatform.Models/CatalogExpansion.cs
-// Additional catalog entries for v2.1 coverage expansion.
+// Additional curated catalog entries retained in the current catalog generation.
 // All entries are observation-capable; WritableTarget is assigned only via explicit whitelist in ManagedObjectCatalog.
 using System.Collections.Generic;
 
@@ -123,11 +123,11 @@ internal static class CatalogExpansion
             PriorityLevel = PriorityLevel.Recommended,
             Reversibility = Reversibility.Reversible,
             RebootRequirement = RebootRequirement.None,
-            SchemaVersion = "2.1",
+            SchemaVersion = ManagedObjectCatalog.CatalogVersion,
             CreatedBy = "CatalogExpansion",
             CreatedTimestamp = DateTime.UtcNow,
             ConfidenceScore = 75,
-            ConfidenceSource = "Catalog-v2.1",
+            ConfidenceSource = "Curated catalog",
             SupportedWindowsVersions = ["Windows 10", "Windows 11"]
         };
     }
@@ -156,11 +156,11 @@ internal static class CatalogExpansion
             PriorityLevel = PriorityLevel.Recommended,
             Reversibility = Reversibility.PartiallyReversible,
             RebootRequirement = RebootRequirement.ServiceRestart,
-            SchemaVersion = "2.1",
+            SchemaVersion = ManagedObjectCatalog.CatalogVersion,
             CreatedBy = "CatalogExpansion",
             CreatedTimestamp = DateTime.UtcNow,
             ConfidenceScore = 70,
-            ConfidenceSource = "Catalog-v2.1",
+            ConfidenceSource = "Curated catalog",
             SupportedWindowsVersions = ["Windows 10", "Windows 11"],
             CommonMisconception = "Service state alone does not prove policy intent. Do not disable security services without understanding dependencies."
             // No WritableTarget — observation only.

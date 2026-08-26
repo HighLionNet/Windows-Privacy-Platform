@@ -13,7 +13,7 @@ namespace WindowsPrivacyPlatform.Scanner;
 /// Timeout kills the child. Cancellation is honored.
 /// Not exposed to the UI as a general command runner.
 /// </summary>
-internal static class SafeProcessRunner
+public static class SafeProcessRunner
 {
     public sealed class ProcessRunResult
     {

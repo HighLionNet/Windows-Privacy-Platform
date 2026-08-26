@@ -1,0 +1,22 @@
+# IDE and user state
+.idea/
+.vs/
+*.user
+*.suo
+
+# Build and test output
+**/bin/
+**/obj/
+.artifacts/
+artifacts/
+publish/
+run/
+TestResults/
+*.trx
+
+# Local application state and signing material
+*.pfx
+*.p12
+*.cer
+*.snk
+*.log

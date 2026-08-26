@@ -13,6 +13,7 @@ public enum FeatureCategory
     EdgePolicy,
     DefenderSetting,
     NetworkSetting,
+    FirewallProfile,
     FirewallRule,
     PrivacyPermission,
     WindowsComponent,
@@ -46,7 +47,43 @@ public enum ProductDomain
     Device,
     Speech,
     Firewall,
+    Network,
+    RemoteAccess,
+    LocalSecurity,
+    Copilot,
+    Recall,
+    Widgets,
+    OneDrive,
+    Storage,
     Other
+}
+
+/// <summary>Why a catalog entry is deliberately unavailable to the write pipeline.</summary>
+public enum ExclusionReason
+{
+    None = 0,
+    UnsupportedValueKind,
+    RequiresMultiKeyCoordination,
+    HighRiskIrreversible,
+    ReadOnlyByDesign,
+    NotYetCatalogued
+}
+
+/// <summary>Primary product surface on which an entry belongs.</summary>
+public enum CatalogBucket
+{
+    Settings = 0,
+    SystemInventory
+}
+
+public enum ApplicabilityState
+{
+    Unknown = 0,
+    Applicable,
+    NotAvailableOnEdition,
+    NotAvailableOnBuild,
+    NotAvailableOnWindowsVersion,
+    NotPresentOnDevice
 }
 
 /// <summary>

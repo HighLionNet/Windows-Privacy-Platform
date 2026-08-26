@@ -1,0 +1,43 @@
+<Window x:Class="WindowsPrivacyPlatform.App.StartupModeDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Session mode" Width="610" Height="370" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+  <Grid Margin="24">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <TextBlock Text="Select session mode" FontSize="22" FontWeight="SemiBold" />
+    <TextBlock Grid.Row="1" Margin="0,6,0,18" TextWrapping="Wrap" Foreground="{StaticResource BrushTextSecondary}"
+               Text="Inspect is the default. Modify requires administrator authorization and still permits only explicitly approved, independently verified changes." />
+
+    <Grid Grid.Row="2">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+      <Border Style="{StaticResource CardAccent}" Margin="0,0,8,0">
+        <StackPanel>
+          <TextBlock Text="Inspect" FontSize="16" FontWeight="SemiBold" />
+          <TextBlock Margin="0,7,0,0" TextWrapping="Wrap" LineHeight="19"
+                     Text="Collect local configuration and inventory. No settings are changed and no elevation is requested." />
+        </StackPanel>
+      </Border>
+      <Border Grid.Column="1" Style="{StaticResource Card}" Margin="8,0,0,0">
+        <StackPanel>
+          <TextBlock Text="Modify" FontSize="16" FontWeight="SemiBold" />
+          <TextBlock Margin="0,7,0,0" TextWrapping="Wrap" LineHeight="19"
+                     Text="Request administrator authorization. Every supported change is confirmed, audited, and accepted only after read-back verification." />
+        </StackPanel>
+      </Border>
+    </Grid>
+
+    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+      <Button Content="Continue in Inspect" Style="{StaticResource PrimaryButton}" MinWidth="150" Click="Inspect_Click" />
+      <Button Content="Request Modify" Style="{StaticResource SecondaryButton}" MinWidth="130" Margin="10,0,0,0" Click="Modify_Click" />
+    </StackPanel>
+  </Grid>
+</Window>

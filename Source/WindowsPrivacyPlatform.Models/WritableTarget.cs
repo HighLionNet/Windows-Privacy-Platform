@@ -7,6 +7,9 @@ namespace WindowsPrivacyPlatform.Models;
 /// </summary>
 public sealed class WritableTarget
 {
+    /// <summary>The typed system surface authorized by this target.</summary>
+    public WritableTargetKind Kind { get; set; } = WritableTargetKind.Registry;
+
     /// <summary>HKLM or HKCU (or full hive name).</summary>
     public string Hive { get; set; } = string.Empty;
 
@@ -34,11 +37,36 @@ public sealed class WritableTarget
     /// <summary>Optional human note shown in confirmation.</summary>
     public string? Notes { get; set; }
 
+    /// <summary>Service name, task path, package name, or optional-feature name for non-registry targets.</summary>
+    public string Identifier { get; set; } = string.Empty;
+
+    /// <summary>Optional end-user recovery/reinstall guidance included in confirmation.</summary>
+    public string? RecoveryHint { get; set; }
+
     /// <summary>True when this target is fully specified and usable.</summary>
-    public bool IsComplete =>
-        !string.IsNullOrWhiteSpace(Hive) &&
-        !string.IsNullOrWhiteSpace(SubKey) &&
-        !string.IsNullOrWhiteSpace(ValueName);
+    public bool IsComplete => Kind switch
+    {
+        WritableTargetKind.Registry =>
+            !string.IsNullOrWhiteSpace(Hive) &&
+            !string.IsNullOrWhiteSpace(SubKey) &&
+            !string.IsNullOrWhiteSpace(ValueName) &&
+            ValueKind != RegistryValueKindExpected.Unsupported,
+        WritableTargetKind.Service or
+        WritableTargetKind.ScheduledTask or
+        WritableTargetKind.AppxPackage or
+        WritableTargetKind.OptionalFeature =>
+            !string.IsNullOrWhiteSpace(Identifier) && SupportedRawValues.Count > 0,
+        _ => false
+    };
+}
+
+public enum WritableTargetKind
+{
+    Registry = 0,
+    Service,
+    ScheduledTask,
+    AppxPackage,
+    OptionalFeature
 }
 
 public enum RegistryViewKind
@@ -54,6 +82,18 @@ public enum RegistryValueKindExpected
     QWord = 1,
     String = 2,
     ExpandString = 3,
-    /// <summary>Not supported for writes in v2.0 — refused cleanly.</summary>
+    /// <summary>Refused cleanly because this registry kind has no write contract.</summary>
     Unsupported = 99
+}
+
+/// <summary>Safe native hand-off for operations intentionally outside the product write boundary.</summary>
+public sealed class NativeToolLink
+{
+    public string Label { get; set; } = string.Empty;
+    public string Executable { get; set; } = string.Empty;
+    public string Arguments { get; set; } = string.Empty;
+
+    public bool IsComplete =>
+        !string.IsNullOrWhiteSpace(Label) &&
+        !string.IsNullOrWhiteSpace(Executable);
 }

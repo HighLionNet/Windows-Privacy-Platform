@@ -3,17 +3,17 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <StackPanel>
     <TextBlock Text="About" Style="{StaticResource SectionTitle}" />
+    <TextBlock Text="Build identity and support context" Style="{StaticResource SectionSubtitle}" />
     <Border Style="{StaticResource HeaderRule}" />
 
     <Border Style="{StaticResource PropertySheet}">
       <StackPanel>
         <Border Style="{StaticResource PropertySheetHeader}">
-          <TextBlock Text="Product" FontWeight="SemiBold" FontSize="12"
-                     Foreground="{StaticResource BrushTextSecondary}" />
+          <TextBlock Text="Product identity" FontWeight="SemiBold" FontSize="12" />
         </Border>
         <Grid Margin="0,2,0,4">
           <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="140" />
+            <ColumnDefinition Width="150" />
             <ColumnDefinition Width="*" />
           </Grid.ColumnDefinitions>
           <Grid.RowDefinitions>
@@ -23,55 +23,53 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
           </Grid.RowDefinitions>
-
           <TextBlock Text="Name" Style="{StaticResource SheetLabel}" />
-          <TextBlock Grid.Column="1" Style="{StaticResource SheetValue}" FontWeight="SemiBold"
-                     Text="Windows Privacy Platform 2.0" />
-
-          <TextBlock Grid.Row="1" Text="Purpose" Style="{StaticResource SheetLabel}" />
-          <TextBlock Grid.Row="1" Grid.Column="1" Style="{StaticResource SheetValue}"
-                     Text="Evidence-driven Windows privacy &amp; configuration inspection and management" />
-
-          <TextBlock Grid.Row="2" Text="Modes" Style="{StaticResource SheetLabel}" />
-          <TextBlock Grid.Row="2" Grid.Column="1" Style="{StaticResource SheetValue}"
-                     Text="Inspect (read-only) · Modify (UAC elevation required, verified writes only)" />
-
-          <TextBlock Grid.Row="3" Text="Modification" Style="{StaticResource SheetLabel}" />
-          <TextBlock Grid.Row="3" Grid.Column="1" Style="{StaticResource SheetValue}"
-                     Text="Explicit catalog-backed targets only. Every write is confirmed and independently verified." />
-
-          <TextBlock Grid.Row="4" Text="Firewall" Style="{StaticResource SheetLabel}" />
-          <TextBlock Grid.Row="4" Grid.Column="1" Style="{StaticResource SheetValue}"
-                     Text="Observation only for rules. Selected profile/policy settings may be supported; rule management stays in native Windows tools." />
-
-          <TextBlock Grid.Row="5" Text="Privacy" Style="{StaticResource SheetLabel}" />
-          <TextBlock Grid.Row="5" Grid.Column="1" Style="{StaticResource SheetValue}"
-                     Text="No telemetry. No network calls. Local audit logs only. Unknown is never turned into certainty." />
+          <TextBlock x:Name="NameText" Grid.Column="1" Style="{StaticResource SheetValue}" FontWeight="SemiBold" />
+          <TextBlock Grid.Row="1" Text="Version" Style="{StaticResource SheetLabel}" />
+          <TextBlock x:Name="VersionText" Grid.Row="1" Grid.Column="1" Style="{StaticResource SheetValue}" />
+          <TextBlock Grid.Row="2" Text="Build" Style="{StaticResource SheetLabel}" />
+          <TextBlock x:Name="BuildText" Grid.Row="2" Grid.Column="1" Style="{StaticResource SheetValue}" FontFamily="Cascadia Mono, Consolas" />
+          <TextBlock Grid.Row="3" Text="Publisher" Style="{StaticResource SheetLabel}" />
+          <TextBlock x:Name="CompanyText" Grid.Row="3" Grid.Column="1" Style="{StaticResource SheetValue}" />
+          <TextBlock Grid.Row="4" Text="Copyright" Style="{StaticResource SheetLabel}" />
+          <TextBlock x:Name="CopyrightText" Grid.Row="4" Grid.Column="1" Style="{StaticResource SheetValue}" />
+          <TextBlock Grid.Row="5" Text="Operating system" Style="{StaticResource SheetLabel}" />
+          <TextBlock x:Name="OsText" Grid.Row="5" Grid.Column="1" Style="{StaticResource SheetValue}" />
+          <TextBlock Grid.Row="6" Text="Repository" Style="{StaticResource SheetLabel}" />
+          <Button x:Name="RepositoryButton" Grid.Row="6" Grid.Column="1" HorizontalAlignment="Left"
+                  Style="{StaticResource LinkButton}" Margin="0,4,0,4" Click="RepositoryButton_Click" />
         </Grid>
       </StackPanel>
     </Border>
 
-    <Border Style="{StaticResource PropertySheet}">
-      <StackPanel>
-        <Border Style="{StaticResource PropertySheetHeader}">
-          <TextBlock Text="Keyboard" FontWeight="SemiBold" FontSize="12"
-                     Foreground="{StaticResource BrushTextSecondary}" />
-        </Border>
-        <TextBlock Style="{StaticResource SheetValue}" Margin="12,8,12,10"
-                   Text="F5 / Ctrl+R — scan&#10;Ctrl+F — search&#10;Esc — clear search" />
-      </StackPanel>
-    </Border>
-
-    <Border Style="{StaticResource PropertySheet}">
-      <StackPanel>
-        <Border Style="{StaticResource PropertySheetHeader}">
-          <TextBlock Text="Project" FontWeight="SemiBold" FontSize="12"
-                     Foreground="{StaticResource BrushTextSecondary}" />
-        </Border>
-        <TextBlock Style="{StaticResource SheetValue}" Margin="12,8,12,10"
-                   Text="https://github.com/HighLionNet/Windows-Privacy-Platform&#10;.NET 8 · Windows 11 · v2.0" />
-      </StackPanel>
-    </Border>
+    <Grid>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+      <Border Style="{StaticResource PropertySheet}" Margin="0,0,6,12">
+        <StackPanel>
+          <Border Style="{StaticResource PropertySheetHeader}">
+            <TextBlock Text="Runtime behavior" FontWeight="SemiBold" FontSize="12" />
+          </Border>
+          <StackPanel Margin="12,8,12,10">
+            <TextBlock Text="• The application does not send product telemetry." Style="{StaticResource ValueText}" />
+            <TextBlock Text="• Scans and audit logs remain on the local device." Style="{StaticResource ValueText}" Margin="0,3,0,0" />
+            <TextBlock Text="• Changes require an explicit catalog authorization and verified read-back." Style="{StaticResource ValueText}" Margin="0,3,0,0" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+      <Border Grid.Column="1" Style="{StaticResource PropertySheet}" Margin="6,0,0,12">
+        <StackPanel>
+          <Border Style="{StaticResource PropertySheetHeader}">
+            <TextBlock Text="Keyboard" FontWeight="SemiBold" FontSize="12" />
+          </Border>
+          <TextBlock Style="{StaticResource SheetValue}" Margin="12,8,12,10"
+                     Text="F5 or Ctrl+R   Scan&#10;Ctrl+F          Search&#10;Esc             Clear search" />
+        </StackPanel>
+      </Border>
+    </Grid>
   </StackPanel>
 </UserControl>

@@ -17,7 +17,7 @@ namespace WindowsPrivacyPlatform.App;
 
 /// <summary>
 /// Application shell. Hierarchy: Home → Domain → Category → Setting detail.
-/// v1.6: Modify mode with confirmed registry writes from category value buttons.
+/// Modify mode exposes only confirmed, catalog-authorized write controls.
 /// </summary>
 public partial class MainWindow : Window
 {
@@ -46,10 +46,31 @@ public partial class MainWindow : Window
 
         InitializeComponent();
 
+        var product = ProductInfoReader.Read();
+        Title = product.Name;
+        ProductNameText.Text = product.Name;
+        ProductMarkText.Text = product.Mark;
+        HeaderVersionText.Text = "v" + product.Version;
+        FooterVersionText.Text = "v" + product.Version;
+
         RestoreWindowBounds();
 
         Loaded += async (_, _) =>
         {
+            var arguments = Environment.GetCommandLineArgs();
+            var modifyRequested = arguments
+                .Any(arg => arg.Equals("--authorize-modify", StringComparison.OrdinalIgnoreCase));
+            var inspectRequested = arguments
+                .Any(arg => arg.Equals("--inspect", StringComparison.OrdinalIgnoreCase));
+            var suppressShortcutOffer = arguments
+                .Any(arg => arg.Equals("--no-shortcut-offer", StringComparison.OrdinalIgnoreCase));
+            if (!modifyRequested && !inspectRequested)
+            {
+                var startup = new StartupModeDialog { Owner = this };
+                startup.ShowDialog();
+                modifyRequested = startup.ModifyRequested;
+            }
+
             CollectNavButtons();
             if (_sidebarCollapsed)
             {
@@ -58,7 +79,11 @@ public partial class MainWindow : Window
             }
             UpdateBreadcrumbs("Machine Overview");
             ShowWelcome();
+            if (modifyRequested)
+                ModeCombo.SelectedIndex = 1;
             await RunScanAsync();
+            if (!suppressShortcutOffer)
+                ShortcutOfferService.OfferIfNeeded(this);
         };
 
         _scan.StatusChanged += status =>
@@ -89,7 +114,7 @@ public partial class MainWindow : Window
     {
         ContentHost.Content = new TextBlock
         {
-            Text = "Press Scan (F5) to discover local configuration.\n\nInspect mode · read-only. Switch to Modify (elevated) to change values from category pages.",
+            Text = "Press Scan (F5) to collect local configuration and system inventory.\n\nInspect mode is read-only. Modify mode requires administrator authorization and enables approved setting controls.",
             FontSize = 13,
             Foreground = (Brush)FindResource("BrushTextSecondary"),
             TextWrapping = TextWrapping.Wrap,
@@ -104,6 +129,7 @@ public partial class MainWindow : Window
     private void MenuExit_Click(object sender, RoutedEventArgs e) => Close();
 
     private void MenuHome_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("home");
+    private void MenuInventory_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("inventory");
     private void MenuConflicts_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("conflicts");
     private void MenuKnowledge_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("knowledge");
     private void MenuAbout_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("about");
@@ -152,6 +178,12 @@ public partial class MainWindow : Window
             ValidationLabel.Text = _scan.ValidationFailed == 0
                 ? $"Validation: {_scan.ValidationPassed} ok"
                 : $"Validation: {_scan.ValidationPassed} ok / {_scan.ValidationFailed} fail";
+            ValidationLabel.ToolTip = _scan.ValidationFailed == 0
+                ? "All catalog and live inventory entries passed structural validation."
+                : string.Join("\n", _scan.ValidationResults
+                    .Where(result => !result.IsValid)
+                    .Take(8)
+                    .Select(result => $"{result.ObjectId}: {string.Join("; ", result.Errors)}"));
 
             var conflicts = _scan.Query?.GetConflicts().Count() ?? 0;
             ConflictCountLabel.Text = $"Conflicts: {conflicts}";
@@ -195,6 +227,13 @@ public partial class MainWindow : Window
             return;
         }
 
+        if (tag == "inventory")
+        {
+            ContentHost.Content = new SystemInventoryView(_scan, OpenSetting);
+            UpdateBreadcrumbs("System Inventory");
+            return;
+        }
+
         if (tag == "conflicts")
         {
             ContentHost.Content = new ConflictsView(_scan, OpenSetting);
@@ -211,7 +250,7 @@ public partial class MainWindow : Window
 
         if (tag == "about")
         {
-            ContentHost.Content = new AboutView();
+            ContentHost.Content = new AboutView(_scan);
             UpdateBreadcrumbs("About");
             return;
         }
@@ -221,7 +260,7 @@ public partial class MainWindow : Window
             var name = tag["domain:".Length..];
             if (Enum.TryParse<ProductDomain>(name, out var domain))
             {
-                ContentHost.Content = new DomainView(_scan, domain, OpenCategory);
+                ContentHost.Content = new DomainView(_scan, domain, OpenCategory, OpenSetting);
                 UpdateBreadcrumbs(
                     NavigationBuilder.HumanizeDomain(domain),
                     group: DomainGroup(domain),
@@ -310,6 +349,17 @@ public partial class MainWindow : Window
             : mo.SubCategory!;
 
         ContentHost.Content = new SettingDetailPage(detail, OpenSetting);
+        if (mo.Bucket == CatalogBucket.SystemInventory)
+        {
+            BreadcrumbPanel.Children.Clear();
+            AddBreadcrumbLink("Home", "home");
+            AddBreadcrumbSep();
+            AddBreadcrumbLink("System Inventory", "inventory");
+            AddBreadcrumbSep();
+            AddBreadcrumbText(detail.Title);
+            _currentNav = $"setting:{objectId}";
+            return;
+        }
         UpdateBreadcrumbs(
             detail.Title,
             group: DomainGroup(mo.ProductDomain),
@@ -326,9 +376,11 @@ public partial class MainWindow : Window
         ProductDomain.ConsentStore or ProductDomain.AppPrivacy or ProductDomain.Telemetry
             or ProductDomain.Advertising or ProductDomain.Location or ProductDomain.ActivityHistory
             or ProductDomain.CloudContent => "Privacy",
-        ProductDomain.Defender or ProductDomain.Firewall or ProductDomain.Biometrics => "Security",
-        ProductDomain.WindowsUpdate or ProductDomain.Search or ProductDomain.Speech or ProductDomain.Device => "Windows",
-        ProductDomain.Edge => "Applications",
+        ProductDomain.Defender or ProductDomain.Firewall or ProductDomain.Biometrics or ProductDomain.LocalSecurity
+            or ProductDomain.Network or ProductDomain.RemoteAccess => "Security",
+        ProductDomain.WindowsUpdate or ProductDomain.Search or ProductDomain.Speech or ProductDomain.Device
+            or ProductDomain.Widgets or ProductDomain.Storage or ProductDomain.Copilot or ProductDomain.Recall => "Windows",
+        ProductDomain.Edge or ProductDomain.OneDrive => "Applications",
         _ => "Domains"
     };
 
@@ -499,7 +551,7 @@ public partial class MainWindow : Window
                     return;
                 }
 
-                StatusText.Text = "Modify mode authorized — use value buttons on category pages to change settings.";
+                StatusText.Text = "Modify mode authorized. Approved setting controls are enabled.";
                 _log.Change("MainWindow", "Modify mode entered. Registry writes enabled with confirmation.");
                 // Rebuild current view so value buttons become enabled.
                 Navigate(_currentNav);
@@ -512,7 +564,7 @@ public partial class MainWindow : Window
         else
         {
             _elevation.ExitModifyMode();
-            StatusText.Text = "Inspect mode · read-only.";
+            StatusText.Text = "Inspect mode is read-only.";
             Navigate(_currentNav);
         }
     }
@@ -538,10 +590,13 @@ public partial class MainWindow : Window
                 double.TryParse(lines[2], out var width) &&
                 double.TryParse(lines[3], out var height))
             {
-                Left = left;
-                Top = top;
-                Width = Math.Max(MinWidth, width);
-                Height = Math.Max(MinHeight, height);
+                var workArea = SystemParameters.WorkArea;
+                var safeWidth = Math.Min(Math.Max(MinWidth, width), workArea.Width);
+                var safeHeight = Math.Min(Math.Max(MinHeight, height), workArea.Height);
+                Width = safeWidth;
+                Height = safeHeight;
+                Left = Math.Min(Math.Max(left, workArea.Left), workArea.Right - safeWidth);
+                Top = Math.Min(Math.Max(top, workArea.Top), workArea.Bottom - safeHeight);
                 WindowStartupLocation = WindowStartupLocation.Manual;
             }
             if (lines.Length >= 5 && bool.TryParse(lines[4], out var collapsed))
@@ -557,12 +612,13 @@ public partial class MainWindow : Window
     {
         try
         {
+            var bounds = WindowState == WindowState.Normal ? new Rect(Left, Top, Width, Height) : RestoreBounds;
             File.WriteAllLines(_prefsPath, new[]
             {
-                Left.ToString("F0"),
-                Top.ToString("F0"),
-                Width.ToString("F0"),
-                Height.ToString("F0"),
+                bounds.Left.ToString("F0"),
+                bounds.Top.ToString("F0"),
+                bounds.Width.ToString("F0"),
+                bounds.Height.ToString("F0"),
                 _sidebarCollapsed.ToString()
             });
         }

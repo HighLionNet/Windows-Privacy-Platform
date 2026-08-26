@@ -53,6 +53,24 @@ public class InventorySnapshot
         set => Applications.InstalledPackages = value ?? new();
     }
 
+    public List<string> ProvisionedPackages
+    {
+        get => Applications.ProvisionedPackages;
+        set => Applications.ProvisionedPackages = value ?? new();
+    }
+
+    public List<OptionalFeatureInfo> OptionalFeatures
+    {
+        get => Applications.OptionalFeatures;
+        set => Applications.OptionalFeatures = value ?? new();
+    }
+
+    public List<FirewallRuleInfo> FirewallRules
+    {
+        get => Networking.FirewallRules;
+        set => Networking.FirewallRules = value ?? new();
+    }
+
     public List<ServiceInfo> Services
     {
         get => System.Services;

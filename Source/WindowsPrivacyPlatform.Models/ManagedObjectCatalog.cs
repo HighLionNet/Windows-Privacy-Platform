@@ -1,5 +1,5 @@
 // Source/WindowsPrivacyPlatform.Models/ManagedObjectCatalog.cs
-// v2.1: WritableTarget is explicit catalog-backed authorization only.
+// WritableTarget is explicit catalog-backed authorization only.
 // DiscoveryMethod is observation metadata and NEVER creates write permission.
 using System.Collections.Generic;
 using System.Linq;
@@ -8,11 +8,13 @@ namespace WindowsPrivacyPlatform.Models;
 
 public static class ManagedObjectCatalog
 {
+    public const string CatalogVersion = "2.2";
     public static IReadOnlyList<ManagedObject> PrivacySettings { get; } = Finalize(CreatePrivacyBatch());
     public static IReadOnlyList<ManagedObject> PolicySettings { get; } = Finalize(
         CreatePolicyBatch()
             .Concat(CreateExtendedPolicyBatch())
             .Concat(CatalogExpansion.CreateCoverageBatch())
+            .Concat(CatalogV22Expansion.CreateCoverageBatch())
             .ToList());
     public static IReadOnlyList<ManagedObject> FirewallSettings { get; } = Finalize(CreateFirewallBatch());
     public static IReadOnlyList<ManagedObject> All { get; } =
@@ -23,22 +25,26 @@ public static class ManagedObjectCatalog
         foreach (var mo in batch)
         {
             if (mo is null) continue;
-            mo.SchemaVersion = "2.1";
-            mo.ConfidenceSource = "Catalog-v2.1";
+            mo.SchemaVersion = CatalogVersion;
+            mo.ConfidenceSource = "Curated catalog";
             ApplyKnownSemantics(mo);
             AttachWritableTarget(mo);
+            mo.TechnicalLocation = TechnicalLocationFormatter.FromDefinition(mo);
+            ApplyExclusionDecision(mo);
+            ApplyNativeToolLink(mo);
+            mo.Bucket = CatalogPolicy.ResolveBucket(mo);
+            CatalogNarrativeAuthoring.Apply(mo);
         }
         return batch;
     }
 
     private static void AttachWritableTarget(ManagedObject mo)
     {
-        if (mo.ProductDomain == ProductDomain.Firewall)
+        if (CuratedWriteAuthorizations.TryCreateTarget(mo.ObjectId, out var curated))
+        {
+            mo.WritableTarget = curated;
             return;
-
-        // Service anchors are observation-only.
-        if (mo.FeatureCategory == FeatureCategory.WindowsService)
-            return;
+        }
 
         if (!IsExplicitlyAuthorizedForWrite(mo.ObjectId))
             return;
@@ -53,6 +59,10 @@ public static class ManagedObjectCatalog
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList() ?? new List<string>();
 
+        // A typed target without an explicit value set is still too broad for this product.
+        if (supported.Count == 0)
+            return;
+
         mo.WritableTarget = new WritableTarget
         {
             Hive = hive,
@@ -63,8 +73,79 @@ public static class ManagedObjectCatalog
             SupportedRawValues = supported,
             SupportsDeletion = true,
             RequiresElevation = hive.Equals("HKLM", StringComparison.OrdinalIgnoreCase),
-            Notes = "Explicit catalog authorization (v2.1). DiscoveryMethod does not grant write permission."
+            Kind = WritableTargetKind.Registry,
+            Notes = "Explicit catalog authorization. Discovery metadata never grants write permission."
         };
+    }
+
+    private static void ApplyExclusionDecision(ManagedObject mo)
+    {
+        if (mo.IsWritable)
+        {
+            mo.ExclusionReason = ExclusionReason.None;
+            return;
+        }
+
+        if (mo.ObjectId.StartsWith("policy.bitlocker.", StringComparison.OrdinalIgnoreCase) ||
+            mo.ObjectId.StartsWith("policy.uac.", StringComparison.OrdinalIgnoreCase))
+        {
+            // BitLocker can require recovery material; UAC master behavior affects every later elevation.
+            mo.ExclusionReason = ExclusionReason.HighRiskIrreversible;
+            if (mo.ObjectId.StartsWith("policy.bitlocker.", StringComparison.OrdinalIgnoreCase) &&
+                !mo.ObjectId.Equals("policy.bitlocker.requiredeviceencryption", StringComparison.OrdinalIgnoreCase))
+            {
+                mo.SupportedEditions = ["Pro", "Enterprise", "Education", "Pro for Workstations"];
+            }
+            return;
+        }
+
+        if (mo.FeatureCategory is FeatureCategory.WindowsService or FeatureCategory.ScheduledTask or
+            FeatureCategory.AppxPackage or FeatureCategory.ProvisionedPackage or
+            FeatureCategory.OptionalFeature or FeatureCategory.WindowsCapability or
+            FeatureCategory.FirewallRule)
+        {
+            mo.ExclusionReason = ExclusionReason.ReadOnlyByDesign;
+            return;
+        }
+
+        if (mo.ObjectId.Contains("asr.", StringComparison.OrdinalIgnoreCase) ||
+            mo.SubCategory?.Contains("Exploit", StringComparison.OrdinalIgnoreCase) == true ||
+            mo.ProductDomain == ProductDomain.LocalSecurity)
+        {
+            mo.ExclusionReason = ExclusionReason.RequiresMultiKeyCoordination;
+            return;
+        }
+
+        mo.ExclusionReason = ExclusionReason.NotYetCatalogued;
+    }
+
+    private static void ApplyNativeToolLink(ManagedObject mo)
+    {
+        if (mo.ObjectId.StartsWith("policy.bitlocker.", StringComparison.OrdinalIgnoreCase))
+        {
+            mo.NativeTool = new NativeToolLink
+            {
+                Label = "Open BitLocker Drive Encryption",
+                Executable = "control.exe",
+                Arguments = "/name Microsoft.BitLockerDriveEncryption"
+            };
+        }
+        else if (mo.ObjectId.StartsWith("policy.uac.", StringComparison.OrdinalIgnoreCase))
+        {
+            mo.NativeTool = new NativeToolLink
+            {
+                Label = "Open User Account Control settings",
+                Executable = "UserAccountControlSettings.exe"
+            };
+        }
+        else if (mo.FeatureCategory == FeatureCategory.FirewallRule)
+        {
+            mo.NativeTool = new NativeToolLink
+            {
+                Label = "Open Firewall with Advanced Security",
+                Executable = "wf.msc"
+            };
+        }
     }
 
     private static bool IsExplicitlyAuthorizedForWrite(string objectId)
@@ -231,14 +312,29 @@ public static class ManagedObjectCatalog
         }
         if (mo.ObjectId.Equals("privacy.advertisingid.enabled", StringComparison.OrdinalIgnoreCase))
         { mo.ValueSemantics = [V("0", "Disabled", "Disabled", "Windows does not provide an Advertising ID to applications for this user."), V("1", "Enabled", "Enabled", "Windows may provide an Advertising ID to applications for cross-app advertising correlation.")]; return; }
+        if (mo.ObjectId is "privacy.tailoredexperiences" or
+            "privacy.contentdelivery.systempanesuggestions" or
+            "privacy.speech.onlinespeech")
+        { mo.ValueSemantics = [V("0", "Disabled", "Disabled", "The user preference is disabled."), V("1", "Enabled", "Enabled", "The user preference is enabled.")]; return; }
         if (mo.ObjectId.Contains("allowtelemetry", StringComparison.OrdinalIgnoreCase))
         { mo.ValueSemantics = [new ValueMeaning { RawValue = "0", Canonical = "Security", DisplayLabel = "Security", Description = "Minimum supported diagnostic data level (Security).", SupportedEditions = ["Enterprise", "Education"], SupportedVersions = ["Windows 10", "Windows 11"], Confidence = EffectiveConfidence.High }, V("1", "Basic", "Basic", "Basic diagnostic data level."), V("2", "Enhanced", "Enhanced", "Enhanced diagnostic data level."), V("3", "Full", "Full", "Full diagnostic data level.")]; return; }
         if (mo.ObjectId.StartsWith("policy.appprivacy.", StringComparison.OrdinalIgnoreCase))
         { mo.ValueSemantics = [V("0", "UserControlled", "User controlled", "Machine policy leaves capability control to the per-user ConsentStore value."), V("1", "ForceAllow", "Force allow", "Machine policy forces the capability allowed for apps."), V("2", "ForceDeny", "Force deny", "Machine policy forces the capability denied for apps.")]; return; }
         if (mo.ObjectId.Contains(".enabled", StringComparison.OrdinalIgnoreCase) && mo.ProductDomain == ProductDomain.Firewall)
         { mo.ValueSemantics = [V("0", "Disabled", "Disabled", "This firewall profile is disabled."), V("1", "Enabled", "Enabled", "This firewall profile is enabled.")]; return; }
-        if (mo.ObjectId.Contains(".inbound", StringComparison.OrdinalIgnoreCase) && mo.ProductDomain == ProductDomain.Firewall)
+        if ((mo.ObjectId.Contains(".inbound", StringComparison.OrdinalIgnoreCase) ||
+             mo.ObjectId.Contains(".outbound", StringComparison.OrdinalIgnoreCase)) && mo.ProductDomain == ProductDomain.Firewall)
         { mo.ValueSemantics = [V("0", "Block", "Block", "Default inbound action is Block."), V("1", "Allow", "Allow", "Default inbound action is Allow.")]; return; }
+        if (mo.ObjectId.Contains(".notifications", StringComparison.OrdinalIgnoreCase) && mo.ProductDomain == ProductDomain.Firewall)
+        { mo.ValueSemantics = [V("0", "Enabled", "Notifications enabled", "Windows notifies the user when a new app is blocked."), V("1", "Disabled", "Notifications disabled", "Blocked-app notifications are suppressed for this profile.")]; return; }
+        if (mo.FeatureCategory == FeatureCategory.WindowsService)
+        { mo.ValueSemantics = [V("Startup:Automatic", "Automatic", "Automatic startup", "Start with Windows."), V("Startup:Manual", "Manual", "Manual startup", "Start only when requested."), V("Startup:Disabled", "Disabled", "Disabled startup", "Prevent service startup."), V("State:Running", "Running", "Start service", "Start the service now."), V("State:Stopped", "Stopped", "Stop service", "Stop the service now.")]; return; }
+        if (mo.FeatureCategory == FeatureCategory.ScheduledTask)
+        { mo.ValueSemantics = [V("Enabled", "Enabled", "Enabled", "Allow the task to run on its configured schedule."), V("Disabled", "Disabled", "Disabled", "Prevent scheduled execution until re-enabled.")]; return; }
+        if (mo.FeatureCategory == FeatureCategory.AppxPackage)
+        { mo.ValueSemantics = [V("Remove", "Removed", "Remove for current user", "Remove the package for the signed-in user.")]; return; }
+        if (mo.FeatureCategory == FeatureCategory.OptionalFeature)
+        { mo.ValueSemantics = [V("Enabled", "Enabled", "Enable feature", "Enable the optional Windows feature."), V("Disabled", "Disabled", "Disable feature", "Disable the optional Windows feature.")]; return; }
         if (mo.ObjectId.Equals("policy.update.auoptions", StringComparison.OrdinalIgnoreCase))
         { mo.ValueSemantics = [V("2", "NotifyBeforeDownload", "Notify before download", "Notify before downloading updates."), V("3", "AutoDownloadNotifyInstall", "Auto download, notify install", "Download automatically and notify before installing."), V("4", "AutoDownloadScheduledInstall", "Auto download and scheduled install", "Download and install on a schedule."), V("5", "LocalAdminCanChoose", "Local admin chooses", "Allow local administrators to choose.")]; return; }
         if (mo.ObjectId.Equals("policy.deliveryopt.downloadmode", StringComparison.OrdinalIgnoreCase))
@@ -385,7 +481,13 @@ public static class ManagedObjectCatalog
             Fw("firewall.profile.domain.inbound", "Domain Profile Default Inbound Action", "Default inbound on Domain.", "Block unsolicited inbound.", RiskLevel.High, "Defaults", @"HKLM\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\DomainProfile\DefaultInboundAction"),
             Fw("firewall.profile.private.inbound", "Private Profile Default Inbound Action", "Default inbound on Private.", "Private network posture.", RiskLevel.High, "Defaults", @"HKLM\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\StandardProfile\DefaultInboundAction"),
             Fw("firewall.profile.public.inbound", "Public Profile Default Inbound Action", "Default inbound on Public.", "Untrusted; Block expected.", RiskLevel.High, "Defaults", @"HKLM\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\PublicProfile\DefaultInboundAction"),
-            Fw("firewall.service.mpssvc", "Windows Firewall Service (MpsSvc)", "Firewall service state.", "Not writable via WPP.", RiskLevel.High, "Service", "ServiceController:MpsSvc"),
+            Fw("firewall.profile.domain.outbound", "Domain Profile Default Outbound Action", "Controls the default action for outbound traffic on domain networks.", "Unexpected outbound blocking can interrupt managed services.", RiskLevel.High, "Domain profile", @"HKLM\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\DomainProfile\DefaultOutboundAction"),
+            Fw("firewall.profile.private.outbound", "Private Profile Default Outbound Action", "Controls the default action for outbound traffic on private networks.", "Private-network applications often depend on outbound access.", RiskLevel.High, "Private profile", @"HKLM\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\StandardProfile\DefaultOutboundAction"),
+            Fw("firewall.profile.public.outbound", "Public Profile Default Outbound Action", "Controls the default action for outbound traffic on public networks.", "Public-network restrictions can reduce exposure but may interrupt connectivity.", RiskLevel.High, "Public profile", @"HKLM\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\PublicProfile\DefaultOutboundAction"),
+            Fw("firewall.profile.domain.notifications", "Domain Profile Inbound Notifications", "Controls notifications when a new app is blocked on domain networks.", "Notifications help explain blocked inbound access.", RiskLevel.Medium, "Domain profile", @"HKLM\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\DomainProfile\DisableNotifications"),
+            Fw("firewall.profile.private.notifications", "Private Profile Inbound Notifications", "Controls notifications when a new app is blocked on private networks.", "Notifications help users distinguish policy blocks from application failures.", RiskLevel.Medium, "Private profile", @"HKLM\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\StandardProfile\DisableNotifications"),
+            Fw("firewall.profile.public.notifications", "Public Profile Inbound Notifications", "Controls notifications when a new app is blocked on public networks.", "Notifications can surface unexpected inbound requests on untrusted networks.", RiskLevel.Medium, "Public profile", @"HKLM\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\PublicProfile\DisableNotifications"),
+            Fw("firewall.service.mpssvc", "Windows Firewall Service (MpsSvc)", "Reports whether the Windows Defender Firewall service is running.", "The service is core network protection and stays view-only.", RiskLevel.High, "Service", "ServiceController:MpsSvc"),
             Fw("firewall.logging.summary", "Firewall Logging Configuration", "Logging summary.", "Observation-only.", RiskLevel.Medium, "Logging", "FirewallPolicy-LoggingSummary")
         };
         return list.AsReadOnly();
@@ -402,7 +504,10 @@ public static class ManagedObjectCatalog
     }
 
     private static ManagedObject Fw(string id, string name, string description, string rationale, RiskLevel risk, string subCategory, string discovery)
-        => Create(id, name, "FirewallSetting", description, rationale, risk, FeatureCategory.FirewallRule, ComponentOwner.Networking, ControlLevel.AdministratorControlled, ProductDomain.Firewall, subCategory, discovery, InterfaceName.Firewall, ConfigurationType.FirewallRuleState);
+        => Create(id, name, "FirewallSetting", description, rationale, risk,
+            id.StartsWith("firewall.profile.", StringComparison.OrdinalIgnoreCase) ? FeatureCategory.FirewallProfile : FeatureCategory.FirewallRule,
+            ComponentOwner.Networking, ControlLevel.AdministratorControlled, ProductDomain.Firewall, subCategory, discovery,
+            InterfaceName.Firewall, ConfigurationType.FirewallRuleState);
 
     private static ManagedObject Create(string id, string name, string objectType, string description, string rationale, RiskLevel risk, FeatureCategory category, ComponentOwner owner, ControlLevel control, ProductDomain domain, string subCategory, string discovery, InterfaceName iface, ConfigurationType cfg)
     {
@@ -413,8 +518,8 @@ public static class ManagedObjectCatalog
             ImpactLevel = ImpactLevel.Security, LifecycleState = LifecycleState.Active, InterfaceName = iface,
             ConfigurationType = cfg, DiscoveryMethod = discovery, CanonicalPath = id, ControlLevel = control,
             ComponentOwner = owner, PriorityLevel = PriorityLevel.Recommended, Reversibility = Reversibility.Reversible,
-            RebootRequirement = RebootRequirement.None, SchemaVersion = "2.1", CreatedBy = "ManagedObjectCatalog",
-            CreatedTimestamp = DateTime.UtcNow, ConfidenceScore = 80, ConfidenceSource = "Catalog-v2.1"
+            RebootRequirement = RebootRequirement.None, SchemaVersion = CatalogVersion, CreatedBy = "ManagedObjectCatalog",
+            CreatedTimestamp = DateTime.UnixEpoch, ConfidenceScore = 80, ConfidenceSource = "Curated catalog"
         };
     }
 }

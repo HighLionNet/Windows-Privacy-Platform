@@ -86,18 +86,18 @@ public static class SettingExplanationFactory
             DomainPath = domainPath,
             ImpactLabel = impactLabel,
             RiskSummary = riskSummary,
-            WhatIsIt = BuildWhatIsIt(mo),
-            WhyItMatters = BuildWhyItMatters(mo),
-            UserImpact = string.IsNullOrWhiteSpace(mo.ConsumerImpact) ? BuildUserImpact(mo) : mo.ConsumerImpact.Trim(),
-            EnterpriseImpact = BuildEnterpriseImpact(mo, controlHint),
+            WhatIsIt = mo.Narrative.Summary,
+            WhyItMatters = mo.Narrative.Mechanics + " " + mo.Narrative.WhyItMatters,
+            UserImpact = mo.Narrative.ConsumerImpact,
+            EnterpriseImpact = controlHint,
             TypicalUseCases = string.IsNullOrWhiteSpace(mo.TypicalEnterpriseUse) ? BuildUseCases(mo) : mo.TypicalEnterpriseUse.Trim(),
-            DecisionGuidance = BuildContextNotes(mo, controlHint),
+            DecisionGuidance = mo.Narrative.DecisionGuidance,
             PrivacyImpactText = BuildPrivacyImpact(mo),
             SecurityImpactText = BuildSecurityImpact(mo),
-            SideEffects = BuildSideEffects(mo),
-            Exceptions = BuildExceptions(mo),
-            CommonMisconceptions = BuildMisconceptions(mo),
-            Unknowns = BuildUnknowns(mo),
+            SideEffects = mo.Narrative.SideEffects,
+            Exceptions = mo.Narrative.WhenIgnored,
+            CommonMisconceptions = mo.Narrative.CommonMisconception,
+            Unknowns = string.Empty,
             RelatedApplications = InferRelatedApplications(mo)
         };
     }
@@ -379,11 +379,11 @@ public static class SettingExplanationFactory
     {
         var parts = new List<string>
         {
-            "MDM (Intune/CSP) precedence is modeled in layer ranking but not fully collected in this prototype, so effective state on MDM-managed devices may be incomplete."
+            "Mobile device management precedence is modeled in layer ranking but is not fully collected, so effective state on managed devices may be incomplete."
         };
 
         if (mo.ProductDomain == ProductDomain.Firewall)
-            parts.Add("Firewall coverage in the catalog is partial; many profiles and rule sets are not yet modeled.");
+            parts.Add("Individual firewall rules are intentionally retained as read-only live inventory; Settings exposes only the bounded profile controls that meet the write-safety contract.");
 
         if (mo.ValueSemantics is null || mo.ValueSemantics.Count == 0)
             parts.Add("No ValueSemantics map is defined for this ObjectId; raw values are shown without catalog meaning.");

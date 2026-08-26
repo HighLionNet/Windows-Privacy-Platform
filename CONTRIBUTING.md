@@ -1,34 +1,37 @@
 # Contributing
 
-## Principles
+Windows Privacy Platform treats correctness and bounded authority as product features. Changes should preserve uncertainty, keep discovered data separate from authorization, and avoid claims that are not supported by observed evidence or authoritative Windows documentation.
 
-- Prefer accuracy over coverage.
-- Prefer structural safety over documentation warnings.
-- Do not invent certainty about Windows behavior.
-- Do not turn discovery paths into write authorization.
-
-## Adding a catalog setting
-
-1. Give it a stable `ObjectId`, name, domain, category, and description.
-2. Provide an exact discovery path when registry-backed.
-3. Add `ValueSemantics` when values are known.
-4. Mark applicability (Windows versions/editions) when known.
-5. **Writable only if intentional:** add the ObjectId to the explicit write whitelist in `ManagedObjectCatalog` and ensure `WritableTarget` fields are complete.
-6. Never assume a discovery probe is writable.
-
-## Building and testing
+## Development workflow
 
 ```powershell
-cd Source
-dotnet restore WindowsPrivacyPlatform.sln
-dotnet build WindowsPrivacyPlatform.sln -c Release
-dotnet test WindowsPrivacyPlatform.sln -c Release
+dotnet restore .\Source\WindowsPrivacyPlatform.sln
+dotnet build .\Source\WindowsPrivacyPlatform.sln -c Release --no-restore
+dotnet test .\Source\WindowsPrivacyPlatform.sln -c Release --no-build
 ```
 
-Primary target: Windows 11. Windows 10 where the same implementation is naturally correct.
+Before opening a pull request, also run `git diff --check` and `scripts\build-release.ps1` on Windows.
+
+## Catalog work
+
+Every managed object needs a stable ID, technical location, applicability, value semantics where known, complete plain-language narrative, and an explicit write decision. Prose validation intentionally rejects registry paths, service/task identifiers, raw object IDs, and internal observation phrasing.
+
+A non-writable entry must state an `ExclusionReason`. A writable entry must use a complete typed `WritableTarget`; `DiscoveryMethod` and live inventory never authorize a write.
+
+Adding a curated native target requires:
+
+- A short, documented safety justification beside the allowlist entry.
+- A fixed identifier and fixed operation shape—never a user-controlled shell command.
+- Pre-read, confirmation, typed write, independent read-back, and local audit.
+- One round-trip contract test per allowlist entry.
+- A recovery hint where removal or disabling affects installed functionality.
+
+BitLocker operations, User Account Control master changes, arbitrary firewall rules, and non-curated inventory remain observation-only by design.
+
+## Signing release output
+
+`scripts\sign-release.ps1` signs only the published application executable when signing configuration exists. Set `WPP_SIGN_CERT_PATH` plus optional `WPP_SIGN_CERT_PASSWORD`, or set `WPP_SIGN_CERT_THUMBPRINT` for a certificate in the local-machine store. CI can construct the PFX path from the `WPP_SIGN_CERT_BASE64` repository secret. Never commit certificates, passwords, thumbprints, or generated release output.
 
 ## Pull requests
 
-- Keep changes focused.
-- Include regression tests for safety-sensitive logic when practical.
-- Do not add bulk modify, profiles, privacy scores, telemetry, or generic editors.
+Keep changes reviewable, include regression tests for safety-sensitive behavior, update public and engineering documentation when contracts change, and report actual build/test/publish results. Do not add bulk-apply profiles, generic editors, scoring, application telemetry, or silent persistence.

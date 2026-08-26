@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
@@ -22,6 +23,8 @@ public partial class CategoryView : UserControl
     private readonly PolicyChangeService _changes;
     private readonly Func<Task> _refreshScan;
     private readonly Window? _owner;
+    private readonly string _windowsVersion;
+    private readonly string _edition;
     private bool _applyInProgress;
 
     public CategoryView(
@@ -40,10 +43,12 @@ public partial class CategoryView : UserControl
         _changes = changes;
         _refreshScan = refreshScan;
         _owner = owner;
+        _windowsVersion = scan.Overview?.WindowsVersion ?? string.Empty;
+        _edition = scan.Overview?.WindowsEdition ?? string.Empty;
 
         TitleText.Text = category;
 
-        var items = scan.Catalog
+        var items = scan.SettingsCatalog
             .Where(m => m.ProductDomain == domain &&
                         string.Equals(
                             string.IsNullOrWhiteSpace(m.SubCategory) ? domain.ToString() : m.SubCategory,
@@ -106,18 +111,35 @@ public partial class CategoryView : UserControl
 
         var left = new StackPanel();
 
+        var heading = new DockPanel { LastChildFill = false };
+
         var name = new TextBlock
         {
             Text = mo.ObjectName,
             FontWeight = FontWeights.SemiBold,
             FontSize = 13,
             Foreground = (Brush)FindResource("BrushTextPrimary"),
-            TextWrapping = TextWrapping.Wrap,
-            Cursor = Cursors.Hand
+            TextWrapping = TextWrapping.Wrap
         };
         var id = mo.ObjectId;
-        name.MouseLeftButtonUp += (_, _) => openSetting(id);
-        left.Children.Add(name);
+        DockPanel.SetDock(name, Dock.Left);
+        heading.Children.Add(name);
+        var details = new Button
+        {
+            Content = "Details",
+            Style = (Style)FindResource("LinkButton"),
+            Margin = new Thickness(8, 0, 0, 0),
+            ToolTip = "Open setting details"
+        };
+        details.Click += (_, _) => openSetting(id);
+        AutomationProperties.SetName(details, $"Open details for {mo.ObjectName}");
+        DockPanel.SetDock(details, Dock.Right);
+        heading.Children.Add(details);
+        if (!mo.IsWritable)
+            heading.Children.Add(BuildBadge("VIEW ONLY", "BadgeUnknown"));
+        if (!mo.IsApplicableHere)
+            heading.Children.Add(BuildBadge(CatalogPolicy.ApplicabilityBadgeText(mo.Applicability), "BadgeWarning"));
+        left.Children.Add(heading);
 
         var blurb = ShortBlurb(mo);
         if (!string.IsNullOrWhiteSpace(blurb))
@@ -134,7 +156,7 @@ public partial class CategoryView : UserControl
 
         left.Children.Add(new TextBlock
         {
-            Text = FormatPathType(mo),
+            Text = mo.TechnicalLocation,
             FontSize = 10,
             FontFamily = new FontFamily("Cascadia Code, Consolas, Segoe UI"),
             Foreground = (Brush)FindResource("BrushTextMuted"),
@@ -167,12 +189,14 @@ public partial class CategoryView : UserControl
             Margin = new Thickness(0, 0, 0, 4)
         });
 
-        var options = BuildOptionList(mo);
+        var options = BuildOptionList(mo, _windowsVersion, _edition);
         if (options.Count == 0)
         {
             right.Children.Add(new TextBlock
             {
-                Text = "Modification not supported for this setting.",
+                Text = mo.IsWritable
+                    ? "No supported values are available on this Windows edition."
+                    : CatalogPolicy.ExclusionReasonText(mo.ExclusionReason),
                 FontSize = 11,
                 Foreground = (Brush)FindResource("BrushTextMuted"),
                 TextWrapping = TextWrapping.Wrap,
@@ -194,7 +218,8 @@ public partial class CategoryView : UserControl
                     opt.RawDisplay,
                     isCurrent,
                     () => ApplyValue(mo, opt.IsClear ? null : opt.Raw),
-                    opt.Tooltip);
+                    opt.Tooltip,
+                    mo.IsWritable && mo.IsApplicableHere && opt.IsApplicable);
 
                 DockPanel.SetDock(btn, Dock.Left);
                 row.Children.Add(btn);
@@ -232,13 +257,14 @@ public partial class CategoryView : UserControl
         /// <summary>Longer explanation for tooltip.</summary>
         public string? Tooltip;
         public bool IsClear;
+        public bool IsApplicable = true;
     }
 
     /// <summary>
     /// Options from ValueSemantics only. Button = raw value. Note = clear DisplayLabel.
     /// Never invent 0/1. Never show "Policy value 0." as the note.
     /// </summary>
-    private static List<OptionItem> BuildOptionList(ManagedObject mo)
+    private static List<OptionItem> BuildOptionList(ManagedObject mo, string windowsVersion, string edition)
     {
         var list = new List<OptionItem>();
 
@@ -260,12 +286,15 @@ public partial class CategoryView : UserControl
                     Raw = v.RawValue,
                     RawDisplay = v.RawValue,
                     Note = note,
-                    Tooltip = tip
+                    Tooltip = tip,
+                    IsApplicable = ApplicabilityEvaluator.IsValueApplicable(v, windowsVersion, edition)
                 });
+                if (!list[^1].IsApplicable)
+                    list[^1].Note += " (not available on this edition or Windows version)";
             }
         }
 
-        if (list.Count > 0 && mo.IsWritable)
+        if (list.Count > 0 && mo.WritableTarget is { Kind: WritableTargetKind.Registry, SupportsDeletion: true })
         {
             list.Add(new OptionItem
             {
@@ -276,19 +305,6 @@ public partial class CategoryView : UserControl
                 IsClear = true
             });
         }
-        else if (list.Count > 0)
-        {
-            // Read-only: still show clear option label but change service will refuse.
-            list.Add(new OptionItem
-            {
-                Raw = null,
-                RawDisplay = "—",
-                Note = "Not configured",
-                Tooltip = "Value absent at the probed path.",
-                IsClear = true
-            });
-        }
-
         return list;
     }
 
@@ -314,80 +330,9 @@ public partial class CategoryView : UserControl
         return !string.IsNullOrWhiteSpace(v.Canonical) ? v.Canonical : (v.RawValue ?? string.Empty);
     }
 
-    private static string FormatPathType(ManagedObject mo)
+    private Button MakeValueButton(string label, bool isCurrent, Action onClick, string? effectTooltip, bool targetAvailable)
     {
-        var layer = mo.Observation?.Layers?.FirstOrDefault();
-        var path = layer?.SourcePath;
-        if (string.IsNullOrWhiteSpace(path))
-            path = mo.DiscoveryMethod;
-
-        var hive = layer?.Hive;
-        if (string.IsNullOrWhiteSpace(hive) && !string.IsNullOrWhiteSpace(path))
-        {
-            if (path.StartsWith("HKLM", StringComparison.OrdinalIgnoreCase) ||
-                path.StartsWith("HKEY_LOCAL_MACHINE", StringComparison.OrdinalIgnoreCase))
-                hive = "HKLM";
-            else if (path.StartsWith("HKCU", StringComparison.OrdinalIgnoreCase) ||
-                     path.StartsWith("HKEY_CURRENT_USER", StringComparison.OrdinalIgnoreCase))
-                hive = "HKCU";
-        }
-
-        var kind = ClassifyKind(mo, path, hive, layer?.Layer);
-        var shortPath = ShortPath(path);
-
-        if (string.IsNullOrWhiteSpace(shortPath))
-            return kind;
-
-        return $"{kind} · {shortPath}";
-    }
-
-    private static string ClassifyKind(ManagedObject mo, string? path, string? hive, ConfigurationLayer? layer)
-    {
-        path ??= string.Empty;
-
-        if (path.Contains(@"SOFTWARE\Policies", StringComparison.OrdinalIgnoreCase) ||
-            path.Contains(@"Software\Policies", StringComparison.OrdinalIgnoreCase))
-            return hive is "HKCU" ? "User GPO (HKCU Policies)" : "GPO (HKLM Policies)";
-
-        if (path.Contains(@"CurrentVersion\Policies", StringComparison.OrdinalIgnoreCase))
-            return "Alternate policy store (HKLM)";
-
-        if (path.Contains(@"WindowsUpdate\UX", StringComparison.OrdinalIgnoreCase))
-            return "Windows Update UX (HKLM)";
-
-        if (layer == ConfigurationLayer.UserPreference || hive is "HKCU")
-            return "User preference (HKCU)";
-
-        if (mo.FeatureCategory == FeatureCategory.DefenderSetting)
-            return "Defender policy (HKLM)";
-
-        if (mo.FeatureCategory == FeatureCategory.EdgePolicy)
-            return "Edge policy (HKLM)";
-
-        if (mo.ControlLevel == ControlLevel.AdministratorControlled)
-            return hive is "HKCU" ? "Admin policy (HKCU)" : "Admin policy (HKLM)";
-
-        return string.IsNullOrWhiteSpace(hive) ? "Registry" : $"Registry ({hive})";
-    }
-
-    private static string ShortPath(string? path)
-    {
-        if (string.IsNullOrWhiteSpace(path))
-            return string.Empty;
-
-        var p = path.Replace("HKEY_LOCAL_MACHINE\\", "HKLM\\", StringComparison.OrdinalIgnoreCase)
-                    .Replace("HKEY_CURRENT_USER\\", "HKCU\\", StringComparison.OrdinalIgnoreCase);
-
-        var parts = p.Split('\\', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length <= 4)
-            return p;
-
-        return $"{parts[0]}\\\u2026\\{parts[^3]}\\{parts[^2]}\\{parts[^1]}";
-    }
-
-    private Button MakeValueButton(string label, bool isCurrent, Action onClick, string? effectTooltip)
-    {
-        var enabled = _elevation.IsModifyAuthorized && !_applyInProgress;
+        var enabled = targetAvailable && _elevation.IsModifyAuthorized && !_applyInProgress;
         var tip = effectTooltip;
         if (!string.IsNullOrWhiteSpace(tip))
             tip = enabled ? $"{tip}\n\nApply requires confirmation; success only if system matches." : $"{tip}\n\nSwitch to Modify to change.";
@@ -416,6 +361,25 @@ public partial class CategoryView : UserControl
 
         btn.Click += (_, _) => onClick();
         return btn;
+    }
+
+    private Border BuildBadge(string text, string styleKey)
+    {
+        var badge = new Border
+        {
+            Style = (Style)FindResource(styleKey),
+            Margin = new Thickness(8, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        badge.Child = new TextBlock
+        {
+            Text = text,
+            FontSize = 9,
+            FontWeight = FontWeights.SemiBold,
+            Foreground = (Brush)FindResource("BrushTextSecondary")
+        };
+        DockPanel.SetDock(badge, Dock.Right);
+        return badge;
     }
 
     private async void ApplyValue(ManagedObject mo, string? rawValue)

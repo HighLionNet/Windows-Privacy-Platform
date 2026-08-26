@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Media;
 using WindowsPrivacyPlatform.App.Services;
@@ -33,7 +34,7 @@ public partial class KnowledgeExplorerView : UserControl
 
             foreach (var mo in group.OrderBy(m => m.ObjectName))
             {
-                var border = new Border { Style = (Style)FindResource("ListRow") };
+                var row = new Button { Style = (Style)FindResource("ListRowButton") };
                 var panel = new StackPanel();
                 panel.Children.Add(new TextBlock
                 {
@@ -58,10 +59,11 @@ public partial class KnowledgeExplorerView : UserControl
                         Foreground = (Brush)FindResource("BrushTextSecondary")
                     });
                 }
-                border.Child = panel;
+                row.Content = panel;
+                AutomationProperties.SetName(row, $"{mo.ObjectName}. {mo.Description}");
                 var id = mo.ObjectId;
-                border.MouseLeftButtonUp += (_, _) => openSetting(id);
-                List.Items.Add(border);
+                row.Click += (_, _) => openSetting(id);
+                List.Items.Add(row);
             }
         }
     }

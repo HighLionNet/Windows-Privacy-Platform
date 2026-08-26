@@ -1,37 +1,46 @@
-# Architecture — Windows Privacy Platform v2.1
-
-**Applies to:** Version 2.1
+# Architecture
 
 ## Product shape
 
-- Primary product: **WPF GUI** (`WindowsPrivacyPlatform.App`)
-- Libraries: Models, Core, Logging, KnowledgeBase, Scanner, Validator
-- CLI project folder may remain on disk for history but is **not** in the solution and is not a product surface.
+The WPF desktop application is the only supported product surface. Its dependency direction is:
 
-## Layers
+```text
+Models → Core / Logging / KnowledgeBase → Validator / Scanner → App
+```
 
-1. **Models** — ManagedObject catalog, WritableTarget, ValueSemantics, ScanResult diagnostics, inventory snapshot shapes. No OS I/O.
-2. **Scanner** — Collectors + binders + PolicyPrecedenceResolver. Fail-soft collectors with structured diagnostics.
-3. **Validator** — Schema / catalog integrity.
-4. **App** — WPF shell, ScanService, ElevationService, PolicyChangeService.
+There is no CLI, background agent, service, driver, web backend, or plugin runtime.
 
-## Write safety contract
+## Catalog and inventory split
 
-- Default: read-only Inspect mode.
-- Modify requires explicit session authorization **and** (when Required) elevation.
-- Only catalog entries with an explicit complete `WritableTarget` are writable.
-- `DiscoveryMethod` never authorizes a write.
-- Write path: pre-read → confirm → write with catalog kind → independent read-back verifying value **and** kind.
-- Firewall domain is observation-only.
+`ManagedObjectCatalog` defines curated settings. Finalization applies value semantics, technical location, structured narrative, applicability, explicit exclusion decisions, and fixed write authorizations. `CatalogPolicy` assigns these entries to the Settings workspace.
 
-See `Status/Safety_Model.md`.
+`DynamicInventoryCatalog` converts live bulk services, tasks, packages, features, capabilities, and firewall rules into stable view models for System Inventory. Curated native identifiers are omitted from bulk inventory so an item never appears as both a setting and a diagnostic duplicate. Dynamic entries cannot acquire write targets.
 
-## Scan contract
+## Scan pipeline
 
-- Collectors report through `ScanResult` / `CollectorDiagnostic`.
-- Cancellation is supported; canceled or failed scans do not replace the last successful UI scan state.
-- Process-backed collectors use `SafeProcessRunner`.
+```text
+fixed collectors
+  → InventorySnapshot + structured diagnostics
+  → catalog clone
+  → state binders and precedence resolution
+  → dynamic inventory projection
+  → applicability evaluation
+  → validator
+  → last-good ScanService state
+```
 
-## Version source
+Collectors are fail-soft, cancellation-aware, and preserve unknown/error/access-denied states. Process-backed collection uses `SafeProcessRunner` with a fixed executable, fixed arguments, concurrent output drain, timeout, and no shell.
 
-Single authoritative version: `Directory.Build.props` (currently 2.1.0).
+## Presentation
+
+The main shell exposes Home, domain Settings navigation, System Inventory, conflicts, search, and About. Small categories are flattened inline; categories at or above the central threshold receive drill-down pages. Read-only and not-applicable states are visible at list and detail levels. Product and build identity comes from assembly metadata.
+
+## Mutation pipeline
+
+Registry, service, scheduled-task, per-user AppX, optional-feature, and firewall-profile operations implement the same verified-write contract. The UI cannot construct targets. `PolicyChangeService` accepts only a complete catalog target, enforces mode/elevation/applicability boundaries, requires confirmation, then delegates to a typed backend and verifies the independent read-back.
+
+Arbitrary firewall rules, BitLocker, User Account Control, and live dynamic inventory have no backend route. Native-tool links are a separate fixed launcher contract and never become command authorization.
+
+## Release pipeline
+
+`Directory.Build.props` is the sole product-version source. Local and CI packaging publish a framework-dependent win-x64 app, optionally Authenticode-sign the executable from environment-provided credentials, add first-run instructions, create a zip and SHA-256 checksum, and upload the archive. Version tags additionally create the GitHub Release.

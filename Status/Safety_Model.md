@@ -1,67 +1,43 @@
-# Safety Model — Windows Privacy Platform v2.1
+# Safety Model
 
-## Core rule
+## Authority boundaries
 
-**Understand first. Change deliberately. Never invent certainty.**
+Inspect mode has no mutation authority. Modify mode is an explicit session choice; elevation satisfies an operating-system privilege requirement but does not create new catalog permissions.
 
-## Read-only default
+A target is writable only when all of the following are true:
 
-- The application starts and operates in Inspect mode.
-- No registry writes, no service changes, no firewall rule mutation, no elevation until the user explicitly enters Modify mode.
+1. It is a curated Settings entry, not live System Inventory.
+2. Its current Windows edition/build and selected value are applicable.
+3. Its exact object ID appears in the appropriate source-controlled authorization table.
+4. Its typed target is complete and the requested value is supported.
+5. The user confirms the one requested operation.
 
-## Explicit Modify authorization
+Discovery paths, observed source paths, search results, external process output, and UI text never authorize a write.
 
-1. User chooses Modify.
-2. If the process is not elevated, UAC relaunch is offered. The old process exits.
-3. After elevation, the user must again explicitly authorize Modify for the session.
-4. Elevation alone never grants Modify authorization.
+## Verified change contract
 
-## WritableTarget (deny-by-default)
+Each backend implements the same sequence:
 
-- Only settings with an **explicit, complete** `WritableTarget` in the catalog may be modified.
-- `DiscoveryMethod` is observation metadata only. It **never** creates write permission.
-- Authorization is ObjectId-whitelisted in the catalog.
-- Firewall domain is hard-blocked from writes.
+1. Pre-read the exact target and abort on an ambiguous or failed read.
+2. Display current state, intended state, side effects, and recovery information.
+3. Execute one typed operation through a fixed API/tool shape.
+4. Read the target again through an independent path.
+5. Report success only when the typed state matches the request.
+6. Write a local audit record that does not leave the device.
 
-Each WritableTarget specifies:
+Registry verification includes value kind. Service verification includes startup type and service-controller state. Task verification parses the registered task state. Package removal verifies per-user absence. Optional-feature verification checks the DISM state. Firewall-profile verification checks the exact profile values.
 
-- Hive, View, SubKey, ValueName
-- Exact `RegistryValueKindExpected`
-- Supported raw values (when applicable)
-- SupportsDeletion
-- RequiresElevation
-- Notes
+## Permanent exclusions
 
-## Write path
-
-1. Resolve explicit WritableTarget (not UI observation).
-2. Pre-read exact target (kind + value). Read failure aborts the change.
-3. User confirmation shows system current state vs intended.
-4. Write using the catalog kind only.
-5. Independent read-back (up to 3 attempts).
-6. Success only if value **and** kind match. Textual match with wrong kind is failure.
-7. Audit log entry (local only).
-
-## Firewall boundary
-
-Firewall rules and generic firewall command execution are observation-only. No firewall rule writing through WPP.
+- **BitLocker and Device Encryption:** observation-only because a generic state change can be lengthy and can lock a user out without a verified recovery key. The detail page opens Windows' native encryption management.
+- **User Account Control:** observation-only because master-level changes alter a broad security boundary and may require coordinated values/restart behavior. The detail page opens the native management surface.
+- **Arbitrary firewall rules:** inventory-only because broad rule mutation is unsafe and semantically complex. The app changes only the twelve fixed enabled/inbound/outbound/notification profile properties and can open Windows Defender Firewall with Advanced Security.
+- **Non-curated services, tasks, packages, features, and capabilities:** inventory-only. Enumeration can never expand authority.
 
 ## Evidence integrity
 
-- Errors and access-denied are not reported as "Not configured".
-- Canceled or failed scans do not replace the last successful scan in the UI.
-- Collector failures appear in scan diagnostics; a scan is not marked fully successful when important collectors fail.
+Unknown, not observed, not configured, unsupported, error, and access denied are distinct. Failed or canceled scans do not replace the last good view. Edition/build limitations are shown rather than silently filtered or presented as disabled configuration.
 
-## Process execution
+## Process and data handling
 
-- Collectors that need external tools use `SafeProcessRunner` (fixed executable + arguments, concurrent stream drain, timeout kill, no shell).
-- No arbitrary user-controlled command execution surface.
-
-## Logging & privacy
-
-- Logs remain local under the user’s profile / LocalAppData.
-- No telemetry, no cloud backend, no network phone-home.
-
-## Unknown is preserved
-
-Unknown, not observed, error, unsupported, and not configured are distinct concepts. The product does not invent certainty.
+External collection and operation commands use fixed executables and fixed arguments without a shell or generic runner exposed to the UI. Discovered text is treated as display-only input. Local preferences and audit logs stay beneath the user's LocalAppData directory. The application has no telemetry or cloud backend.

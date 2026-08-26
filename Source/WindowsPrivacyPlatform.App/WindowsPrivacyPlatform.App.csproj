@@ -6,12 +6,11 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
-    <ApplicationIcon />
+    <ApplicationIcon>Assets\WindowsPrivacyPlatform.ico</ApplicationIcon>
     <StartupObject>WindowsPrivacyPlatform.App.App</StartupObject>
     <RootNamespace>WindowsPrivacyPlatform.App</RootNamespace>
     <AssemblyName>WindowsPrivacyPlatform</AssemblyName>
-    <AssemblyTitle>Windows Privacy Platform</AssemblyTitle>
-    <!-- Version comes from Directory.Build.props (2.0.0) -->
+    <AssemblyTitle>$(Product)</AssemblyTitle>
   </PropertyGroup>
 
   <ItemGroup>

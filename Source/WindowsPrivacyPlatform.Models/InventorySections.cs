@@ -1,10 +1,8 @@
 namespace WindowsPrivacyPlatform.Models;
 
 /// <summary>
-/// Domain-organized inventory sections.
-/// InventorySnapshot composes these so future UI can navigate Identity / Privacy / Policies / System
-/// without a flat dump of unrelated collections.
-/// v0.8: Identity expanded for Machine Overview; Networking holds Firewall profile observations.
+/// Domain-organized read-only observations used by the machine overview, settings evidence,
+/// and System Inventory surfaces.
 /// </summary>
 
 public class IdentityInventory
@@ -12,8 +10,6 @@ public class IdentityInventory
     public string WindowsVersion { get; set; } = string.Empty;
     public string Edition { get; set; } = string.Empty;
     public int BuildNumber { get; set; }
-
-    // --- v0.8 Machine Overview fields (best-effort, read-only) ---
 
     public string Architecture { get; set; } = string.Empty;
     public string DeviceManufacturer { get; set; } = string.Empty;
@@ -35,7 +31,9 @@ public class IdentityInventory
 public class ApplicationInventory
 {
     public List<string> InstalledPackages { get; set; } = new();
+    public List<string> ProvisionedPackages { get; set; } = new();
     public List<string> InstalledCapabilities { get; set; } = new();
+    public List<OptionalFeatureInfo> OptionalFeatures { get; set; } = new();
 }
 
 public class PrivacyInventory
@@ -63,13 +61,13 @@ public class SecurityInventory
 public class NetworkingInventory
 {
     public List<FirewallProfileInfo> FirewallProfiles { get; set; } = new();
+    public List<FirewallRuleInfo> FirewallRules { get; set; } = new();
     public string FirewallServiceState { get; set; } = "Unknown";
     public string FirewallCollectionNotes { get; set; } = string.Empty;
 }
 
 public class DeviceInventory
 {
-    // Device-centric discoveries — not yet populated.
 }
 
 /// <summary>
@@ -82,8 +80,25 @@ public class FirewallProfileInfo
     public string DefaultInboundAction { get; set; } = "Unknown";
     public string DefaultOutboundAction { get; set; } = "Unknown";
     public string LoggingEnabled { get; set; } = "Unknown";
+    public string InboundNotifications { get; set; } = "Unknown";
     public string SourcePath { get; set; } = string.Empty;
     public string CollectionNotes { get; set; } = string.Empty;
+}
+
+public class OptionalFeatureInfo
+{
+    public string Name { get; set; } = string.Empty;
+    public string State { get; set; } = "Unknown";
+}
+
+public class FirewallRuleInfo
+{
+    public string Name { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
+    public string Enabled { get; set; } = "Unknown";
+    public string Direction { get; set; } = "Unknown";
+    public string Action { get; set; } = "Unknown";
+    public string Profile { get; set; } = "Unknown";
 }
 
 /// <summary>
@@ -117,8 +132,8 @@ public class MachineOverview
     public string DefenderServiceState { get; set; } = "Unknown";
 
     public DateTime LastScanUtc { get; set; }
-    public string CatalogVersion { get; set; } = "1.0";
-    public string KnowledgeBaseVersion { get; set; } = "1.0";
+    public string CatalogVersion { get; set; } = ManagedObjectCatalog.CatalogVersion;
+    public string KnowledgeBaseVersion { get; set; } = ManagedObjectCatalog.CatalogVersion;
 
     public string IdentityCollectionNotes { get; set; } = string.Empty;
     public EffectiveConfidence IdentityConfidence { get; set; } = EffectiveConfidence.Unknown;
@@ -160,8 +175,8 @@ public class MachineOverview
             FirewallProfilesSummary = fwSummary,
             DefenderServiceState = snapshot.Security.DefenderServiceState,
             LastScanUtc = snapshot.CaptureTimestamp == default ? DateTime.UtcNow : snapshot.CaptureTimestamp,
-            CatalogVersion = "1.0",
-            KnowledgeBaseVersion = "1.0",
+            CatalogVersion = ManagedObjectCatalog.CatalogVersion,
+            KnowledgeBaseVersion = ManagedObjectCatalog.CatalogVersion,
             IdentityCollectionNotes = id.IdentityCollectionNotes,
             IdentityConfidence = id.IdentityConfidence
         };

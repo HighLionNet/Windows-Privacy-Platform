@@ -1,35 +1,39 @@
-# Current Status — Windows Privacy Platform **v2.1**
+# Current Status
 
-**Date:** 2026-08-09
+**Release state:** v2.2.0 desktop release
+**Updated:** 2026-08-26
 
-## Product
+## Product surface
 
-WPF GUI only. Application version **2.1.0**.
+The supported product is a .NET 8 WPF application for Windows 10 and Windows 11. The obsolete console prototype and duplicate top-level source copies have been removed.
 
-## Hardening (completed)
+The application separates two kinds of data:
 
-- Explicit WritableTarget ObjectId whitelist (DiscoveryMethod never authorizes)
-- Kind-aware write verification; read errors ≠ Not configured
-- SafeProcessRunner; CapabilityCollector + ScheduledTaskCollector on it
-- Scan diagnostics + last-good scan preservation + catalog clone per scan
-- Tests project + CI
-- Safety_Model.md, LICENSE, SECURITY.md, CONTRIBUTING.md
+- **Settings:** curated concepts with authored narratives, applicability, semantics, and an explicit writable or excluded decision.
+- **System Inventory:** live bulk services, scheduled tasks, packages, optional features, capabilities, and firewall rules. This workspace is diagnostic and always read-only.
 
-## Coverage expansion (completed)
+## Coverage delivered
 
-- CatalogExpansion: full AppPrivacy LetApps* set, Defender depth, Windows Update policies, Search/Activity/Cloud, Location/Device/Biometrics, UAC observation, BitLocker **policy** observation, Edge privacy policies, key service anchors (observation-only)
-- AppPrivacy writable via explicit whitelist
-- BitLocker / UAC master switches / services remain non-writable by design
-- Conflicts page: concise Effective + writable status (no UI clutter)
+- Privacy permissions and the full AppPrivacy policy families.
+- Defender policy including attack-surface reduction, exploit protection, controlled-folder access, and network protection.
+- Windows Update, Delivery Optimization, Search, cloud content, activity, advertising, speech, location, biometrics, device access, Edge, Copilot, Recall, Widgets, OneDrive, Storage Sense, networking, remote access, and local-security policy.
+- BitLocker/Device Encryption and User Account Control observation with native-tool handoff.
+- Firewall-profile observation and bounded profile writes; arbitrary firewall rules remain inventory-only.
+- Curated reversible controls for selected diagnostic services/tasks, reinstallable inbox apps, and optional Windows features.
 
-## Explicit non-goals retained
+## Write safety delivered
 
-No bulk modify, profiles, rollback, privacy score, CLI product, firewall rule writing, generic service/task editors.
+- Deny-by-default typed targets with explicit exclusion reasons for every other setting.
+- Per-target pre-read, confirmation, operation, independent verification, and local audit.
+- Value- and edition-aware UI state; inapplicable controls cannot be changed.
+- One automated authorization/round-trip contract case per native allowlist entry.
+- Automated prose validation prevents technical identifiers from leaking back into user-facing explanation fields.
 
-## Local verify
+## Release engineering delivered
 
-```powershell
-cd Source
-dotnet build WindowsPrivacyPlatform.sln -c Release
-dotnet test WindowsPrivacyPlatform.sln -c Release
-```
+- Assembly-derived product/version/build/company/repository identity.
+- One-time Desktop and Start Menu shortcut offer.
+- Reproducible win-x64 release archive, optional Authenticode hook, CI artifact, and tag-based GitHub Release publishing.
+- Repository-relative, fast-forward-only sync/build helper that never discards local changes.
+
+The remaining backlog is limited to finishing work such as signed publisher reputation, localization, accessibility certification, maintained release screenshots, and optional report export. It does not include unfinished safety boundaries or partially implemented write paths.

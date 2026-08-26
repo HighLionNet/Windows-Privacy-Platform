@@ -143,12 +143,17 @@ namespace WindowsPrivacyPlatform.Scanner
             new("policy.edge.trackingprevention", "Edge", RegistryHive.LocalMachine, @"SOFTWARE\Policies\Microsoft\Edge", "TrackingPrevention")
         };
 
+        private static readonly IReadOnlyList<Probe> CatalogProbes = BuildCatalogProbes();
+
         public void Collect(InventorySnapshot snapshot)
         {
             if (snapshot is null)
                 throw new ArgumentNullException(nameof(snapshot));
 
-            foreach (var probe in Probes)
+            foreach (var probe in Probes
+                         .Concat(CatalogProbes)
+                         .GroupBy(p => p.Id, StringComparer.OrdinalIgnoreCase)
+                         .Select(g => g.First()))
             {
                 try
                 {
@@ -167,6 +172,60 @@ namespace WindowsPrivacyPlatform.Scanner
                     });
                 }
             }
+        }
+
+        private static IReadOnlyList<Probe> BuildCatalogProbes()
+        {
+            var result = new List<Probe>();
+            foreach (var mo in ManagedObjectCatalog.All)
+            {
+                if (!TryParseRegistryLocation(mo.DiscoveryMethod, out var hive, out var subKey, out var valueName))
+                    continue;
+                result.Add(new Probe(
+                    mo.ObjectId,
+                    mo.SubCategory ?? mo.ProductDomain.ToString(),
+                    hive,
+                    subKey,
+                    valueName));
+            }
+            return result;
+        }
+
+        private static bool TryParseRegistryLocation(
+            string? location,
+            out RegistryHive hive,
+            out string subKey,
+            out string valueName)
+        {
+            hive = RegistryHive.LocalMachine;
+            subKey = string.Empty;
+            valueName = string.Empty;
+            if (string.IsNullOrWhiteSpace(location) || location.Contains('*') || location.Contains("..."))
+                return false;
+
+            var normalized = location.Replace('/', '\\').Trim();
+            string remainder;
+            if (normalized.StartsWith("HKLM\\", StringComparison.OrdinalIgnoreCase))
+            {
+                hive = RegistryHive.LocalMachine;
+                remainder = normalized[5..];
+            }
+            else if (normalized.StartsWith("HKCU\\", StringComparison.OrdinalIgnoreCase))
+            {
+                hive = RegistryHive.CurrentUser;
+                remainder = normalized[5..];
+            }
+            else
+            {
+                return false;
+            }
+
+            var separator = remainder.LastIndexOf('\\');
+            if (separator <= 0 || separator >= remainder.Length - 1)
+                return false;
+            subKey = remainder[..separator];
+            valueName = remainder[(separator + 1)..];
+            return true;
         }
 
         private static PolicySettingInfo ReadProbe(Probe probe)

@@ -1,14 +1,14 @@
 // Source/WindowsPrivacyPlatform.Scanner/PackageCollector.cs
 using System;
-using System.Diagnostics;
 using System.Text;
+using System.Threading;
 using WindowsPrivacyPlatform.Models;
 
 namespace WindowsPrivacyPlatform.Scanner
 {
     /// <summary>
     /// Read-only collector for installed AppX / MSIX packages.
-    /// Uses PowerShell Get-AppxPackage (query only, current user + system where permitted).
+    /// Uses fixed PowerShell inventory commands for current-user and provisioned packages.
     /// </summary>
     public sealed class PackageCollector : IInventoryCollector
     {
@@ -19,37 +19,35 @@ namespace WindowsPrivacyPlatform.Scanner
             if (snapshot is null)
                 throw new ArgumentNullException(nameof(snapshot));
 
-            try
+            CollectNames(
+                "Get-AppxPackage -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name",
+                snapshot.InstalledPackages);
+
+            CollectNames(
+                "Get-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue | Select-Object -ExpandProperty DisplayName",
+                snapshot.ProvisionedPackages);
+        }
+
+        private static void CollectNames(string command, List<string> destination)
+        {
+            var result = SafeProcessRunner.Run(
+                "powershell.exe",
+                "-NoProfile -NonInteractive -Command \"" + command + "\"",
+                TimeSpan.FromSeconds(25),
+                CancellationToken.None,
+                Encoding.UTF8);
+
+            if (!result.Started || result.TimedOut || result.Canceled ||
+                (result.ExitCode != 0 && string.IsNullOrWhiteSpace(result.StdOut)))
+                return;
+
+            foreach (var line in result.StdOut.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
             {
-                // -AllUsers requires elevation; omit it to stay non-elevated.
-                var psi = new ProcessStartInfo
-                {
-                    FileName = "powershell.exe",
-                    Arguments = "-NoProfile -NonInteractive -Command \"Get-AppxPackage | Select-Object -ExpandProperty Name\"",
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    StandardOutputEncoding = Encoding.UTF8
-                };
-
-                using var process = Process.Start(psi);
-                if (process is null)
-                    return;
-
-                var output = process.StandardOutput.ReadToEnd();
-                process.WaitForExit(20000);
-
-                foreach (var line in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
-                {
-                    var name = line.Trim();
-                    if (!string.IsNullOrWhiteSpace(name))
-                        snapshot.InstalledPackages.Add(name);
-                }
-            }
-            catch
-            {
-                // PowerShell or AppX enumeration may fail; leave list empty.
+                var name = line.Trim();
+                if (string.IsNullOrWhiteSpace(name) || name.StartsWith("Get-Appx", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                if (!destination.Contains(name, StringComparer.OrdinalIgnoreCase))
+                    destination.Add(name);
             }
         }
     }

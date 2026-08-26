@@ -27,6 +27,14 @@ public class SettingDetailView
     public string DomainPath { get; set; } = string.Empty;
     public RiskLevel RiskLevel { get; set; }
     public ControlLevel ControlLevel { get; set; }
+    public string TechnicalLocation { get; set; } = string.Empty;
+    public bool IsWritable { get; set; }
+    public string ExclusionReasonText { get; set; } = string.Empty;
+    public CatalogBucket Bucket { get; set; }
+    public ApplicabilityState Applicability { get; set; }
+    public string ApplicabilityReason { get; set; } = string.Empty;
+    public NativeToolLink? NativeTool { get; set; }
+    public SettingNarrative Narrative { get; set; } = new();
 
     public SettingExplanation Explanation { get; set; } = new();
 
@@ -46,6 +54,7 @@ public class OptionDisplay
     public string RawValue { get; set; } = string.Empty;
     public string Label { get; set; } = string.Empty;
     public string? Description { get; set; }
+    public bool IsApplicable { get; set; } = true;
 }
 
 public class LayerDisplay
@@ -67,7 +76,7 @@ public static class NavigationBuilder
 {
     public static NavigationNode BuildDomainTree(IReadOnlyList<ManagedObject> catalog)
     {
-        var root = new NavigationNode { Id = "root", Title = "Windows Privacy Platform" };
+        var root = new NavigationNode { Id = "root", Title = "Settings" };
 
         foreach (var domainGroup in catalog.GroupBy(m => m.ProductDomain).OrderBy(g => g.Key))
         {
@@ -154,6 +163,14 @@ public static class NavigationBuilder
             DomainPath = explanation.DomainPath,
             RiskLevel = mo.RiskLevel,
             ControlLevel = mo.ControlLevel,
+            TechnicalLocation = mo.TechnicalLocation,
+            IsWritable = mo.IsWritable,
+            ExclusionReasonText = CatalogPolicy.ExclusionReasonText(mo.ExclusionReason),
+            Bucket = mo.Bucket,
+            Applicability = mo.Applicability,
+            ApplicabilityReason = mo.ApplicabilityReason,
+            NativeTool = mo.NativeTool,
+            Narrative = mo.Narrative,
             Explanation = explanation,
             CurrentStateDisplay = current,
             EffectiveValueDisplay = effectiveValue,
@@ -273,6 +290,14 @@ public static class NavigationBuilder
         ProductDomain.Device => "Device find & recovery",
         ProductDomain.Speech => "Speech recognition",
         ProductDomain.Firewall => "Windows Firewall",
+        ProductDomain.Network => "Network security",
+        ProductDomain.RemoteAccess => "Remote access",
+        ProductDomain.LocalSecurity => "Local security",
+        ProductDomain.Copilot => "Windows Copilot",
+        ProductDomain.Recall => "Recall and screen analysis",
+        ProductDomain.Widgets => "Widgets",
+        ProductDomain.OneDrive => "OneDrive",
+        ProductDomain.Storage => "Storage Sense",
         _ => domain.ToString()
     };
 

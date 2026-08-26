@@ -1,91 +1,71 @@
 # Windows Privacy Platform
 
-**Version 2.1**
+<img src="Source/WindowsPrivacyPlatform.App/Assets/WindowsPrivacyPlatform.png" alt="Windows Privacy Platform shield mark" width="128" height="128">
 
-Evidence-driven Windows privacy and configuration inspection and management.
+Windows Privacy Platform is a local Windows inspection and configuration console. It correlates privacy preferences, administrative policy, endpoint-security controls, services, scheduled tasks, packages, optional features, capabilities, and firewall posture without reducing the device to a misleading score.
 
-> **Understand first. Change deliberately. Never invent certainty.**
+The product is designed for a simple operating rule: inspect broadly, explain clearly, and change only a short list of explicitly authorized targets.
 
----
+## What the current release delivers
 
-## What it is
+- A full device scan with separate **Settings** and read-only **System Inventory** workspaces.
+- Clear evidence states for configured, not configured, not observed, unsupported, access denied, and unknown results.
+- Structured explanations covering mechanics, day-to-day impact, decision guidance, tradeoffs, and common misconceptions.
+- Edition/build applicability for Windows 10 and Windows 11 rather than pretending every control exists everywhere.
+- Curated, independently verified changes for registry policy, firewall profiles, selected diagnostic services and tasks, selected removable inbox apps, and selected optional Windows features.
+- Permanent observation-only handling for BitLocker, User Account Control, and arbitrary firewall rules, with direct links to the appropriate Windows management surface.
+- No application telemetry, cloud account, bulk hardening profile, generic command runner, or privacy score.
 
-A local WPF tool for inspecting and carefully changing **native Windows** privacy and security configuration.
+## Run a downloaded release
 
-It is **not**:
+1. Install the [.NET 8 Desktop Runtime for Windows x64](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) if it is not already present.
+2. Download `WindowsPrivacyPlatform-win-x64.zip` from the repository's latest GitHub Release.
+3. Extract the entire archive to a permanent folder. Do not run the executable from inside the zip.
+4. Open `WindowsPrivacyPlatform.exe` and choose **Inspect** or **Modify**. Modify mode requests Windows elevation when a selected operation requires it.
+5. Accept the one-time shortcut offer if you want Desktop and Start Menu entries that point to the extracted executable.
 
-- an optimizer or “debloater”
-- a privacy score product
-- a generic registry / service / task / firewall editor
-- a one-click hardening suite
+The archive includes `START_HERE.md` with the same deployment guidance. There is no installer and the release does not silently persist services, drivers, or background agents.
 
-## What it does
+## Safety contract
 
-- **Inspect (default):** ConsentStore app permissions, Group Policy / registry-backed policies, Defender, SmartScreen, Windows Update policies, AppPrivacy, UAC and BitLocker **policy** observation, services, scheduled tasks, capabilities, identity, firewall **profile** state.
-- **Modify (explicit):** After UAC elevation and session authorize, only catalog settings with an explicit `WritableTarget` can be changed — **one setting at a time**. Every change is pre-read, confirmed, written with the catalog type, and verified by independent read-back.
+Every writable object is deny-by-default. Discovery data never grants mutation rights. A change must have a complete typed target in a source-controlled allowlist and follows:
 
-### Evidence states
-
-| State | Meaning |
-|-------|---------|
-| **Unknown** | Insufficient evidence. Never treated as configured or absent. |
-| **Not configured** | Location was checked; value is absent. |
-| **Not observed** | This scan did not collect this setting. |
-| **Error / Access denied** | Collection failed. Not the same as absent. |
-
-### Hard rules
-
-- No privacy “score”. No optimizer. No bulk apply. No rollback system. No profiles.
-- No application telemetry. No cloud backend.
-- Firewall **rules** are observation-only.
-- Services and scheduled tasks are observation-focused (no generic kill/edit UI).
-- BitLocker low-level operations are not exposed as a generic editor; policy observation is available.
-- Modification is **deny-by-default**: only explicit catalog `WritableTarget` entries are writable. `DiscoveryMethod` never grants write permission.
-
-Primary target: **Windows 11**. Windows 10 is supported where the same implementation is naturally correct.
-
----
-
-## Architecture
-
-```
-Models → Core → Logging → KnowledgeBase → Validator → Scanner → App (WPF)
+```text
+pre-read → explicit confirmation → typed operation → independent read-back → local audit
 ```
 
-CLI is not part of the product. The WPF GUI is the product.
+Failure at any stage is reported as failure; a textual match with the wrong registry type is not accepted. Dynamic inventory is always read-only. See [Status/Safety_Model.md](Status/Safety_Model.md) for the full contract.
 
-Safety details: `Status/Safety_Model.md`
+## Build from source
 
----
-
-## Building
+Requirements: Windows, PowerShell, and the .NET 8 SDK.
 
 ```powershell
-cd Source
-dotnet restore WindowsPrivacyPlatform.sln
-dotnet build WindowsPrivacyPlatform.sln -c Release
-dotnet test WindowsPrivacyPlatform.sln -c Release
+dotnet restore .\Source\WindowsPrivacyPlatform.sln
+dotnet build .\Source\WindowsPrivacyPlatform.sln -c Release --no-restore
+dotnet test .\Source\WindowsPrivacyPlatform.sln -c Release --no-build
+.\scripts\build-release.ps1
 ```
 
-### Publish (win-x64)
+The release archive is written beneath `.artifacts\release`. `sync-run.ps1` is a safe fast-forward-only convenience workflow; it refuses to discard a dirty checkout.
+
+## Optional Authenticode signing
+
+Release builds remain reproducible without a certificate and print a clear unsigned warning. To sign the published executable, provide either a PFX path or a machine-store thumbprint:
 
 ```powershell
-dotnet publish ".\Source\WindowsPrivacyPlatform.App\WindowsPrivacyPlatform.App.csproj" -c Release -r win-x64 --self-contained false -o ".\publish"
+$env:WPP_SIGN_CERT_PATH = 'D:\secure\code-signing.pfx'
+$env:WPP_SIGN_CERT_PASSWORD = '<secret>'
+# Or: $env:WPP_SIGN_CERT_THUMBPRINT = '<sha1-thumbprint>'
+.\scripts\build-release.ps1
 ```
 
-For accurate HKLM reads and Modify mode, run elevated or use the in-app Modify elevation path.
-
----
+GitHub Actions also accepts `WPP_SIGN_CERT_BASE64`, `WPP_SIGN_CERT_PATH`, `WPP_SIGN_CERT_THUMBPRINT`, and `WPP_SIGN_CERT_PASSWORD` as repository secrets. No certificate material is stored in this repository.
 
 ## Local data
 
-- Window prefs: `%LocalAppData%\WindowsPrivacyPlatform\window.prefs`
-- Audit logs: under the same app data folder (`changes.log`, `auth.log`)
+Window preferences, the one-time shortcut decision, and local audit logs are stored beneath `%LocalAppData%\WindowsPrivacyPlatform`. The app does not send them anywhere.
 
----
+See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), and [Status/Architecture.md](Status/Architecture.md) for engineering and security details.
 
-## Contributing / security
-
-See `CONTRIBUTING.md` and `SECURITY.md`.
-
-Repository: [HighLionNet/Windows-Privacy-Platform](https://github.com/HighLionNet/Windows-Privacy-Platform)
+Maintained by HighLionNet. [Project repository](https://github.com/HighLionNet/Windows-Privacy-Platform).

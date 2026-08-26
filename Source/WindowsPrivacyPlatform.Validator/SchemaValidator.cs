@@ -25,6 +25,9 @@ namespace WindowsPrivacyPlatform.Validator
                 new RequiredFieldRule("Description", obj => !string.IsNullOrWhiteSpace(obj.Description)),
                 new RequiredFieldRule("ObjectType", obj => !string.IsNullOrWhiteSpace(obj.ObjectType)),
                 new RequiredFieldRule("SchemaVersion", obj => !string.IsNullOrWhiteSpace(obj.SchemaVersion)),
+                new RequiredFieldRule("TechnicalLocation", obj => !string.IsNullOrWhiteSpace(obj.TechnicalLocation)),
+                new WriteAuthorizationDecisionRule(),
+                new NarrativeContentRule(),
                 // ProductDomain is an enum; zero is ConsentStore which is valid, so we only check ObjectId uniqueness at batch level.
             };
         }

@@ -1,6 +1,8 @@
 // Source/WindowsPrivacyPlatform.Scanner/FirewallCollector.cs
 using System;
 using System.ServiceProcess;
+using System.Text;
+using System.Threading;
 using Microsoft.Win32;
 using WindowsPrivacyPlatform.Models;
 
@@ -33,6 +35,7 @@ namespace WindowsPrivacyPlatform.Scanner
             {
                 CollectServiceState(snapshot, notes);
                 CollectProfiles(snapshot, notes);
+                CollectRules(snapshot, notes);
                 CollectDefenderServiceHint(snapshot, notes);
             }
             catch (Exception ex)
@@ -90,6 +93,7 @@ namespace WindowsPrivacyPlatform.Scanner
                         info.DefaultInboundAction = "Unknown";
                         info.DefaultOutboundAction = "Unknown";
                         info.LoggingEnabled = "Unknown";
+                        info.InboundNotifications = "Unknown";
                         info.CollectionNotes = "Registry profile key not present or inaccessible (read-only).";
                         notes.Add($"{profile} profile key missing or inaccessible.");
                     }
@@ -99,6 +103,7 @@ namespace WindowsPrivacyPlatform.Scanner
                         info.DefaultInboundAction = ReadAction(key, "DefaultInboundAction");
                         info.DefaultOutboundAction = ReadAction(key, "DefaultOutboundAction");
                         info.LoggingEnabled = ReadLogging(key);
+                        info.InboundNotifications = ReadNotifications(key);
                         info.CollectionNotes = "Observed from FirewallPolicy registry (read-only).";
                     }
                 }
@@ -108,6 +113,7 @@ namespace WindowsPrivacyPlatform.Scanner
                     info.DefaultInboundAction = "Unknown";
                     info.DefaultOutboundAction = "Unknown";
                     info.LoggingEnabled = "Unknown";
+                    info.InboundNotifications = "Unknown";
                     info.CollectionNotes = "Error reading profile; treated as Unknown.";
                     notes.Add($"{profile} profile read failed.");
                 }
@@ -117,6 +123,80 @@ namespace WindowsPrivacyPlatform.Scanner
 
             if (snapshot.Networking.FirewallProfiles.Count > 0)
                 notes.Add("Firewall profiles collected from SharedAccess FirewallPolicy registry paths.");
+        }
+
+        private static string ReadNotifications(RegistryKey key)
+        {
+            var raw = key.GetValue("DisableNotifications");
+            if (raw is null)
+                return "Not configured";
+            if (!int.TryParse(raw.ToString(), out var value))
+                return "Unknown";
+            return value == 0 ? "Enabled" : "Disabled";
+        }
+
+        private static void CollectRules(InventorySnapshot snapshot, List<string> notes)
+        {
+            const string command = "Get-NetFirewallRule -PolicyStore ActiveStore -ErrorAction SilentlyContinue | Select-Object Name,DisplayName,Enabled,Direction,Action,Profile | ConvertTo-Csv -NoTypeInformation";
+            var result = SafeProcessRunner.Run(
+                "powershell.exe",
+                "-NoProfile -NonInteractive -Command \"" + command + "\"",
+                TimeSpan.FromSeconds(35),
+                CancellationToken.None,
+                Encoding.UTF8);
+
+            if (!result.Started || result.TimedOut || result.Canceled || string.IsNullOrWhiteSpace(result.StdOut))
+            {
+                notes.Add("Firewall rule inventory was unavailable.");
+                return;
+            }
+
+            foreach (var line in result.StdOut.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Skip(1))
+            {
+                var fields = ParseCsvLine(line);
+                if (fields.Count < 6 || string.IsNullOrWhiteSpace(fields[0]))
+                    continue;
+
+                snapshot.FirewallRules.Add(new FirewallRuleInfo
+                {
+                    Name = fields[0],
+                    DisplayName = string.IsNullOrWhiteSpace(fields[1]) ? fields[0] : fields[1],
+                    Enabled = fields[2],
+                    Direction = fields[3],
+                    Action = fields[4],
+                    Profile = fields[5]
+                });
+            }
+
+            notes.Add($"Collected {snapshot.FirewallRules.Count} active firewall rule definitions for read-only inventory.");
+        }
+
+        private static List<string> ParseCsvLine(string line)
+        {
+            var fields = new List<string>();
+            var current = new StringBuilder();
+            var quoted = false;
+            for (var i = 0; i < line.Length; i++)
+            {
+                var c = line[i];
+                if (c == '"')
+                {
+                    if (quoted && i + 1 < line.Length && line[i + 1] == '"')
+                    {
+                        current.Append('"');
+                        i++;
+                    }
+                    else quoted = !quoted;
+                }
+                else if (c == ',' && !quoted)
+                {
+                    fields.Add(current.ToString());
+                    current.Clear();
+                }
+                else current.Append(c);
+            }
+            fields.Add(current.ToString());
+            return fields;
         }
 
         private static string ReadEnableFirewall(RegistryKey key)

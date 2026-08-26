@@ -5,68 +5,118 @@ namespace WindowsPrivacyPlatform.Tests;
 
 public class WritableTargetAuthorizationTests
 {
-    [Fact]
-    public void Firewall_settings_are_never_writable()
+    public static IEnumerable<object[]> CuratedNativeCases() =>
+        CuratedWriteAuthorizations.Targets
+            .OrderBy(pair => pair.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(pair => new object[] { pair.Key, pair.Value.SupportedRawValues[0] });
+
+    [Theory]
+    [MemberData(nameof(CuratedNativeCases))]
+    public void Every_curated_native_authorization_is_present_complete_and_round_trips(
+        string objectId,
+        string requestedValue)
     {
-        foreach (var mo in ManagedObjectCatalog.FirewallSettings)
+        var item = ManagedObjectCatalog.All.Single(m => m.ObjectId.Equals(objectId, StringComparison.OrdinalIgnoreCase));
+        Assert.NotNull(item.WritableTarget);
+        Assert.True(item.WritableTarget!.IsComplete, objectId);
+        Assert.Equal(ExclusionReason.None, item.ExclusionReason);
+        Assert.Equal(CatalogBucket.Settings, item.Bucket);
+
+        var backend = new MemoryBackend();
+        var result = VerifiedWriteContract.Execute(item.WritableTarget, requestedValue, backend);
+
+        Assert.True(result.Success, $"{objectId}: {result.Message}");
+        Assert.True(result.After.Readable);
+        Assert.True(VerifiedWriteContract.Matches(item.WritableTarget.Kind, result.After.Value, requestedValue));
+        Assert.Equal(1, backend.WriteCount);
+    }
+
+    [Fact]
+    public void All_writable_catalog_entries_have_complete_explicit_targets()
+    {
+        foreach (var item in ManagedObjectCatalog.All.Where(m => m.IsWritable))
         {
-            Assert.Null(mo.WritableTarget);
-            Assert.False(mo.IsWritable);
+            Assert.NotNull(item.WritableTarget);
+            Assert.True(item.WritableTarget!.IsComplete, item.ObjectId);
+            Assert.NotEmpty(item.WritableTarget.SupportedRawValues);
+            Assert.Equal(ExclusionReason.None, item.ExclusionReason);
         }
     }
 
     [Fact]
-    public void DiscoveryMethod_alone_does_not_authorize_write_for_unknown_ids()
+    public void ConsentStore_entries_are_explicit_string_targets_for_current_user()
     {
-        // Any setting without explicit whitelist entry must remain observation-only.
-        // Firewall already covered; also assert no WritableTarget is fabricated for empty ObjectId patterns.
-        var all = ManagedObjectCatalog.All;
-        Assert.NotEmpty(all);
-
-        foreach (var mo in all)
-        {
-            if (mo.WritableTarget is null)
-                continue;
-
-            // If writable, target must be complete and ValueKind must not be Unsupported.
-            Assert.True(mo.WritableTarget.IsComplete, mo.ObjectId);
-            Assert.NotEqual(RegistryValueKindExpected.Unsupported, mo.WritableTarget.ValueKind);
-            Assert.False(string.IsNullOrWhiteSpace(mo.WritableTarget.Hive));
-            Assert.False(string.IsNullOrWhiteSpace(mo.WritableTarget.SubKey));
-            Assert.False(string.IsNullOrWhiteSpace(mo.WritableTarget.ValueName));
-        }
-    }
-
-    [Fact]
-    public void ConsentStore_entries_are_explicitly_writable_as_String_HKCU()
-    {
-        var cs = ManagedObjectCatalog.PrivacySettings
+        var entries = ManagedObjectCatalog.PrivacySettings
             .Where(m => m.ObjectId.StartsWith("privacy.consentstore.", StringComparison.OrdinalIgnoreCase))
             .ToList();
-
-        Assert.NotEmpty(cs);
-
-        foreach (var mo in cs)
+        Assert.NotEmpty(entries);
+        foreach (var item in entries)
         {
-            Assert.True(mo.IsWritable, mo.ObjectId);
-            Assert.NotNull(mo.WritableTarget);
-            Assert.Equal("HKCU", mo.WritableTarget!.Hive, ignoreCase: true);
-            Assert.Equal(RegistryValueKindExpected.String, mo.WritableTarget.ValueKind);
-            Assert.False(mo.WritableTarget.RequiresElevation);
+            Assert.Equal(WritableTargetKind.Registry, item.WritableTarget?.Kind);
+            Assert.Equal("HKCU", item.WritableTarget?.Hive, ignoreCase: true);
+            Assert.Equal(RegistryValueKindExpected.String, item.WritableTarget?.ValueKind);
+            Assert.False(item.WritableTarget!.RequiresElevation);
         }
     }
 
     [Fact]
-    public void Catalog_ObjectIds_are_unique()
+    public void Only_profile_level_firewall_entries_are_writable()
     {
-        var ids = ManagedObjectCatalog.All.Select(m => m.ObjectId).ToList();
-        Assert.Equal(ids.Count, ids.Distinct(StringComparer.OrdinalIgnoreCase).Count());
+        var profiles = ManagedObjectCatalog.FirewallSettings.Where(m => m.FeatureCategory == FeatureCategory.FirewallProfile).ToList();
+        Assert.Equal(12, profiles.Count);
+        Assert.All(profiles, item => Assert.True(item.IsWritable, item.ObjectId));
+
+        var rulesAndService = ManagedObjectCatalog.FirewallSettings.Where(m => m.FeatureCategory != FeatureCategory.FirewallProfile);
+        Assert.All(rulesAndService, item =>
+        {
+            Assert.False(item.IsWritable, item.ObjectId);
+            Assert.Equal(ExclusionReason.ReadOnlyByDesign, item.ExclusionReason);
+        });
     }
 
     [Fact]
-    public void Schema_version_is_2_1()
+    public void BitLocker_and_Uac_remain_high_risk_native_handoffs()
     {
-        foreach (var mo in ManagedObjectCatalog.All)
-            Assert.Equal("2.1", mo.SchemaVersion);
+        var entries = ManagedObjectCatalog.All.Where(m =>
+            m.ObjectId.StartsWith("policy.bitlocker.", StringComparison.OrdinalIgnoreCase) ||
+            m.ObjectId.StartsWith("policy.uac.", StringComparison.OrdinalIgnoreCase)).ToList();
+        Assert.NotEmpty(entries);
+        Assert.All(entries, item =>
+        {
+            Assert.False(item.IsWritable, item.ObjectId);
+            Assert.Equal(ExclusionReason.HighRiskIrreversible, item.ExclusionReason);
+            Assert.True(item.NativeTool is { IsComplete: true }, item.ObjectId);
+            Assert.Equal(CatalogBucket.Settings, item.Bucket);
+        });
+    }
+
+    [Fact]
+    public void Discovery_metadata_cannot_authorize_an_unknown_target()
+    {
+        var discovered = new ManagedObject
+        {
+            ObjectId = "unapproved.example",
+            DiscoveryMethod = @"HKLM\SOFTWARE\Example\Value"
+        };
+        Assert.Null(discovered.WritableTarget);
+        Assert.False(discovered.IsWritable);
+    }
+
+    private sealed class MemoryBackend : IManagedWriteBackend
+    {
+        private string _state = "Before";
+        public int WriteCount { get; private set; }
+
+        public ManagedWriteState Read(WritableTarget target) => new(true, _state);
+
+        public bool Write(WritableTarget target, string requestedValue, out string error)
+        {
+            WriteCount++;
+            _state = target.Kind == WritableTargetKind.AppxPackage && requestedValue == "Remove"
+                ? "Removed"
+                : requestedValue;
+            error = string.Empty;
+            return true;
+        }
     }
 }

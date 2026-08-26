@@ -10,7 +10,7 @@ namespace WindowsPrivacyPlatform.Scanner
     /// <summary>
     /// Read-only bind orchestrator. Delegates to domain binders; does not contain domain logic itself.
     /// Does not write to the system. Does not elevate.
-    /// v0.8: maps FirewallCollector snapshot into Firewall catalog entries.
+    /// Also maps firewall and curated native inventory into catalog entries.
     /// </summary>
     public static class InventoryStateBinder
     {
@@ -33,6 +33,9 @@ namespace WindowsPrivacyPlatform.Scanner
 
             foreach (var mo in list)
             {
+                if (BindNativeInventory(snapshot, mo))
+                    continue;
+
                 if (mo.ProductDomain == ProductDomain.Firewall)
                 {
                     BindFirewall(snapshot, mo);
@@ -55,6 +58,71 @@ namespace WindowsPrivacyPlatform.Scanner
             }
 
             Relationships.Apply(list);
+        }
+
+        private static bool BindNativeInventory(InventorySnapshot snapshot, ManagedObject mo)
+        {
+            string? value = null;
+            var source = mo.TechnicalLocation;
+
+            if (mo.FeatureCategory == FeatureCategory.WindowsService)
+            {
+                var name = mo.WritableTarget?.Kind == WritableTargetKind.Service
+                    ? mo.WritableTarget.Identifier
+                    : mo.DiscoveryMethod.StartsWith("ServiceController:", StringComparison.OrdinalIgnoreCase)
+                        ? mo.DiscoveryMethod["ServiceController:".Length..]
+                        : string.Empty;
+                var service = snapshot.Services.FirstOrDefault(s => s.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+                value = service is null ? "Not installed" : $"Startup:{service.StartMode}; State:{service.State}";
+            }
+            else if (mo.FeatureCategory == FeatureCategory.ScheduledTask)
+            {
+                var path = mo.WritableTarget?.Identifier ?? string.Empty;
+                var task = snapshot.ScheduledTasks.FirstOrDefault(t => t.Path.Equals(path, StringComparison.OrdinalIgnoreCase));
+                value = task is null ? "Not installed" :
+                    task.State.Contains("Disabled", StringComparison.OrdinalIgnoreCase) ? "Disabled" : "Enabled";
+            }
+            else if (mo.FeatureCategory == FeatureCategory.AppxPackage)
+            {
+                var package = mo.WritableTarget?.Identifier ?? string.Empty;
+                value = snapshot.InstalledPackages.Contains(package, StringComparer.OrdinalIgnoreCase)
+                    ? "Installed"
+                    : "Not installed";
+            }
+            else if (mo.FeatureCategory == FeatureCategory.OptionalFeature)
+            {
+                var feature = mo.WritableTarget?.Identifier ?? string.Empty;
+                var observed = snapshot.OptionalFeatures.FirstOrDefault(f => f.Name.Equals(feature, StringComparison.OrdinalIgnoreCase));
+                value = observed?.State ?? "Not observed in this scan";
+            }
+
+            if (value is null)
+                return false;
+
+            mo.CurrentState = value;
+            mo.LastVerified = DateTime.UtcNow;
+            mo.Observation ??= new SettingObservation();
+            mo.Observation.CurrentValue = value;
+            mo.Observation.ObservedAt = mo.LastVerified;
+            mo.Observation.SourceSummary = source;
+            mo.Observation.Layers =
+            [
+                new ConfigurationObservation
+                {
+                    ObjectId = mo.ObjectId,
+                    Layer = ConfigurationLayer.MachinePolicy,
+                    RawValue = value,
+                    SourcePath = source,
+                    ObservedAt = DateTime.UtcNow,
+                    ConfidenceScore = value.Contains("Not observed", StringComparison.OrdinalIgnoreCase) ? 40 : 85,
+                    CollectorName = "InventoryStateBinder",
+                    EvidenceSource = source,
+                    EffectiveConfidence = value.Contains("Not observed", StringComparison.OrdinalIgnoreCase)
+                        ? EffectiveConfidence.Low
+                        : EffectiveConfidence.High
+                }
+            ];
+            return true;
         }
 
         private static void BindFirewall(InventorySnapshot snapshot, ManagedObject mo)
@@ -104,6 +172,8 @@ namespace WindowsPrivacyPlatform.Scanner
                         value = profile.DefaultInboundAction;
                     else if (mo.ObjectId.EndsWith(".outbound", StringComparison.OrdinalIgnoreCase))
                         value = profile.DefaultOutboundAction;
+                    else if (mo.ObjectId.EndsWith(".notifications", StringComparison.OrdinalIgnoreCase))
+                        value = profile.InboundNotifications;
                     else
                         value = "Unknown";
                     notes = profile.CollectionNotes;

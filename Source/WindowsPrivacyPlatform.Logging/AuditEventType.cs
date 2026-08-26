@@ -9,7 +9,7 @@ namespace WindowsPrivacyPlatform.Logging
         Error,
         /// <summary>Authentication / elevation attempts and outcomes.</summary>
         Auth,
-        /// <summary>Configuration change attempts (future write path).</summary>
+        /// <summary>Configuration change attempts and verified outcomes.</summary>
         Change
     }
 }

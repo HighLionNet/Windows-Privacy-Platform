@@ -27,18 +27,49 @@ public sealed class CapabilityCollector : IInventoryCollector
         try
         {
             // Prefer a single reasonable PowerShell attempt first (installed only is most useful).
-            if (TryCollectViaPowerShell(snapshot, installedOnly: true))
-                return;
+            var collected = TryCollectViaPowerShell(snapshot, installedOnly: true);
+            if (!collected)
+                collected = TryCollectViaPowerShell(snapshot, installedOnly: false);
+            if (!collected)
+                TryCollectViaDism(snapshot);
 
-            // One more attempt for full list if installed-only returned nothing useful.
-            if (TryCollectViaPowerShell(snapshot, installedOnly: false))
-                return;
-
-            TryCollectViaDism(snapshot);
+            TryCollectOptionalFeatures(snapshot);
         }
         catch
         {
             // Capability enumeration may be unavailable; leave list empty (Unknown, not absence).
+        }
+    }
+
+    private static void TryCollectOptionalFeatures(InventorySnapshot snapshot)
+    {
+        var dismPath = Path.Combine(Environment.SystemDirectory, "dism.exe");
+        if (!File.Exists(dismPath))
+            dismPath = "dism.exe";
+
+        var result = SafeProcessRunner.Run(
+            dismPath,
+            "/online /get-features /format:table /English",
+            TimeSpan.FromSeconds(35),
+            CancellationToken.None,
+            Encoding.Default);
+
+        if (!result.Started || result.TimedOut || result.Canceled || string.IsNullOrWhiteSpace(result.StdOut))
+            return;
+
+        foreach (var line in result.StdOut.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+        {
+            var separator = line.LastIndexOf('|');
+            if (separator <= 0 || separator >= line.Length - 1)
+                continue;
+
+            var name = line[..separator].Trim();
+            var state = line[(separator + 1)..].Trim();
+            if (string.IsNullOrWhiteSpace(name) || name.StartsWith("Feature Name", StringComparison.OrdinalIgnoreCase) ||
+                name.All(c => c is '-' or ' '))
+                continue;
+
+            snapshot.OptionalFeatures.Add(new OptionalFeatureInfo { Name = name, State = state });
         }
     }
 

@@ -145,6 +145,9 @@ public sealed class SettingsQuery
             (m.ObjectName?.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false) ||
             (m.ObjectId?.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false) ||
             (m.Description?.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (m.TechnicalLocation?.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (m.CurrentState?.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (m.Narrative?.Summary.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false) ||
             (m.SubCategory?.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false) ||
             m.ProductDomain.ToString().Contains(t, StringComparison.OrdinalIgnoreCase));
     }

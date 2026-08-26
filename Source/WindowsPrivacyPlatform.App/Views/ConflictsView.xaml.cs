@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Media;
 using WindowsPrivacyPlatform.App.Services;
@@ -35,7 +36,7 @@ public partial class ConflictsView : UserControl
             var card = NavigationBuilder.BuildDetail(mo, scan.Query);
             if (card is null) continue;
 
-            var border = new Border { Style = (Style)FindResource("ListRowConflict") };
+            var row = new Button { Style = (Style)FindResource("ListRowButtonConflict") };
             var panel = new StackPanel();
 
             panel.Children.Add(new TextBlock
@@ -85,11 +86,12 @@ public partial class ConflictsView : UserControl
                 });
             }
 
-            border.Child = panel;
+            row.Content = panel;
+            AutomationProperties.SetName(row, $"{card.Title}. Layer conflict. Effective value: {effective}. Source: {source}.");
             var id = mo.ObjectId;
-            border.MouseLeftButtonUp += (_, _) => openSetting(id);
-            border.ToolTip = "Open setting details";
-            List.Items.Add(border);
+            row.Click += (_, _) => openSetting(id);
+            row.ToolTip = "Open setting details";
+            List.Items.Add(row);
         }
     }
 }

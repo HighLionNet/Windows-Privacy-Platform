@@ -98,10 +98,10 @@ namespace WindowsPrivacyPlatform.Scanner
                 string majorName = build >= 22000 ? "Windows 11" : "Windows 10";
                 string editionFriendly = MapEditionId(editionId);
 
-                snapshot.WindowsVersion = $"{majorName} {editionFriendly}".Trim();
-                snapshot.Edition = string.IsNullOrWhiteSpace(displayVersion)
-                    ? editionFriendly
-                    : displayVersion;
+                snapshot.WindowsVersion = string.IsNullOrWhiteSpace(displayVersion)
+                    ? majorName
+                    : $"{majorName} {displayVersion}";
+                snapshot.Edition = string.IsNullOrWhiteSpace(editionFriendly) ? "Unknown" : editionFriendly;
 
                 // Architecture from registry ProductName is unreliable; Runtime preferred.
                 notes.Add("Primary identity from HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion.");
@@ -250,13 +250,64 @@ namespace WindowsPrivacyPlatform.Scanner
                 notes.Add("Domain membership could not be verified with available read-only sources.");
             }
 
-            // Secure Boot / TPM / BitLocker are often restricted; leave Unknown with notes.
+            // Security hardware and encryption are optional, fail-soft providers.
             snapshot.Identity.SecureBootState = "Unknown";
             snapshot.Identity.TpmPresent = "Unknown";
             snapshot.Identity.TpmVersion = "Unknown";
-            snapshot.Identity.BitLockerProtectionStatus = "Unknown";
             snapshot.Identity.AzureAdJoined = "Unknown";
-            notes.Add("Secure Boot, TPM, BitLocker, and Entra join state require additional providers or elevation on many hosts; reported as Unknown.");
+            TryCollectEncryptionStatus(snapshot, notes);
+            notes.Add("Secure Boot, TPM, and Entra join state may require additional providers or elevation; unavailable values remain Unknown.");
+        }
+
+        private static void TryCollectEncryptionStatus(InventorySnapshot snapshot, List<string> notes)
+        {
+            snapshot.Identity.BitLockerProtectionStatus = "Unknown";
+            try
+            {
+                var scope = new ManagementScope(@"\\.\root\CIMV2\Security\MicrosoftVolumeEncryption");
+                scope.Connect();
+                using var searcher = new ManagementObjectSearcher(
+                    scope,
+                    new ObjectQuery("SELECT DriveLetter, ProtectionStatus, ConversionStatus FROM Win32_EncryptableVolume"));
+                using var results = searcher.Get();
+                var volumes = new List<string>();
+                foreach (ManagementObject volume in results)
+                {
+                    using (volume)
+                    {
+                        var drive = volume["DriveLetter"]?.ToString();
+                        if (string.IsNullOrWhiteSpace(drive))
+                            continue;
+                        var protection = Convert.ToUInt32(volume["ProtectionStatus"] ?? 2);
+                        var state = protection switch
+                        {
+                            0 => "Off",
+                            1 => "On",
+                            _ => "Unknown"
+                        };
+                        volumes.Add($"{drive} {state}");
+                    }
+                }
+
+                if (volumes.Count > 0)
+                {
+                    var label = snapshot.Edition.Contains("Home", StringComparison.OrdinalIgnoreCase)
+                        ? "Device Encryption"
+                        : "BitLocker";
+                    snapshot.Identity.BitLockerProtectionStatus = label + ": " + string.Join(", ", volumes);
+                    notes.Add("Volume encryption state collected from the Windows encryption provider.");
+                }
+                else
+                {
+                    notes.Add(snapshot.Edition.Contains("Home", StringComparison.OrdinalIgnoreCase)
+                        ? "No Device Encryption volume state was returned on this Home edition device."
+                        : "No BitLocker volume state was returned by the encryption provider.");
+                }
+            }
+            catch (Exception ex)
+            {
+                notes.Add($"Volume encryption provider unavailable ({ex.GetType().Name}); encryption state remains Unknown.");
+            }
         }
 
         private static void TryPowerShellVersion(InventorySnapshot snapshot, List<string> notes)

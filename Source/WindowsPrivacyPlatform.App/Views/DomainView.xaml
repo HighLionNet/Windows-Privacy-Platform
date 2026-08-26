@@ -14,7 +14,7 @@
               <ColumnDefinition Width="90" />
               <ColumnDefinition Width="90" />
             </Grid.ColumnDefinitions>
-            <TextBlock Text="Category" FontWeight="SemiBold" FontSize="11"
+            <TextBlock Text="Category or setting" FontWeight="SemiBold" FontSize="11"
                        Foreground="{StaticResource BrushTextSecondary}" />
             <TextBlock Grid.Column="1" Text="Settings" FontWeight="SemiBold" FontSize="11"
                        Foreground="{StaticResource BrushTextSecondary}" HorizontalAlignment="Right" />

@@ -2,52 +2,108 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <StackPanel>
-
-    <TextBlock x:Name="TitleText" Style="{StaticResource SectionTitle}" />
-    <TextBlock x:Name="DomainPathText" Style="{StaticResource SectionSubtitle}" />
+    <DockPanel LastChildFill="True">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+        <Border x:Name="AccessBadge" Style="{StaticResource BadgeUnknown}" Margin="6,0,0,0">
+          <TextBlock x:Name="AccessBadgeText" FontSize="9" FontWeight="SemiBold" />
+        </Border>
+        <Border x:Name="ApplicabilityBadge" Style="{StaticResource BadgeWarning}" Margin="6,0,0,0" Visibility="Collapsed">
+          <TextBlock x:Name="ApplicabilityBadgeText" FontSize="9" FontWeight="SemiBold" />
+        </Border>
+      </StackPanel>
+      <StackPanel>
+        <TextBlock x:Name="TitleText" Style="{StaticResource SectionTitle}" TextWrapping="Wrap" />
+        <TextBlock x:Name="DomainPathText" Style="{StaticResource SectionSubtitle}" />
+      </StackPanel>
+    </DockPanel>
     <Border Style="{StaticResource HeaderRule}" />
 
-    <!-- Status only -->
-    <Border Style="{StaticResource PropertySheet}" Margin="0,0,0,16">
-      <StackPanel>
-        <Border Style="{StaticResource PropertySheetHeader}">
-          <TextBlock Text="Status" FontWeight="SemiBold" FontSize="12"
-                     Foreground="{StaticResource BrushTextSecondary}" />
-        </Border>
-        <Grid Margin="0,6,0,8">
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="100" />
-            <ColumnDefinition Width="*" />
-          </Grid.ColumnDefinitions>
-          <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-          </Grid.RowDefinitions>
-
-          <TextBlock Text="Current" Style="{StaticResource SheetLabel}" />
-          <TextBlock x:Name="ObservedText" Grid.Column="1" Style="{StaticResource SheetValue}"
-                     FontFamily="Cascadia Code, Consolas, Segoe UI" />
-
-          <TextBlock Grid.Row="1" Text="Effective" Style="{StaticResource SheetLabel}" FontWeight="SemiBold" />
-          <TextBlock x:Name="EffectiveText" Grid.Row="1" Grid.Column="1" Style="{StaticResource SheetValue}"
-                     FontSize="14" FontWeight="SemiBold"
-                     FontFamily="Cascadia Code, Consolas, Segoe UI" />
-
-          <TextBlock Grid.Row="2" Text="Source" Style="{StaticResource SheetLabel}" />
-          <TextBlock x:Name="SourceText" Grid.Row="2" Grid.Column="1" Style="{StaticResource SheetValue}" />
-        </Grid>
-      </StackPanel>
+    <Border x:Name="ApplicabilityPanel" Style="{StaticResource Card}" Background="{StaticResource BrushWarningSoft}"
+            BorderBrush="{StaticResource BrushWarning}" Visibility="Collapsed">
+      <TextBlock x:Name="ApplicabilityText" TextWrapping="Wrap" />
     </Border>
 
-    <!-- Single organized explanation -->
-    <TextBlock Text="Explanation" Style="{StaticResource GroupHeader}" Margin="0,0,0,6" />
-    <TextBlock x:Name="ExplanationText" Style="{StaticResource ValueText}"
-               TextWrapping="Wrap" LineHeight="20" />
+    <Grid>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="1.3*" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
 
-    <TextBlock Margin="0,16,0,0" FontSize="11"
-               Foreground="{StaticResource BrushTextMuted}"
-               Text="To change this setting, use the value buttons on the category list (Modify mode)." />
+      <StackPanel Margin="0,0,12,0">
+        <Border Style="{StaticResource PropertySheet}" Margin="0,0,0,12">
+          <StackPanel>
+            <Border Style="{StaticResource PropertySheetHeader}">
+              <TextBlock Text="Observed state" FontWeight="SemiBold" FontSize="12" />
+            </Border>
+            <Grid Margin="0,5,0,7">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="100" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+              </Grid.RowDefinitions>
+              <TextBlock Text="Current" Style="{StaticResource SheetLabel}" />
+              <TextBlock x:Name="ObservedText" Grid.Column="1" Style="{StaticResource SheetValue}" FontFamily="Cascadia Mono, Consolas" />
+              <TextBlock Grid.Row="1" Text="Effective" Style="{StaticResource SheetLabel}" FontWeight="SemiBold" />
+              <TextBlock x:Name="EffectiveText" Grid.Row="1" Grid.Column="1" Style="{StaticResource SheetValue}"
+                         FontSize="14" FontWeight="SemiBold" FontFamily="Cascadia Mono, Consolas" />
+              <TextBlock Grid.Row="2" Text="Source" Style="{StaticResource SheetLabel}" />
+              <TextBlock x:Name="SourceText" Grid.Row="2" Grid.Column="1" Style="{StaticResource SheetValue}" />
+            </Grid>
+          </StackPanel>
+        </Border>
 
+        <TextBlock Text="What this controls" Style="{StaticResource GroupHeader}" Margin="0,0,0,6" />
+        <TextBlock x:Name="SummaryText" Style="{StaticResource PrimaryValue}" LineHeight="21" />
+
+        <TextBlock Text="How Windows applies it" Style="{StaticResource GroupHeader}" />
+        <TextBlock x:Name="MechanicsText" Style="{StaticResource ValueText}" />
+
+        <TextBlock Text="Why it matters" Style="{StaticResource GroupHeader}" />
+        <TextBlock x:Name="WhyItMattersText" Style="{StaticResource ValueText}" />
+
+        <TextBlock Text="Day-to-day effect" Style="{StaticResource GroupHeader}" />
+        <TextBlock x:Name="DailyImpactText" Style="{StaticResource ValueText}" />
+
+        <Border Margin="0,14,0,2" Padding="10,8" Background="{StaticResource BrushBgHeader}"
+                BorderBrush="{StaticResource BrushBorder}" BorderThickness="1">
+          <StackPanel>
+            <TextBlock Text="TECHNICAL LOCATION" FontSize="9" FontWeight="SemiBold" Foreground="{StaticResource BrushTextMuted}" />
+            <TextBlock x:Name="TechnicalLocationText" Margin="0,4,0,0" FontSize="11"
+                       FontFamily="Cascadia Mono, Consolas" TextWrapping="Wrap" />
+          </StackPanel>
+        </Border>
+      </StackPanel>
+
+      <StackPanel Grid.Column="1" Margin="12,0,0,0">
+        <Border x:Name="ViewOnlyPanel" Style="{StaticResource Card}" Background="{StaticResource BrushUnknownSoft}" Visibility="Collapsed">
+          <StackPanel>
+            <TextBlock Text="View-only decision" FontWeight="SemiBold" FontSize="12" />
+            <TextBlock x:Name="ExclusionText" Margin="0,5,0,0" TextWrapping="Wrap" LineHeight="18" />
+            <Button x:Name="NativeToolButton" Margin="0,10,0,0" HorizontalAlignment="Left"
+                    Style="{StaticResource SecondaryButton}" Visibility="Collapsed" Click="NativeToolButton_Click" />
+          </StackPanel>
+        </Border>
+
+        <TextBlock Text="When another control wins" Style="{StaticResource GroupHeader}" Margin="0,0,0,6" />
+        <TextBlock x:Name="WhenIgnoredText" Style="{StaticResource ValueText}" />
+
+        <TextBlock Text="Decision guidance" Style="{StaticResource GroupHeader}" Margin="0,0,0,6" />
+        <TextBlock x:Name="GuidanceText" Style="{StaticResource ValueText}" />
+
+        <TextBlock Text="Side effects and limits" Style="{StaticResource GroupHeader}" />
+        <TextBlock x:Name="SideEffectsText" Style="{StaticResource ValueText}" />
+
+        <Border x:Name="MisconceptionPanel" Style="{StaticResource Card}" Margin="0,14,0,0" Background="{StaticResource BrushBgAltRow}">
+          <StackPanel>
+            <TextBlock Text="Common misconception" FontWeight="SemiBold" FontSize="12" />
+            <TextBlock x:Name="MisconceptionText" Margin="0,5,0,0" TextWrapping="Wrap" LineHeight="18" />
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </Grid>
   </StackPanel>
 </UserControl>

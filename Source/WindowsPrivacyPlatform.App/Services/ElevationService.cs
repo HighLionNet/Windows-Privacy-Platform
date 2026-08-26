@@ -99,8 +99,8 @@ public sealed class ElevationService
             owner,
             "This process is running elevated.\n\n" +
             "Authorize Modify mode for this session?\n\n" +
-            "• Changes write Group Policy / registry values for supported settings.\n" +
-            "• Every change is confirmed and logged to changes.log.\n" +
+                "• Only explicit catalog-authorized settings can change.\n" +
+                "• Every change is pre-read, confirmed, logged, and independently verified.\n" +
             "• You can switch back to Inspect at any time.\n\n" +
             "Continue?",
             "Authorize Modify mode",
@@ -146,6 +146,7 @@ public sealed class ElevationService
             var psi = new ProcessStartInfo
             {
                 FileName = exePath,
+                Arguments = "--authorize-modify",
                 UseShellExecute = true,
                 Verb = "runas",
                 WorkingDirectory = Path.GetDirectoryName(exePath) ?? Environment.CurrentDirectory

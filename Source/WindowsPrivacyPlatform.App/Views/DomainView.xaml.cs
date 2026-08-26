@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Media;
 using WindowsPrivacyPlatform.App.Services;
@@ -14,12 +15,16 @@ namespace WindowsPrivacyPlatform.App.Views;
 /// </summary>
 public partial class DomainView : UserControl
 {
-    public DomainView(ScanService scan, ProductDomain domain, Action<ProductDomain, string> openCategory)
+    public DomainView(
+        ScanService scan,
+        ProductDomain domain,
+        Action<ProductDomain, string> openCategory,
+        Action<string> openSetting)
     {
         InitializeComponent();
         TitleText.Text = NavigationBuilder.HumanizeDomain(domain);
 
-        var items = scan.Catalog.Where(m => m.ProductDomain == domain).ToList();
+        var items = scan.SettingsCatalog.Where(m => m.ProductDomain == domain).ToList();
         if (items.Count == 0)
         {
             SubtitleText.Text = "No curated entries.";
@@ -52,20 +57,86 @@ public partial class DomainView : UserControl
                 m.Observation?.Effective?.HasConflict == true);
             var unknowns = group.Count(IsUnknown);
 
-            CategoryList.Children.Add(BuildCategoryRow(
-                group.Key,
-                group.Count(),
-                conflicts,
-                unknowns,
-                () => openCategory(domain, group.Key)));
+            if (CatalogPolicy.RequiresDrillDown(group.Count()))
+            {
+                CategoryList.Children.Add(BuildCategoryRow(
+                    group.Key,
+                    group.Count(),
+                    conflicts,
+                    unknowns,
+                    () => openCategory(domain, group.Key)));
+            }
+            else
+            {
+                CategoryList.Children.Add(new TextBlock
+                {
+                    Text = group.Key,
+                    Style = (Style)FindResource("GroupHeader"),
+                    Margin = new Thickness(12, 10, 12, 4)
+                });
+                foreach (var setting in group.OrderBy(m => m.ObjectName, StringComparer.OrdinalIgnoreCase))
+                    CategoryList.Children.Add(BuildSettingRow(setting, () => openSetting(setting.ObjectId)));
+            }
         }
     }
 
-    private Border BuildCategoryRow(string name, int count, int conflicts, int unknowns, Action open)
+    private Button BuildSettingRow(ManagedObject mo, Action open)
     {
-        var row = new Border
+        var conflict = mo.Observation?.Resolution?.HasConflict == true ||
+                       mo.Observation?.Effective?.HasConflict == true;
+        var row = new Button
         {
-            Style = (Style)FindResource(conflicts > 0 ? "ListRowConflict" : "ListRow"),
+            Style = (Style)FindResource(conflict ? "ListRowButtonConflict" : "ListRowButton"),
+            ToolTip = "Open setting details"
+        };
+        var grid = new Grid();
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+        var text = new StackPanel();
+        text.Children.Add(new TextBlock
+        {
+            Text = mo.ObjectName,
+            FontWeight = FontWeights.SemiBold,
+            FontSize = 12,
+            TextWrapping = TextWrapping.Wrap
+        });
+        text.Children.Add(new TextBlock
+        {
+            Text = mo.Narrative.Summary,
+            FontSize = 11,
+            Foreground = (Brush)FindResource("BrushTextSecondary"),
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 2, 8, 0)
+        });
+        grid.Children.Add(text);
+
+        var badges = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        if (!mo.IsWritable)
+            badges.Children.Add(Badge("VIEW ONLY", "BadgeUnknown"));
+        if (!mo.IsApplicableHere)
+            badges.Children.Add(Badge(CatalogPolicy.ApplicabilityBadgeText(mo.Applicability), "BadgeWarning"));
+        Grid.SetColumn(badges, 1);
+        grid.Children.Add(badges);
+
+        row.Content = grid;
+        AutomationProperties.SetName(row, $"{mo.ObjectName}. {(mo.IsWritable ? "Change available" : "View only")}. {mo.Narrative.Summary}");
+        row.Click += (_, _) => open();
+        return row;
+    }
+
+    private Border Badge(string text, string style)
+    {
+        var badge = new Border { Style = (Style)FindResource(style), Margin = new Thickness(6, 0, 0, 0) };
+        badge.Child = new TextBlock { Text = text, FontSize = 9, FontWeight = FontWeights.SemiBold };
+        return badge;
+    }
+
+    private Button BuildCategoryRow(string name, int count, int conflicts, int unknowns, Action open)
+    {
+        var row = new Button
+        {
+            Style = (Style)FindResource(conflicts > 0 ? "ListRowButtonConflict" : "ListRowButton"),
             ToolTip = "Open category"
         };
 
@@ -133,8 +204,9 @@ public partial class DomainView : UserControl
         Grid.SetColumn(attention, 2);
         grid.Children.Add(attention);
 
-        row.Child = grid;
-        row.MouseLeftButtonUp += (_, _) => open();
+        row.Content = grid;
+        AutomationProperties.SetName(row, $"{name}. {count} settings. {conflicts} conflicts.");
+        row.Click += (_, _) => open();
         return row;
     }
 

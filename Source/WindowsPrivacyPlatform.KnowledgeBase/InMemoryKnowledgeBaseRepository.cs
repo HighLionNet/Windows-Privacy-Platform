@@ -11,8 +11,8 @@ public class InMemoryKnowledgeBaseRepository : IKnowledgeBaseRepository
     {
         _version = new KnowledgeBaseVersion
         {
-            SchemaVersion = "0.2",
-            Version = "0.1-prototype",
+            SchemaVersion = ManagedObjectCatalog.CatalogVersion,
+            Version = "catalog-current",
             CreatedTimestamp = DateTime.UtcNow,
             ObjectCount = 0
         };
