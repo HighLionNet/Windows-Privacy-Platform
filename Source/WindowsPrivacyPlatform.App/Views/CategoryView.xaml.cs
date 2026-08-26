@@ -98,7 +98,7 @@ public partial class CategoryView : UserControl
                 ? (Brush)FindResource("BrushConflict")
                 : (Brush)FindResource("BrushBorderStrong"),
             BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(2)
+            CornerRadius = new CornerRadius(8)
         };
 
         var grid = new Grid { Margin = new Thickness(4, 0, 0, 0) };
@@ -301,6 +301,7 @@ public partial class CategoryView : UserControl
         var btn = new Button
         {
             Content = label,
+            Style = (Style)FindResource("OptionButton"),
             Margin = new Thickness(0, 0, 0, 0),
             Padding = new Thickness(8, 2, 8, 2),
             FontSize = 11,

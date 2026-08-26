@@ -35,7 +35,7 @@
       </MenuItem>
     </Menu>
 
-    <Border DockPanel.Dock="Top" Background="{StaticResource BrushBgContent}"
+    <Border DockPanel.Dock="Top" Background="{StaticResource BrushHeaderChrome}"
             BorderBrush="{StaticResource BrushBorderStrong}" BorderThickness="0,0,0,1" Padding="12,8">
       <Grid>
         <Grid.ColumnDefinitions>
@@ -111,7 +111,7 @@
         <ColumnDefinition Width="*" />
       </Grid.ColumnDefinitions>
 
-      <Border Grid.Column="0" Background="{StaticResource BrushBgSidebar}"
+      <Border Grid.Column="0" Background="{StaticResource BrushSidebarChrome}"
               BorderBrush="{StaticResource BrushBorderStrong}" BorderThickness="0,0,1,0">
         <ScrollViewer VerticalScrollBarVisibility="Auto" x:Name="NavScroll">
           <StackPanel Margin="0,6,0,10" x:Name="NavPanel">
@@ -160,7 +160,7 @@
       </Border>
 
       <DockPanel Grid.Column="1" Background="{StaticResource BrushBgWindow}">
-        <Border DockPanel.Dock="Top" Background="{StaticResource BrushBgContent}"
+        <Border DockPanel.Dock="Top" Background="{StaticResource BrushBgHeader}"
                 BorderBrush="{StaticResource BrushBorderStrong}" BorderThickness="0,0,0,1"
                 Padding="16,6">
           <StackPanel x:Name="BreadcrumbPanel" Orientation="Horizontal" />
