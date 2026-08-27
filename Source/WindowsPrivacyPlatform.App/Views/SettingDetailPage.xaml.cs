@@ -23,6 +23,14 @@ public partial class SettingDetailPage : UserControl
             ? detail.Explanation.WhatIsIt
             : detail.Narrative.Summary;
         TechnicalLocationText.Text = TechnicalLocationFormatter.DirectPath(detail.TechnicalLocation);
+        WhatText.Text = detail.Explanation.WhatIsIt;
+        WhyText.Text = detail.Explanation.WhyItMatters;
+        GuidanceText.Text = detail.Explanation.DecisionGuidance;
+        TradeoffsText.Text = $"Privacy: {detail.Explanation.PrivacyImpactText}\nSecurity: {detail.Explanation.SecurityImpactText}\nSide effects: {detail.Explanation.SideEffects}";
+        RestartText.Text = detail.Applicability == ApplicabilityState.Applicable
+            ? $"Supported on this scanned device. Restart expectation: {detail.RestartExpectation}."
+            : detail.ApplicabilityReason;
+        VerificationText.Text = $"Object ID: {detail.ObjectId}\nEvidence confidence: {detail.Confidence}\nResolution: {detail.ResolutionReason ?? "No additional resolution explanation."}";
 
         if (detail.Bucket == CatalogBucket.SystemInventory)
         {
@@ -32,7 +40,8 @@ public partial class SettingDetailPage : UserControl
         }
         else
         {
-            AccessBadgeText.Text = "EDITABLE";
+            AccessBadgeText.Text = detail.IsWritable ? "CATALOG EDITABLE" : "VIEW ONLY";
+            if (!detail.IsWritable) AccessBadge.Style = (Style)FindResource("BadgeUnknown");
             OptionsList.ItemsSource = detail.Options;
         }
 

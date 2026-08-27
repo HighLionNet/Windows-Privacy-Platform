@@ -21,6 +21,8 @@
     <ProjectReference Include="..\WindowsPrivacyPlatform.Models\WindowsPrivacyPlatform.Models.csproj" />
     <ProjectReference Include="..\WindowsPrivacyPlatform.Scanner\WindowsPrivacyPlatform.Scanner.csproj" />
     <ProjectReference Include="..\WindowsPrivacyPlatform.Validator\WindowsPrivacyPlatform.Validator.csproj" />
+    <ProjectReference Include="..\WindowsPrivacyPlatform.Core\WindowsPrivacyPlatform.Core.csproj" />
+    <ProjectReference Include="..\WindowsPrivacyPlatform.Logging\WindowsPrivacyPlatform.Logging.csproj" />
   </ItemGroup>
 
 </Project>

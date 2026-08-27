@@ -10,10 +10,13 @@
 - BitLocker, User Account Control, and arbitrary firewall-rule writes are permanent exclusions with native-tool handoff.
 - Preserve unknown/error/access-denied semantics and last-good scan state.
 - Keep the change contract: pre-read, confirm, typed operation, independent read-back, local audit.
+- Preserve `SettingsListTarget`: Overview/search must land in a category list and never auto-open a Settings detail route.
+- Preserve `ManagedObjectCatalog.IsAuthorizedWriteTarget` revalidation and `ElevationService.CanModifyHive`; a complete runtime object alone is never authority.
+- Keep Services read-only and use neutral evidence terminology rather than malware verdicts.
 
 ## Release verification
 
-Run restore, Release build, tests without rebuilding, release packaging, repository hygiene scans, and an extracted-archive launch smoke test. The GitHub tag workflow produces the same stable archive name used by the documented download commands.
+Run restore, Release build, tests without rebuilding, release packaging, `scripts/verify-release.ps1`, repository hygiene scans, and a later extracted-archive launch smoke test. The source-only v2.4.0 implementation pass compiled the solution but deliberately did not execute tests or launch the app under its task constraint.
 
 ## Safe future finishing work
 

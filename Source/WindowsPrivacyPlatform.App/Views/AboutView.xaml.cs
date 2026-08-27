@@ -36,9 +36,9 @@ public partial class AboutView : UserControl
         {
             Process.Start(new ProcessStartInfo { FileName = _repositoryUrl, UseShellExecute = true });
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            MessageBox.Show(Window.GetWindow(this), "The repository link could not be opened. " + ex.Message,
+            MessageBox.Show(Window.GetWindow(this), "The repository link could not be opened by Windows.",
                 "Link unavailable", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }

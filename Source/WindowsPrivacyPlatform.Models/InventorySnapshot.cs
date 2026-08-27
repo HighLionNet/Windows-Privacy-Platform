@@ -103,8 +103,24 @@ public class InventorySnapshot
 public class ServiceInfo
 {
     public string Name { get; set; } = string.Empty;
+    public string DisplayName { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
     public string StartMode { get; set; } = string.Empty;
     public string State { get; set; } = string.Empty;
+    public string Account { get; set; } = string.Empty;
+    public string ExecutablePath { get; set; } = string.Empty;
+    public string Publisher { get; set; } = string.Empty;
+    public string SignatureStatus { get; set; } = "Not verified";
+    public bool DelayedAutoStart { get; set; }
+    public string TriggerStart { get; set; } = "Unknown";
+    public List<string> Dependencies { get; set; } = new();
+    public List<string> Dependents { get; set; } = new();
+    public bool? IsMicrosoft { get; set; }
+    public bool IsUserService { get; set; }
+    public bool MissingExecutable { get; set; }
+    public bool AccessDenied { get; set; }
+    public string ConfigurationError { get; set; } = string.Empty;
+    public List<string> Tags { get; set; } = new();
 }
 
 public class TaskInfo
@@ -117,6 +133,8 @@ public class PrivacySettingInfo
 {
     public string Name { get; set; } = string.Empty;
     public string Value { get; set; } = string.Empty;
+    public string ValueKind { get; set; } = string.Empty;
+    public RegistryObservationStatus Status { get; set; } = RegistryObservationStatus.Present;
 }
 
 /// <summary>
@@ -131,4 +149,15 @@ public class PolicySettingInfo
     public string Path { get; set; } = string.Empty;
     public string ValueName { get; set; } = string.Empty;
     public string Value { get; set; } = string.Empty;
+    public string ValueKind { get; set; } = string.Empty;
+    public RegistryObservationStatus Status { get; set; } = RegistryObservationStatus.NotConfigured;
+    public string ErrorCategory { get; set; } = string.Empty;
+}
+
+public enum RegistryObservationStatus
+{
+    Present,
+    NotConfigured,
+    AccessDenied,
+    Error
 }

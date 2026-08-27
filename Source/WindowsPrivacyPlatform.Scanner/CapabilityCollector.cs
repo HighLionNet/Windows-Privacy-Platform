@@ -19,7 +19,7 @@ public sealed class CapabilityCollector : IInventoryCollector
 {
     public string Name => "CapabilityCollector";
 
-    public void Collect(InventorySnapshot snapshot)
+    public void Collect(InventorySnapshot snapshot, CancellationToken cancellationToken = default)
     {
         if (snapshot is null)
             throw new ArgumentNullException(nameof(snapshot));
@@ -27,13 +27,17 @@ public sealed class CapabilityCollector : IInventoryCollector
         try
         {
             // Prefer a single reasonable PowerShell attempt first (installed only is most useful).
-            var collected = TryCollectViaPowerShell(snapshot, installedOnly: true);
+            var collected = TryCollectViaPowerShell(snapshot, installedOnly: true, cancellationToken);
             if (!collected)
-                collected = TryCollectViaPowerShell(snapshot, installedOnly: false);
+                collected = TryCollectViaPowerShell(snapshot, installedOnly: false, cancellationToken);
             if (!collected)
-                TryCollectViaDism(snapshot);
+                TryCollectViaDism(snapshot, cancellationToken);
 
-            TryCollectOptionalFeatures(snapshot);
+            TryCollectOptionalFeatures(snapshot, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch
         {
@@ -41,17 +45,17 @@ public sealed class CapabilityCollector : IInventoryCollector
         }
     }
 
-    private static void TryCollectOptionalFeatures(InventorySnapshot snapshot)
+    private static void TryCollectOptionalFeatures(InventorySnapshot snapshot, CancellationToken cancellationToken)
     {
         var dismPath = Path.Combine(Environment.SystemDirectory, "dism.exe");
         if (!File.Exists(dismPath))
-            dismPath = "dism.exe";
+            return;
 
         var result = SafeProcessRunner.Run(
             dismPath,
-            "/online /get-features /format:table /English",
+            ["/online", "/get-features", "/format:table", "/English"],
             TimeSpan.FromSeconds(35),
-            CancellationToken.None,
+            cancellationToken,
             Encoding.Default);
 
         if (!result.Started || result.TimedOut || result.Canceled || string.IsNullOrWhiteSpace(result.StdOut))
@@ -59,6 +63,7 @@ public sealed class CapabilityCollector : IInventoryCollector
 
         foreach (var line in result.StdOut.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var separator = line.LastIndexOf('|');
             if (separator <= 0 || separator >= line.Length - 1)
                 continue;
@@ -73,7 +78,7 @@ public sealed class CapabilityCollector : IInventoryCollector
         }
     }
 
-    private static bool TryCollectViaPowerShell(InventorySnapshot snapshot, bool installedOnly)
+    private static bool TryCollectViaPowerShell(InventorySnapshot snapshot, bool installedOnly, CancellationToken cancellationToken)
     {
         // Fixed command strings only. No user-controlled injection.
         // Avoid -ExecutionPolicy Bypass; use the minimum required for a read-only query.
@@ -81,43 +86,32 @@ public sealed class CapabilityCollector : IInventoryCollector
             ? "Get-WindowsCapability -Online -ErrorAction SilentlyContinue | Where-Object { $_.State -eq 'Installed' } | Select-Object -ExpandProperty Name"
             : "Get-WindowsCapability -Online -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name";
 
-        var args = "-NoProfile -NonInteractive -Command \"" + filter + "\"";
+        var shell = Path.Combine(Environment.SystemDirectory, @"WindowsPowerShell\v1.0\powershell.exe");
+        var result = SafeProcessRunner.Run(
+            shell,
+            ["-NoProfile", "-NonInteractive", "-Command", filter],
+            TimeSpan.FromSeconds(25),
+            cancellationToken,
+            Encoding.UTF8);
 
-        // Try powershell.exe then pwsh.exe once each for this mode.
-        foreach (var shell in new[] { "powershell.exe", "pwsh.exe" })
-        {
-            var result = SafeProcessRunner.Run(
-                shell,
-                args,
-                TimeSpan.FromSeconds(25),
-                CancellationToken.None,
-                Encoding.UTF8);
+        if (!result.Started || result.TimedOut || result.Canceled ||
+            (result.ExitCode != 0 && string.IsNullOrWhiteSpace(result.StdOut)))
+            return false;
 
-            if (!result.Started || result.TimedOut || result.Canceled)
-                continue;
-
-            if (result.ExitCode != 0 && string.IsNullOrWhiteSpace(result.StdOut))
-                continue;
-
-            var added = ParseCapabilityNames(snapshot, result.StdOut);
-            if (added > 0)
-                return true;
-        }
-
-        return false;
+        return ParseCapabilityNames(snapshot, result.StdOut) > 0;
     }
 
-    private static void TryCollectViaDism(InventorySnapshot snapshot)
+    private static void TryCollectViaDism(InventorySnapshot snapshot, CancellationToken cancellationToken)
     {
         var dismPath = Path.Combine(Environment.SystemDirectory, "dism.exe");
         if (!File.Exists(dismPath))
-            dismPath = "dism.exe";
+            return;
 
         var result = SafeProcessRunner.Run(
             dismPath,
-            "/online /get-capabilities /English",
+            ["/online", "/get-capabilities", "/English"],
             TimeSpan.FromSeconds(30),
-            CancellationToken.None,
+            cancellationToken,
             Encoding.Default);
 
         if (!result.Started || result.TimedOut || result.Canceled)

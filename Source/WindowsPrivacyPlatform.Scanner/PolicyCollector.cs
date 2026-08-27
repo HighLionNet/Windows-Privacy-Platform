@@ -2,6 +2,7 @@
 using System;
 using System.Globalization;
 using System.Linq;
+using System.Threading;
 using Microsoft.Win32;
 using WindowsPrivacyPlatform.Models;
 
@@ -145,7 +146,7 @@ namespace WindowsPrivacyPlatform.Scanner
 
         private static readonly IReadOnlyList<Probe> CatalogProbes = BuildCatalogProbes();
 
-        public void Collect(InventorySnapshot snapshot)
+        public void Collect(InventorySnapshot snapshot, CancellationToken cancellationToken = default)
         {
             if (snapshot is null)
                 throw new ArgumentNullException(nameof(snapshot));
@@ -155,21 +156,22 @@ namespace WindowsPrivacyPlatform.Scanner
                          .GroupBy(p => p.Id, StringComparer.OrdinalIgnoreCase)
                          .Select(g => g.First()))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
                     snapshot.PolicySettings.Add(ReadProbe(probe));
                 }
+                catch (UnauthorizedAccessException)
+                {
+                    snapshot.PolicySettings.Add(FailedProbe(probe, RegistryObservationStatus.AccessDenied, "UnauthorizedAccess"));
+                }
+                catch (System.Security.SecurityException)
+                {
+                    snapshot.PolicySettings.Add(FailedProbe(probe, RegistryObservationStatus.AccessDenied, "SecurityException"));
+                }
                 catch (Exception ex)
                 {
-                    snapshot.PolicySettings.Add(new PolicySettingInfo
-                    {
-                        Name = probe.Id,
-                        Category = probe.Category,
-                        Hive = probe.Hive == RegistryHive.LocalMachine ? "HKLM" : "HKCU",
-                        Path = probe.SubKey,
-                        ValueName = probe.ValueName,
-                        Value = "Error reading: " + ex.Message
-                    });
+                    snapshot.PolicySettings.Add(FailedProbe(probe, RegistryObservationStatus.Error, ex.GetType().Name));
                 }
             }
         }
@@ -237,7 +239,8 @@ namespace WindowsPrivacyPlatform.Scanner
                 Hive = probe.Hive == RegistryHive.LocalMachine ? "HKLM" : "HKCU",
                 Path = probe.SubKey,
                 ValueName = probe.ValueName,
-                Value = "Not configured"
+                Value = "Not configured",
+                Status = RegistryObservationStatus.NotConfigured
             };
 
             // Registry64 matches PolicyChangeService write view — critical for post-change scan consistency.
@@ -257,8 +260,22 @@ namespace WindowsPrivacyPlatform.Scanner
 
             var kind = key.GetValueKind(probe.ValueName);
             info.Value = FormatValue(raw, kind);
+            info.ValueKind = kind.ToString();
+            info.Status = RegistryObservationStatus.Present;
             return info;
         }
+
+        private static PolicySettingInfo FailedProbe(Probe probe, RegistryObservationStatus status, string category) => new()
+        {
+            Name = probe.Id,
+            Category = probe.Category,
+            Hive = probe.Hive == RegistryHive.LocalMachine ? "HKLM" : "HKCU",
+            Path = probe.SubKey,
+            ValueName = probe.ValueName,
+            Value = status == RegistryObservationStatus.AccessDenied ? "Access denied" : "Error reading",
+            Status = status,
+            ErrorCategory = category
+        };
 
         private static string FormatValue(object raw, RegistryValueKind kind)
         {

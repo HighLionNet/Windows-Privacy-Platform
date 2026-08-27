@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Management;
 using System.Runtime.InteropServices;
+using System.Threading;
 using Microsoft.Win32;
 using WindowsPrivacyPlatform.Models;
 
@@ -18,7 +19,7 @@ namespace WindowsPrivacyPlatform.Scanner
     {
         public string Name => "WindowsIdentityCollector";
 
-        public void Collect(InventorySnapshot snapshot)
+        public void Collect(InventorySnapshot snapshot, CancellationToken cancellationToken = default)
         {
             if (snapshot is null)
                 throw new ArgumentNullException(nameof(snapshot));
@@ -29,15 +30,18 @@ namespace WindowsPrivacyPlatform.Scanner
 
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 sourcesAttempted++;
                 var registryOk = TryCollectFromRegistry(snapshot, notes);
                 if (registryOk)
                     sourcesAgreeing++;
 
                 sourcesAttempted++;
+                cancellationToken.ThrowIfCancellationRequested();
                 TryCollectFromRuntime(snapshot, notes, ref sourcesAgreeing);
 
                 sourcesAttempted++;
+                cancellationToken.ThrowIfCancellationRequested();
                 TryCollectFromWmi(snapshot, notes, ref sourcesAgreeing);
 
                 // Always populate .NET / PowerShell best-effort (local process info).
@@ -303,6 +307,10 @@ namespace WindowsPrivacyPlatform.Scanner
                         ? "No Device Encryption volume state was returned on this Home edition device."
                         : "No BitLocker volume state was returned by the encryption provider.");
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch (Exception ex)
             {

@@ -50,28 +50,50 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
                 ? "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore"
                 : managedObject.DiscoveryMethod;
 
-            var isUnknown = string.IsNullOrWhiteSpace(privacy.Value) ||
-                            privacy.Value.Equals("Not set", StringComparison.OrdinalIgnoreCase) ||
-                            privacy.Value.Equals("Not observed in this scan", StringComparison.OrdinalIgnoreCase);
+            var expected = managedObject.WritableTarget?.ValueKind;
+            var typeMismatch = privacy.Status == RegistryObservationStatus.Present && expected is not null &&
+                               !KindMatches(privacy.ValueKind, expected.Value);
+            var display = privacy.Status switch
+            {
+                RegistryObservationStatus.AccessDenied => "Access denied",
+                RegistryObservationStatus.Error => "Error reading privacy setting",
+                _ when typeMismatch => $"Unexpected registry type ({privacy.ValueKind})",
+                _ => privacy.Value
+            };
+            var isUnknown = privacy.Status != RegistryObservationStatus.Present || typeMismatch ||
+                            string.IsNullOrWhiteSpace(privacy.Value);
 
             var layer = new ConfigurationObservation
             {
                 ObjectId = managedObject.ObjectId,
                 Layer = ConfigurationLayer.UserPreference,
-                RawValue = privacy.Value,
+                RawValue = display,
                 SourcePath = sourcePath,
                 Hive = "HKCU",
                 ObservedAt = DateTime.UtcNow,
                 ConfidenceScore = isUnknown ? 40 : managedObject.ConfidenceScore > 0 ? managedObject.ConfidenceScore : 85,
                 CollectorName = "PrivacyCollector",
                 EvidenceSource = $"Registry {sourcePath}",
-                CollectionNotes = isUnknown
-                    ? "Value not present or not set under current-user ConsentStore / privacy preference."
-                    : string.Empty,
+                CollectionNotes = privacy.Status switch
+                {
+                    RegistryObservationStatus.NotConfigured => "The current-user source was read and the value was absent.",
+                    RegistryObservationStatus.AccessDenied => "Windows denied access to the current-user privacy source.",
+                    _ when typeMismatch => $"Expected {expected}; observed {privacy.ValueKind}. The value is not interpreted.",
+                    _ => string.Empty
+                },
                 EffectiveConfidence = isUnknown ? EffectiveConfidence.Low : EffectiveConfidence.High
             };
 
-            BinderHelpers.ApplyObservation(managedObject, privacy.Value, layer);
+            BinderHelpers.ApplyObservation(managedObject, display, layer);
         }
+
+        private static bool KindMatches(string observed, RegistryValueKindExpected expected) => expected switch
+        {
+            RegistryValueKindExpected.DWord => observed.Equals("DWord", StringComparison.OrdinalIgnoreCase),
+            RegistryValueKindExpected.QWord => observed.Equals("QWord", StringComparison.OrdinalIgnoreCase),
+            RegistryValueKindExpected.String => observed.Equals("String", StringComparison.OrdinalIgnoreCase),
+            RegistryValueKindExpected.ExpandString => observed.Equals("ExpandString", StringComparison.OrdinalIgnoreCase),
+            _ => false
+        };
     }
 }

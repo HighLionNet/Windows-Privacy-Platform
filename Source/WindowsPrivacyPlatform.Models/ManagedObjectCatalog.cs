@@ -8,7 +8,7 @@ namespace WindowsPrivacyPlatform.Models;
 
 public static class ManagedObjectCatalog
 {
-    public const string CatalogVersion = "2.3";
+    public const string CatalogVersion = "2.4";
     public static IReadOnlyList<ManagedObject> PrivacySettings { get; } = Finalize(CreatePrivacyBatch());
     public static IReadOnlyList<ManagedObject> PolicySettings { get; } = Finalize(
         CreatePolicyBatch()
@@ -20,6 +20,27 @@ public static class ManagedObjectCatalog
     public static IReadOnlyList<ManagedObject> All { get; } =
         PrivacySettings.Concat(PolicySettings).Concat(FirewallSettings).ToList().AsReadOnly();
 
+    /// <summary>Revalidates a runtime object against the immutable catalog authorization.</summary>
+    public static bool IsAuthorizedWriteTarget(ManagedObject candidate)
+    {
+        if (candidate?.WritableTarget is not { IsComplete: true } requested)
+            return false;
+        var definition = All.FirstOrDefault(item =>
+            item.ObjectId.Equals(candidate.ObjectId, StringComparison.OrdinalIgnoreCase));
+        if (definition?.WritableTarget is not { IsComplete: true } authorized)
+            return false;
+        return requested.Kind == authorized.Kind &&
+               requested.View == authorized.View && requested.ValueKind == authorized.ValueKind &&
+               requested.SupportsDeletion == authorized.SupportsDeletion &&
+               requested.RequiresElevation == authorized.RequiresElevation &&
+               requested.Hive.Equals(authorized.Hive, StringComparison.OrdinalIgnoreCase) &&
+               requested.SubKey.Equals(authorized.SubKey, StringComparison.OrdinalIgnoreCase) &&
+               requested.ValueName.Equals(authorized.ValueName, StringComparison.OrdinalIgnoreCase) &&
+               requested.SupportedRawValues.OrderBy(value => value, StringComparer.OrdinalIgnoreCase)
+                   .SequenceEqual(authorized.SupportedRawValues.OrderBy(value => value, StringComparer.OrdinalIgnoreCase),
+                       StringComparer.OrdinalIgnoreCase);
+    }
+
     private static IReadOnlyList<ManagedObject> Finalize(IReadOnlyList<ManagedObject> batch)
     {
         foreach (var mo in batch)
@@ -27,6 +48,8 @@ public static class ManagedObjectCatalog
             if (mo is null) continue;
             mo.SchemaVersion = CatalogVersion;
             mo.ConfidenceSource = "Curated catalog";
+            mo.MinimumBuild = mo.MinimumBuild <= 0 ? 10240 : mo.MinimumBuild;
+            mo.SupportedWindowsVersions ??= ["Windows 10", "Windows 11"];
             ApplyKnownSemantics(mo);
             AttachWritableTarget(mo);
             mo.TechnicalLocation = TechnicalLocationFormatter.FromDefinition(mo);

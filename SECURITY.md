@@ -15,10 +15,11 @@ Include the app version, build identifier, detected Windows edition/build shown 
 - Inspect is the initial and read-only operating mode.
 - Modify requires an explicit session decision; privileged changes require Windows elevation.
 - Only complete targets from curated source-controlled allowlists are writable.
-- System Explorer and arbitrary firewall rules are never writable.
+- System Explorer, Services, and arbitrary firewall rules are never writable.
 - BitLocker and User Account Control remain observation-only because a generic mutation surface could cause lockout or broad security regression.
 - The modification engine accepts verified registry targets only; native component write backends are not shipped.
-- Registry type and firewall-profile values are independently read back before success is reported.
+- Every runtime target is compared field-for-field to the compiled catalog; registry type and firewall-profile values are independently read back before success is reported.
+- Over-the-shoulder elevation cannot redirect an HKCU request into the administrator account; that per-user operation is refused.
 - External tools use fixed executable and argument shapes without a shell or user-supplied commands.
 - Audit data stays local and the application has no telemetry or cloud backend.
 

@@ -11,7 +11,7 @@ namespace WindowsPrivacyPlatform.App.Views;
 
 public partial class SearchResultsView : UserControl
 {
-    public SearchResultsView(ScanService scan, string query, Action<string> openSetting)
+    public SearchResultsView(ScanService scan, string query, Action<SettingsListTarget> openSettingsList, Action<string> openInventoryDetail)
     {
         InitializeComponent();
         TitleText.Text = $"Search: {query}";
@@ -100,9 +100,17 @@ public partial class SearchResultsView : UserControl
             row.Content = panel;
             AutomationProperties.SetName(row,
                 $"{mo.ObjectName}. {(mo.Bucket == CatalogBucket.SystemInventory ? "System inventory" : "Settings")}. {(mo.IsWritable ? "Change available" : "View only")}.");
-            row.ToolTip = "Open setting details";
+            row.ToolTip = mo.Bucket == CatalogBucket.Settings
+                ? "Open the matching category list and highlight this result"
+                : "Open inventory details";
             var id = mo.ObjectId;
-            row.Click += (_, _) => openSetting(id);
+            row.Click += (_, _) =>
+            {
+                if (mo.Bucket == CatalogBucket.Settings)
+                    openSettingsList(SettingsListTarget.For(mo, q));
+                else
+                    openInventoryDetail(id);
+            };
             List.Items.Add(row);
         }
     }

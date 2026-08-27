@@ -45,7 +45,7 @@ public sealed class InventoryScanner : IInventoryScanner
                 try
                 {
                     _logger.Debug("Scanner", $"Collector start: {collector.Name}");
-                    collector.Collect(snapshot);
+                    collector.Collect(snapshot, cancellationToken);
                     sw.Stop();
 
                     diag.Duration = sw.Elapsed;
@@ -64,7 +64,7 @@ public sealed class InventoryScanner : IInventoryScanner
                     diagnostics.Add(diag);
                     throw;
                 }
-                catch (UnauthorizedAccessException ex)
+                catch (UnauthorizedAccessException)
                 {
                     sw.Stop();
                     diag.Duration = sw.Elapsed;
@@ -72,7 +72,7 @@ public sealed class InventoryScanner : IInventoryScanner
                     diag.Message = "Access denied";
                     diag.ErrorCategory = "UnauthorizedAccess";
                     warnings.Add($"{collector.Name}: access denied");
-                    _logger.Error("Scanner", $"{collector.Name} access denied: {ex.Message}");
+                    _logger.Error("Scanner", $"{collector.Name} access denied.");
                 }
                 catch (Exception ex)
                 {
@@ -82,7 +82,7 @@ public sealed class InventoryScanner : IInventoryScanner
                     diag.Message = "Collector error";
                     diag.ErrorCategory = ex.GetType().Name;
                     warnings.Add($"{collector.Name}: {ex.GetType().Name}");
-                    _logger.Error("Scanner", $"{collector.Name} failed: {ex.Message}");
+                    _logger.Error("Scanner", $"{collector.Name} failed: category={ex.GetType().Name}");
                 }
 
                 diagnostics.Add(diag);
@@ -131,13 +131,13 @@ public sealed class InventoryScanner : IInventoryScanner
         }
         catch (Exception ex)
         {
-            _logger.Error("Scanner", $"Scan failed: {ex.Message}");
+            _logger.Error("Scanner", $"Scan failed: category={ex.GetType().Name}");
             return new ScanResult
             {
                 Success = false,
                 Status = ScanStatus.Failed,
                 Snapshot = snapshot,
-                Message = ex.Message,
+                Message = "The scan failed before all collectors completed.",
                 Warnings = warnings,
                 StartUtc = start,
                 EndUtc = DateTime.UtcNow,

@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using System.IO;
 using System.Windows;
 using WindowsPrivacyPlatform.Models;
+using WindowsPrivacyPlatform.Core;
 
 namespace WindowsPrivacyPlatform.App.Services;
 
@@ -23,7 +24,7 @@ public static class ShortcutOfferService
 
         if (DesktopLinksTo(executable))
         {
-            Persist(statePath, "existing");
+            Persist(stateDirectory, statePath, "existing");
             return;
         }
 
@@ -39,7 +40,7 @@ public static class ShortcutOfferService
 
         if (choice != MessageBoxResult.Yes)
         {
-            Persist(statePath, "declined");
+            Persist(stateDirectory, statePath, "declined");
             return;
         }
 
@@ -50,14 +51,14 @@ public static class ShortcutOfferService
             var fileName = ProductDirectoryName(product.Name) + ".lnk";
             CreateShortcut(Path.Combine(desktop, fileName), executable, product.Name);
             CreateShortcut(Path.Combine(programs, fileName), executable, product.Name);
-            Persist(statePath, "created");
+            Persist(stateDirectory, statePath, "created");
             MessageBox.Show(owner, "Desktop and Start Menu shortcuts were created.", "Shortcuts created",
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             MessageBox.Show(owner,
-                "Windows could not create both shortcuts. The offer will be shown again next launch. " + ex.Message,
+                "Windows could not create both shortcuts. The offer will be shown again next launch.",
                 "Shortcut creation failed",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning);
@@ -125,10 +126,9 @@ public static class ShortcutOfferService
         }
     }
 
-    private static void Persist(string statePath, string state)
+    private static void Persist(string stateDirectory, string statePath, string state)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(statePath)!);
-        File.WriteAllText(statePath, state);
+        AtomicLocalFile.WriteText(stateDirectory, statePath, state);
     }
 
     private static string ResolveExecutable()

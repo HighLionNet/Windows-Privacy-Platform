@@ -1,6 +1,7 @@
 // Source/WindowsPrivacyPlatform.Logging/AuditLogger.cs
 using System;
 using System.IO;
+using System.Text.RegularExpressions;
 
 namespace WindowsPrivacyPlatform.Logging
 {
@@ -15,6 +16,8 @@ namespace WindowsPrivacyPlatform.Logging
         private readonly string _logRoot;
         private readonly string _authLogPath;
         private readonly string _changeLogPath;
+        private readonly bool _fileLoggingEnabled;
+        private const long MaxLogBytes = 2 * 1024 * 1024;
 
         public AuditLogger()
         {
@@ -26,12 +29,13 @@ namespace WindowsPrivacyPlatform.Logging
             try
             {
                 Directory.CreateDirectory(_logRoot);
+                _fileLoggingEnabled = true;
             }
             catch
             {
-                // Fall back to temp if LocalAppData is unavailable.
-                _logRoot = Path.Combine(Path.GetTempPath(), "WindowsPrivacyPlatform", "Logs");
-                try { Directory.CreateDirectory(_logRoot); } catch { /* last resort: console only */ }
+                // A shared temporary directory is not an acceptable audit fallback.
+                // Continue with console diagnostics only.
+                _fileLoggingEnabled = false;
             }
 
             _authLogPath = Path.Combine(_logRoot, "auth.log");
@@ -65,21 +69,53 @@ namespace WindowsPrivacyPlatform.Logging
             {
                 var timestamp = DateTime.UtcNow;
                 var severity = eventType.ToString().ToUpperInvariant();
-                var line = $"[{timestamp:yyyy-MM-dd HH:mm:ss.fff}] [{severity}] [{component}] {message}";
+                var line = $"[{timestamp:yyyy-MM-dd HH:mm:ss.fff}] [{severity}] [{SanitizeField(component, 128)}] {SanitizeField(message, 8192)}";
 
                 Console.WriteLine(line);
 
                 try
                 {
+                    if (!_fileLoggingEnabled)
+                        return;
                     if (eventType == AuditEventType.Auth)
-                        File.AppendAllText(_authLogPath, line + Environment.NewLine);
+                        AppendBounded(_authLogPath, line);
                     else if (eventType == AuditEventType.Change)
-                        File.AppendAllText(_changeLogPath, line + Environment.NewLine);
+                        AppendBounded(_changeLogPath, line);
                 }
                 catch
                 {
                     // File write failure must never break the application.
                 }
+            }
+        }
+
+        private static void AppendBounded(string path, string line)
+        {
+            if (File.Exists(path) && new FileInfo(path).Length >= MaxLogBytes)
+                File.Move(path, path + ".previous", overwrite: true);
+            File.AppendAllText(path, line + Environment.NewLine, System.Text.Encoding.UTF8);
+        }
+
+        public static string SanitizeField(string value, int maxLength = 8192)
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            if (maxLength is < 1 or > 65_536) throw new ArgumentOutOfRangeException(nameof(maxLength));
+            var singleLine = new string(value
+                .Where(c => !char.IsControl(c) || c == '\t')
+                .Take(maxLength)
+                .ToArray());
+            try
+            {
+                return Regex.Replace(
+                    singleLine,
+                    @"(?i)\b(password|passwd|token|secret|authorization)\s*[:=]\s*[^\s;]+",
+                    "$1=[redacted]",
+                    RegexOptions.CultureInvariant,
+                    TimeSpan.FromMilliseconds(50));
+            }
+            catch (RegexMatchTimeoutException)
+            {
+                return "[redacted: audit field exceeded sanitizer time budget]";
             }
         }
     }

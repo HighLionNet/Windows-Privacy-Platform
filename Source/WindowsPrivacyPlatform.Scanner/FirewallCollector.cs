@@ -1,5 +1,6 @@
 // Source/WindowsPrivacyPlatform.Scanner/FirewallCollector.cs
 using System;
+using System.IO;
 using System.ServiceProcess;
 using System.Text;
 using System.Threading;
@@ -24,7 +25,7 @@ namespace WindowsPrivacyPlatform.Scanner
             ("Public", @"SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy\PublicProfile")
         };
 
-        public void Collect(InventorySnapshot snapshot)
+        public void Collect(InventorySnapshot snapshot, CancellationToken cancellationToken = default)
         {
             if (snapshot is null)
                 throw new ArgumentNullException(nameof(snapshot));
@@ -33,10 +34,15 @@ namespace WindowsPrivacyPlatform.Scanner
 
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 CollectServiceState(snapshot, notes);
-                CollectProfiles(snapshot, notes);
-                CollectRules(snapshot, notes);
+                CollectProfiles(snapshot, notes, cancellationToken);
+                CollectRules(snapshot, notes, cancellationToken);
                 CollectDefenderServiceHint(snapshot, notes);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -74,10 +80,11 @@ namespace WindowsPrivacyPlatform.Scanner
             }
         }
 
-        private static void CollectProfiles(InventorySnapshot snapshot, List<string> notes)
+        private static void CollectProfiles(InventorySnapshot snapshot, List<string> notes, CancellationToken cancellationToken)
         {
             foreach (var (profile, subKey) in Profiles)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var info = new FirewallProfileInfo
                 {
                     ProfileName = profile,
@@ -135,14 +142,14 @@ namespace WindowsPrivacyPlatform.Scanner
             return value == 0 ? "Enabled" : "Disabled";
         }
 
-        private static void CollectRules(InventorySnapshot snapshot, List<string> notes)
+        private static void CollectRules(InventorySnapshot snapshot, List<string> notes, CancellationToken cancellationToken)
         {
             const string command = "Get-NetFirewallRule -PolicyStore ActiveStore -ErrorAction SilentlyContinue | Select-Object Name,DisplayName,Enabled,Direction,Action,Profile | ConvertTo-Csv -NoTypeInformation";
             var result = SafeProcessRunner.Run(
-                "powershell.exe",
-                "-NoProfile -NonInteractive -Command \"" + command + "\"",
+                Path.Combine(Environment.SystemDirectory, @"WindowsPowerShell\v1.0\powershell.exe"),
+                ["-NoProfile", "-NonInteractive", "-Command", command],
                 TimeSpan.FromSeconds(35),
-                CancellationToken.None,
+                cancellationToken,
                 Encoding.UTF8);
 
             if (!result.Started || result.TimedOut || result.Canceled || string.IsNullOrWhiteSpace(result.StdOut))
@@ -153,6 +160,7 @@ namespace WindowsPrivacyPlatform.Scanner
 
             foreach (var line in result.StdOut.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries).Skip(1))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var fields = ParseCsvLine(line);
                 if (fields.Count < 6 || string.IsNullOrWhiteSpace(fields[0]))
                     continue;

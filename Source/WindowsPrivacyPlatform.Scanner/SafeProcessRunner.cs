@@ -15,6 +15,7 @@ namespace WindowsPrivacyPlatform.Scanner;
 /// </summary>
 public static class SafeProcessRunner
 {
+    private const int MaxCapturedCharactersPerStream = 1_000_000;
     public sealed class ProcessRunResult
     {
         public int ExitCode { get; init; }
@@ -29,13 +30,15 @@ public static class SafeProcessRunner
 
     public static ProcessRunResult Run(
         string fileName,
-        string arguments,
+        IReadOnlyList<string> arguments,
         TimeSpan timeout,
         CancellationToken cancellationToken = default,
         Encoding? outputEncoding = null)
     {
-        if (string.IsNullOrWhiteSpace(fileName))
+        if (string.IsNullOrWhiteSpace(fileName) || !Path.IsPathFullyQualified(fileName) || !File.Exists(fileName))
             return new ProcessRunResult { Started = false, FailureCategory = "InvalidExecutable" };
+        if (arguments is null || arguments.Count > 64 || arguments.Any(a => a is null || a.Length > 32_768))
+            return new ProcessRunResult { Started = false, FailureCategory = "InvalidArguments" };
 
         var sw = Stopwatch.StartNew();
         Process? process = null;
@@ -47,7 +50,6 @@ public static class SafeProcessRunner
             var psi = new ProcessStartInfo
             {
                 FileName = fileName,
-                Arguments = arguments ?? string.Empty,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
@@ -55,6 +57,9 @@ public static class SafeProcessRunner
                 StandardOutputEncoding = outputEncoding ?? Encoding.UTF8,
                 StandardErrorEncoding = outputEncoding ?? Encoding.UTF8
             };
+            psi.WorkingDirectory = Path.GetDirectoryName(fileName) ?? Environment.SystemDirectory;
+            foreach (var argument in arguments)
+                psi.ArgumentList.Add(argument);
 
             process = new Process { StartInfo = psi, EnableRaisingEvents = false };
 
@@ -69,8 +74,8 @@ public static class SafeProcessRunner
             }
 
             // Concurrent drain to avoid classic stdout/stderr deadlock.
-            var stdoutTask = process.StandardOutput.ReadToEndAsync();
-            var stderrTask = process.StandardError.ReadToEndAsync();
+            var stdoutTask = DrainAsync(process.StandardOutput, MaxCapturedCharactersPerStream);
+            var stderrTask = DrainAsync(process.StandardError, MaxCapturedCharactersPerStream);
 
             // Process.WaitForExit only accepts milliseconds (no CancellationToken overload).
             // Register cancellation to kill the child; use timeout on WaitForExit.
@@ -138,7 +143,7 @@ public static class SafeProcessRunner
             {
                 Started = process is not null,
                 FailureCategory = "Exception",
-                StdErr = ex.GetType().Name + ": " + ex.Message,
+                StdErr = ex.GetType().Name,
                 Elapsed = sw.Elapsed
             };
         }
@@ -172,5 +177,21 @@ public static class SafeProcessRunner
         {
             return string.Empty;
         }
+    }
+
+    private static async Task<string> DrainAsync(StreamReader reader, int captureLimit)
+    {
+        var buffer = new char[4096];
+        var captured = new StringBuilder(Math.Min(captureLimit, 64 * 1024));
+        while (true)
+        {
+            var read = await reader.ReadAsync(buffer.AsMemory(0, buffer.Length)).ConfigureAwait(false);
+            if (read == 0)
+                break;
+            var remaining = captureLimit - captured.Length;
+            if (remaining > 0)
+                captured.Append(buffer, 0, Math.Min(remaining, read));
+        }
+        return captured.ToString();
     }
 }

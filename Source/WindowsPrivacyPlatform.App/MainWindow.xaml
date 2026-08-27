@@ -23,6 +23,7 @@
       <MenuItem Header="_View">
         <MenuItem Header="_Privacy &amp; Security Overview" Click="MenuHome_Click" />
         <MenuItem Header="_System Explorer" Click="MenuInventory_Click" />
+        <MenuItem Header="_Services (read-only)" Click="MenuServices_Click" />
         <Separator />
         <MenuItem Header="Toggle _Navigation Pane" Click="ToggleSidebar_Click" />
         <MenuItem Header="_Refresh" InputGestureText="Ctrl+R" Click="MenuScan_Click" />
@@ -76,8 +77,13 @@
                  KeyDown="SearchBox_KeyDown" />
 
         <StackPanel Grid.Column="2">
-          <Button x:Name="ScanButton" Content="Scan" Style="{StaticResource PrimaryButton}"
-                  Click="ScanButton_Click" MinWidth="70" ToolTip="Scan (F5)" />
+          <StackPanel Orientation="Horizontal">
+            <Button x:Name="CancelScanButton" Content="Cancel" Style="{StaticResource SecondaryButton}"
+                    Click="CancelScanButton_Click" MinWidth="66" Margin="0,0,6,0" Visibility="Collapsed"
+                    ToolTip="Cancel the current scan and retain the last completed evidence" />
+            <Button x:Name="ScanButton" Content="Scan" Style="{StaticResource PrimaryButton}"
+                    Click="ScanButton_Click" MinWidth="70" ToolTip="Scan (F5)" />
+          </StackPanel>
           <ProgressBar x:Name="ScanProgress" IsIndeterminate="True" Height="2" Margin="0,3,0,0"
                        Visibility="Collapsed" />
         </StackPanel>
@@ -91,7 +97,7 @@
           <ColumnDefinition Width="*" />
           <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
-        <TextBlock x:Name="StatusText" Text="Ready"
+        <TextBlock x:Name="StatusText" Text="Ready" AutomationProperties.LiveSetting="Polite"
                    Foreground="{StaticResource BrushTextSecondary}" FontSize="11"
                    TextTrimming="CharacterEllipsis" />
         <StackPanel Grid.Column="1" Orientation="Horizontal">
@@ -120,6 +126,8 @@
                     Click="Nav_Click" Tag="home" />
             <Button x:Name="NavInventory" Content="System Explorer" Style="{StaticResource SidebarButton}"
                     Click="Nav_Click" Tag="inventory" ToolTip="Grouped read-only Windows components" />
+            <Button x:Name="NavServices" Content="Services" Style="{StaticResource SidebarButton}"
+                    Click="Nav_Click" Tag="services" ToolTip="Filter and inspect read-only service evidence" />
 
             <Border Style="{StaticResource SectionRule}" Margin="10,8,10,2" />
             <TextBlock Text="PRIVACY" Style="{StaticResource SidebarGroupLabel}" Foreground="{StaticResource BrushDomainPrivacy}" />

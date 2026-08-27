@@ -1,5 +1,6 @@
 // Source/WindowsPrivacyPlatform.Scanner/ScheduledTaskCollector.cs
 using System;
+using System.IO;
 using System.Text;
 using System.Threading;
 using WindowsPrivacyPlatform.Models;
@@ -15,7 +16,7 @@ public sealed class ScheduledTaskCollector : IInventoryCollector
 {
     public string Name => "ScheduledTaskCollector";
 
-    public void Collect(InventorySnapshot snapshot)
+    public void Collect(InventorySnapshot snapshot, CancellationToken cancellationToken = default)
     {
         if (snapshot is null)
             throw new ArgumentNullException(nameof(snapshot));
@@ -23,10 +24,10 @@ public sealed class ScheduledTaskCollector : IInventoryCollector
         try
         {
             var result = SafeProcessRunner.Run(
-                "schtasks.exe",
-                "/query /fo CSV /nh",
+                Path.Combine(Environment.SystemDirectory, "schtasks.exe"),
+                ["/query", "/fo", "CSV", "/nh"],
                 TimeSpan.FromSeconds(25),
-                CancellationToken.None,
+                cancellationToken,
                 Encoding.UTF8);
 
             if (!result.Started || result.TimedOut || result.Canceled)
@@ -37,6 +38,7 @@ public sealed class ScheduledTaskCollector : IInventoryCollector
 
             foreach (var line in result.StdOut.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var trimmed = line.Trim();
                 if (string.IsNullOrWhiteSpace(trimmed) || !trimmed.StartsWith('"'))
                     continue;
@@ -51,6 +53,10 @@ public sealed class ScheduledTaskCollector : IInventoryCollector
                     });
                 }
             }
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch
         {

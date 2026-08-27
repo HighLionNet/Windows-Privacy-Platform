@@ -28,6 +28,7 @@ namespace WindowsPrivacyPlatform.Validator
                 new RequiredFieldRule("TechnicalLocation", obj => !string.IsNullOrWhiteSpace(obj.TechnicalLocation)),
                 new WriteAuthorizationDecisionRule(),
                 new NarrativeContentRule(),
+                new SettingContentRule(),
                 // ProductDomain is an enum; zero is ConsentStore which is valid, so we only check ObjectId uniqueness at batch level.
             };
         }
@@ -77,6 +78,14 @@ namespace WindowsPrivacyPlatform.Validator
                 .Where(g => g.Count() > 1)
                 .ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
 
+            var duplicateTargets = list
+                .Where(e => e.Object is { Bucket: CatalogBucket.Settings, IsWritable: true })
+                .Select(e => e.Object!)
+                .GroupBy(TargetKey, StringComparer.OrdinalIgnoreCase)
+                .Where(g => g.Key.Length > 0 && g.Count() > 1)
+                .SelectMany(g => g.Select(item => item.ObjectId))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
             foreach (var entry in list)
             {
                 var result = Validate(entry);
@@ -91,6 +100,14 @@ namespace WindowsPrivacyPlatform.Validator
                     result.FailedRules.Add("UniqueObjectId");
                 }
 
+                if (entry.Object is not null && duplicateTargets.Contains(entry.Object.ObjectId))
+                {
+                    result.IsValid = false;
+                    result.Message = "Catalog quality validation failed.";
+                    result.Errors.Add("Another editable setting uses the same typed registry target.");
+                    result.FailedRules.Add("UniqueWritableTarget");
+                }
+
                 results.Add(result);
                 if (result.IsValid)
                     passed++;
@@ -100,6 +117,14 @@ namespace WindowsPrivacyPlatform.Validator
 
             _logger.Info("Validator", $"Batch validation finish: passed={passed}, failed={failed}");
             return results;
+        }
+
+        private static string TargetKey(ManagedObject item)
+        {
+            var target = item.WritableTarget;
+            if (target is null) return string.Empty;
+            return string.Join('|', target.Kind, target.Hive.Trim(), target.View,
+                target.SubKey.Trim().TrimEnd('\\'), target.ValueName.Trim());
         }
 
         private ValidationResult ValidateCore(ManagedObject managedObject, bool log)

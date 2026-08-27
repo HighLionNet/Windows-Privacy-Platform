@@ -18,10 +18,12 @@ public sealed class ElevationService
 {
     private readonly IAuditLogger _log;
     private bool _modifyAuthorized;
+    private string _initiatingSid;
 
     public ElevationService(IAuditLogger log)
     {
         _log = log ?? throw new ArgumentNullException(nameof(log));
+        _initiatingSid = CurrentSid();
     }
 
     public bool IsModifyAuthorized => _modifyAuthorized && IsProcessElevated();
@@ -34,9 +36,9 @@ public sealed class ElevationService
             var principal = new WindowsPrincipal(identity);
             return principal.IsInRole(WindowsBuiltInRole.Administrator);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            Debug.WriteLine("Elevation check failed: " + ex.Message);
+            Debug.WriteLine("Elevation check failed.");
             return false;
         }
     }
@@ -47,10 +49,9 @@ public sealed class ElevationService
     /// </summary>
     public bool TryEnterModifyMode(Window owner)
     {
-        var user = Environment.UserName;
         var elevated = IsProcessElevated();
 
-        _log.Auth("ElevationService", $"Modify mode request by '{user}'. Elevated={elevated}. Authorized={_modifyAuthorized}.");
+        _log.Auth("ElevationService", $"Modify mode request. Elevated={elevated}. Authorized={_modifyAuthorized}.");
 
         if (_modifyAuthorized && elevated)
         {
@@ -128,6 +129,41 @@ public sealed class ElevationService
         }
     }
 
+    /// <summary>Consumes the explicit relaunch marker after Windows has completed the single UAC transition.</summary>
+    public bool AuthorizeRelaunchedSession(string? initiatingSid)
+    {
+        if (!IsProcessElevated())
+        {
+            _log.Auth("ElevationService", "Relaunch marker rejected because the process is not elevated.");
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(initiatingSid) || initiatingSid.Length > 184 ||
+            !initiatingSid.StartsWith("S-1-", StringComparison.OrdinalIgnoreCase))
+        {
+            _log.Auth("ElevationService", "Relaunch marker rejected because the initiating identity marker is malformed.");
+            return false;
+        }
+        _initiatingSid = initiatingSid;
+        _modifyAuthorized = true;
+        _log.Auth("ElevationService", "Modify mode authorized from the completed UAC relaunch.");
+        return true;
+    }
+
+    /// <summary>Prevents an over-the-shoulder administrator token from silently changing that administrator's HKCU.</summary>
+    public bool CanModifyHive(string hive, out string reason)
+    {
+        reason = string.Empty;
+        if (!hive.Equals("HKCU", StringComparison.OrdinalIgnoreCase) &&
+            !hive.Equals("HKEY_CURRENT_USER", StringComparison.OrdinalIgnoreCase))
+            return true;
+        if (string.Equals(_initiatingSid, CurrentSid(), StringComparison.OrdinalIgnoreCase))
+            return true;
+        reason = "Per-user settings cannot be changed when Windows elevation used a different administrator account. Sign in as that user and run with that same account.";
+        _log.Auth("ElevationService", "HKCU write denied because the elevated identity differs from the initiating identity.");
+        return false;
+    }
+
     /// <summary>
     /// Relaunch this process with a full admin token (UAC prompt).
     /// Returns true if the elevated process was started.
@@ -146,11 +182,13 @@ public sealed class ElevationService
             var psi = new ProcessStartInfo
             {
                 FileName = exePath,
-                Arguments = "--authorize-modify",
                 UseShellExecute = true,
                 Verb = "runas",
                 WorkingDirectory = Path.GetDirectoryName(exePath) ?? Environment.CurrentDirectory
             };
+            psi.ArgumentList.Add("--authorize-modify");
+            psi.ArgumentList.Add("--initiating-sid");
+            psi.ArgumentList.Add(_initiatingSid);
 
             var process = Process.Start(psi);
             if (process is null)
@@ -165,7 +203,7 @@ public sealed class ElevationService
         catch (Exception ex)
         {
             // User cancelling UAC throws Win32Exception
-            _log.Auth("ElevationService", "Relaunch elevated failed: " + ex.Message);
+            _log.Auth("ElevationService", "Relaunch elevated failed: category=" + ex.GetType().Name);
             return false;
         }
     }
@@ -197,5 +235,11 @@ public sealed class ElevationService
         }
 
         return Environment.ProcessPath ?? string.Empty;
+    }
+
+    private static string CurrentSid()
+    {
+        try { using var identity = WindowsIdentity.GetCurrent(); return identity.User?.Value ?? string.Empty; }
+        catch { return string.Empty; }
     }
 }

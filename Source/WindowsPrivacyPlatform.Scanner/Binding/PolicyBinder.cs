@@ -41,16 +41,24 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
                 return;
             }
 
-            var display = $"{policy.Value} ({policy.Hive})";
+            var typeMismatch = policy.Status == RegistryObservationStatus.Present &&
+                               managedObject.WritableTarget is { Kind: WritableTargetKind.Registry } target &&
+                               !KindMatches(policy.ValueKind, target.ValueKind);
+            var display = policy.Status switch
+            {
+                RegistryObservationStatus.AccessDenied => "Access denied",
+                RegistryObservationStatus.Error => "Error reading policy",
+                _ when typeMismatch => $"Unexpected registry type ({policy.ValueKind})",
+                _ => $"{policy.Value} ({policy.Hive})"
+            };
             var layerKind = ClassifyLayer(policy);
 
             var sourcePath = string.IsNullOrWhiteSpace(policy.Path)
                 ? managedObject.DiscoveryMethod
                 : $"{policy.Hive}\\{policy.Path}\\{policy.ValueName}";
 
-            var isNotConfigured = BinderHelpers.IsNotConfigured(policy.Value) ||
-                                  BinderHelpers.IsError(policy.Value) ||
-                                  string.IsNullOrWhiteSpace(policy.Value);
+            var isNotConfigured = policy.Status != RegistryObservationStatus.Present ||
+                                  typeMismatch || string.IsNullOrWhiteSpace(policy.Value);
 
             var layer = new ConfigurationObservation
             {
@@ -63,14 +71,28 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
                 ConfidenceScore = isNotConfigured ? 40 : managedObject.ConfidenceScore > 0 ? managedObject.ConfidenceScore : 85,
                 CollectorName = "PolicyCollector",
                 EvidenceSource = $"Registry {sourcePath}",
-                CollectionNotes = isNotConfigured
-                    ? "Policy value absent or not configured at the probed path; treated as not configured."
-                    : string.Empty,
+                CollectionNotes = policy.Status switch
+                {
+                    RegistryObservationStatus.NotConfigured => "The registry path was read and the value name was absent.",
+                    RegistryObservationStatus.AccessDenied => "Windows denied access to the policy source.",
+                    RegistryObservationStatus.Error => "The policy source failed with category " + policy.ErrorCategory + ".",
+                    _ when typeMismatch => $"Expected {managedObject.WritableTarget!.ValueKind}; observed {policy.ValueKind}. The value is not interpreted.",
+                    _ => string.Empty
+                },
                 EffectiveConfidence = isNotConfigured ? EffectiveConfidence.Low : EffectiveConfidence.High
             };
 
             BinderHelpers.ApplyObservation(managedObject, display, layer);
         }
+
+        private static bool KindMatches(string observed, RegistryValueKindExpected expected) => expected switch
+        {
+            RegistryValueKindExpected.DWord => observed.Equals("DWord", StringComparison.OrdinalIgnoreCase),
+            RegistryValueKindExpected.QWord => observed.Equals("QWord", StringComparison.OrdinalIgnoreCase),
+            RegistryValueKindExpected.String => observed.Equals("String", StringComparison.OrdinalIgnoreCase),
+            RegistryValueKindExpected.ExpandString => observed.Equals("ExpandString", StringComparison.OrdinalIgnoreCase),
+            _ => false
+        };
 
         private static ConfigurationLayer ClassifyLayer(PolicySettingInfo policy)
         {

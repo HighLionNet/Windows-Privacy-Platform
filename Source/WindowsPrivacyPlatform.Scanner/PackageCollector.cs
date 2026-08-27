@@ -1,5 +1,6 @@
 // Source/WindowsPrivacyPlatform.Scanner/PackageCollector.cs
 using System;
+using System.IO;
 using System.Text;
 using System.Threading;
 using WindowsPrivacyPlatform.Models;
@@ -14,27 +15,29 @@ namespace WindowsPrivacyPlatform.Scanner
     {
         public string Name => "PackageCollector";
 
-        public void Collect(InventorySnapshot snapshot)
+        public void Collect(InventorySnapshot snapshot, CancellationToken cancellationToken = default)
         {
             if (snapshot is null)
                 throw new ArgumentNullException(nameof(snapshot));
 
             CollectNames(
                 "Get-AppxPackage -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name",
-                snapshot.InstalledPackages);
+                snapshot.InstalledPackages,
+                cancellationToken);
 
             CollectNames(
                 "Get-AppxProvisionedPackage -Online -ErrorAction SilentlyContinue | Select-Object -ExpandProperty DisplayName",
-                snapshot.ProvisionedPackages);
+                snapshot.ProvisionedPackages,
+                cancellationToken);
         }
 
-        private static void CollectNames(string command, List<string> destination)
+        private static void CollectNames(string command, List<string> destination, CancellationToken cancellationToken)
         {
             var result = SafeProcessRunner.Run(
-                "powershell.exe",
-                "-NoProfile -NonInteractive -Command \"" + command + "\"",
+                Path.Combine(Environment.SystemDirectory, @"WindowsPowerShell\v1.0\powershell.exe"),
+                ["-NoProfile", "-NonInteractive", "-Command", command],
                 TimeSpan.FromSeconds(25),
-                CancellationToken.None,
+                cancellationToken,
                 Encoding.UTF8);
 
             if (!result.Started || result.TimedOut || result.Canceled ||
@@ -43,6 +46,7 @@ namespace WindowsPrivacyPlatform.Scanner
 
             foreach (var line in result.StdOut.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var name = line.Trim();
                 if (string.IsNullOrWhiteSpace(name) || name.StartsWith("Get-Appx", StringComparison.OrdinalIgnoreCase))
                     continue;

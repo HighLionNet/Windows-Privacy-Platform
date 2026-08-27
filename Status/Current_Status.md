@@ -1,7 +1,7 @@
 # Current Status
 
-**Release state:** v2.3.5 desktop release
-**Updated:** 2026-08-26
+**Release state:** v2.4.0 source and portable-build candidate
+**Updated:** 2026-08-27
 
 ## Product surface
 
@@ -10,7 +10,8 @@ The supported product is a .NET 8 WPF application for Windows 10 and Windows 11.
 The application separates two kinds of data:
 
 - **Settings:** relevant privacy and security policies with an approved registry write contract. Non-editable definitions never appear here.
-- **System Explorer:** grouped live services, scheduled tasks, packages, optional features, capabilities, and firewall rules. It is always read-only.
+- **System Explorer:** grouped live scheduled tasks, packages, optional features, capabilities, and firewall rules. It is always read-only.
+- **Services:** compact, top-level read-only service evidence with state, startup, account, path, publisher/signature evidence, dependency, and issue filters.
 
 ## Coverage delivered
 
@@ -24,7 +25,8 @@ The application separates two kinds of data:
 ## Write safety delivered
 
 - Deny-by-default typed targets with explicit exclusion reasons for every other setting.
-- Per-target pre-read, confirmation, operation, independent verification, and local audit.
+- Category-level pending batches, one Windows elevation transition, pre-read, one confirmation, typed operation, independent verification, local audit, and elevated-process exit.
+- Exact runtime-target comparison against the compiled registry allowlist and cross-account HKCU refusal.
 - Value- and edition-aware UI state; inapplicable controls cannot be changed.
 - Registry-only backend enforcement plus automated authorization/round-trip coverage.
 - Automated prose validation prevents technical identifiers from leaking back into user-facing explanation fields.
@@ -33,7 +35,7 @@ The application separates two kinds of data:
 
 - Assembly-derived product/version/build/company/repository identity.
 - One-time Desktop and Start Menu shortcut offer.
-- Reproducible win-x64 release archive, optional Authenticode hook, CI artifact, and tag-based GitHub Release publishing.
+- Reproducible win-x64 release archive, PDB/source/secret-file rejection, content-hash manifest, static ZIP audit, optional Authenticode hook, CI artifact, and tag-based GitHub Release publishing.
 - Repository-relative, fast-forward-only sync/build helper that never discards local changes.
 
-The remaining backlog is limited to finishing work such as signed publisher reputation, localization, accessibility certification, maintained release screenshots, and optional report export.
+The remaining backlog includes an isolated authenticated elevation broker, signed publisher reputation, localization, Windows accessibility certification, maintained release screenshots, and optional report export. See `Review-v2.4.0.md` for the ranked limitations.

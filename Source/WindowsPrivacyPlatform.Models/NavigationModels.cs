@@ -33,6 +33,7 @@ public class SettingDetailView
     public CatalogBucket Bucket { get; set; }
     public ApplicabilityState Applicability { get; set; }
     public string ApplicabilityReason { get; set; } = string.Empty;
+    public string RestartExpectation { get; set; } = string.Empty;
     public NativeToolLink? NativeTool { get; set; }
     public SettingNarrative Narrative { get; set; } = new();
 
@@ -169,6 +170,7 @@ public static class NavigationBuilder
             Bucket = mo.Bucket,
             Applicability = mo.Applicability,
             ApplicabilityReason = mo.ApplicabilityReason,
+            RestartExpectation = mo.RebootRequirement.ToString(),
             NativeTool = mo.NativeTool,
             Narrative = mo.Narrative,
             Explanation = explanation,

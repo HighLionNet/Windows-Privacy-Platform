@@ -47,10 +47,14 @@ public sealed class WritableTarget
     public bool IsComplete => Kind switch
     {
         WritableTargetKind.Registry =>
-            !string.IsNullOrWhiteSpace(Hive) &&
-            !string.IsNullOrWhiteSpace(SubKey) &&
-            !string.IsNullOrWhiteSpace(ValueName) &&
-            ValueKind != RegistryValueKindExpected.Unsupported,
+            IsSupportedHive(Hive) &&
+            !string.IsNullOrWhiteSpace(SubKey) && SubKey.Length <= 1024 &&
+            !SubKey.StartsWith('\\') && !SubKey.Contains("..", StringComparison.Ordinal) &&
+            !string.IsNullOrWhiteSpace(ValueName) && ValueName.Length <= 256 &&
+            !ValueName.Contains('\\') && !ValueName.Contains('/') &&
+            ValueKind != RegistryValueKindExpected.Unsupported &&
+            SupportedRawValues is { Count: > 0 } && SupportedRawValues.Count <= 64 &&
+            SupportedRawValues.All(v => !string.IsNullOrWhiteSpace(v) && v.Length <= 4096),
         WritableTargetKind.Service or
         WritableTargetKind.ScheduledTask or
         WritableTargetKind.AppxPackage or
@@ -58,6 +62,12 @@ public sealed class WritableTarget
             !string.IsNullOrWhiteSpace(Identifier) && SupportedRawValues.Count > 0,
         _ => false
     };
+
+    private static bool IsSupportedHive(string hive) =>
+        hive.Equals("HKLM", StringComparison.OrdinalIgnoreCase) ||
+        hive.Equals("HKEY_LOCAL_MACHINE", StringComparison.OrdinalIgnoreCase) ||
+        hive.Equals("HKCU", StringComparison.OrdinalIgnoreCase) ||
+        hive.Equals("HKEY_CURRENT_USER", StringComparison.OrdinalIgnoreCase);
 }
 
 public enum WritableTargetKind

@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
     <!-- The only literal application version in the repository. -->
-    <Version>2.3.5</Version>
+    <Version>2.4.0</Version>
     <AssemblyVersion>$(Version).0</AssemblyVersion>
     <FileVersion>$(Version).0</FileVersion>
     <InformationalVersion Condition="'$(SourceRevisionId)' == ''">$(Version)</InformationalVersion>

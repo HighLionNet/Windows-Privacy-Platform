@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -11,6 +12,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using WindowsPrivacyPlatform.App.Services;
 using WindowsPrivacyPlatform.App.Views;
+using WindowsPrivacyPlatform.Core;
 using WindowsPrivacyPlatform.Logging;
 using WindowsPrivacyPlatform.Models;
 
@@ -31,7 +33,9 @@ public partial class MainWindow : Window
     private readonly List<Button> _navButtons = new();
     private bool _sidebarCollapsed;
     private readonly string _prefsPath;
+    private readonly string _appDataRoot;
     private bool _modeChangeInProgress;
+    private bool _startedForModify;
 
     public MainWindow()
     {
@@ -43,6 +47,7 @@ public partial class MainWindow : Window
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "WindowsPrivacyPlatform");
         Directory.CreateDirectory(appData);
+        _appDataRoot = appData;
         _prefsPath = Path.Combine(appData, "window.prefs");
 
         InitializeComponent();
@@ -60,6 +65,9 @@ public partial class MainWindow : Window
             var arguments = Environment.GetCommandLineArgs();
             var modifyRequested = arguments
                 .Any(arg => arg.Equals("--authorize-modify", StringComparison.OrdinalIgnoreCase));
+            var sidIndex = Array.FindIndex(arguments, arg => arg.Equals("--initiating-sid", StringComparison.OrdinalIgnoreCase));
+            var initiatingSid = sidIndex >= 0 && sidIndex + 1 < arguments.Length ? arguments[sidIndex + 1] : null;
+            _startedForModify = modifyRequested;
             var inspectRequested = arguments
                 .Any(arg => arg.Equals("--inspect", StringComparison.OrdinalIgnoreCase));
             var suppressShortcutOffer = arguments
@@ -79,7 +87,7 @@ public partial class MainWindow : Window
             }
             UpdateBreadcrumbs("Overview");
             ShowWelcome();
-            if (modifyRequested)
+            if (modifyRequested && _elevation.AuthorizeRelaunchedSession(initiatingSid))
                 ModeCombo.SelectedIndex = 1;
             await RunScanAsync();
             if (!suppressShortcutOffer)
@@ -124,12 +132,14 @@ public partial class MainWindow : Window
     }
 
     private async void ScanButton_Click(object sender, RoutedEventArgs e) => await RunScanAsync();
+    private void CancelScanButton_Click(object sender, RoutedEventArgs e) => _cts?.Cancel();
     private async void MenuScan_Click(object sender, RoutedEventArgs e) => await RunScanAsync();
 
     private void MenuExit_Click(object sender, RoutedEventArgs e) => Close();
 
     private void MenuHome_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("home");
     private void MenuInventory_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("inventory");
+    private void MenuServices_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("services");
     private void MenuAbout_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("about");
 
     private void MenuSearch_Click(object sender, RoutedEventArgs e)
@@ -154,6 +164,7 @@ public partial class MainWindow : Window
         ScanButton.IsEnabled = false;
         ScanButton.Content = "Scanning…";
         ScanProgress.Visibility = Visibility.Visible;
+        CancelScanButton.Visibility = Visibility.Visible;
 
         try
         {
@@ -166,6 +177,7 @@ public partial class MainWindow : Window
             ScanButton.IsEnabled = true;
             ScanButton.Content = "Scan";
             ScanProgress.Visibility = Visibility.Collapsed;
+            CancelScanButton.Visibility = Visibility.Collapsed;
         }
     }
 
@@ -173,7 +185,12 @@ public partial class MainWindow : Window
     {
         if (_scan.Overview is not null)
         {
-            ScanTimeLabel.Text = $"Scanned {_scan.Overview.LastScanUtc:yyyy-MM-dd HH:mm} UTC";
+            var age = DateTime.UtcNow - _scan.Overview.LastScanUtc;
+            var status = _scan.LastScanResult?.Status;
+            var qualifier = status == ScanStatus.Partial ? " · partial evidence" :
+                status == ScanStatus.CompletedWithWarnings ? " · warnings" :
+                age > TimeSpan.FromMinutes(30) ? " · stale" : string.Empty;
+            ScanTimeLabel.Text = $"Scanned {_scan.Overview.LastScanUtc:yyyy-MM-dd HH:mm} UTC{qualifier}";
             CatalogCountLabel.Text = $"Settings: {_scan.SettingsCatalog.Count}";
             ConflictCountLabel.Text = $"Explorer: {_scan.InventoryCatalog.Count}";
 
@@ -218,7 +235,7 @@ public partial class MainWindow : Window
 
         if (tag == "home")
         {
-            SetContent(new HomeView(_scan, OpenSetting));
+            SetContent(new HomeView(_scan, OpenSettingsList));
             UpdateBreadcrumbs("Overview");
             return;
         }
@@ -227,6 +244,13 @@ public partial class MainWindow : Window
         {
             SetContent(new SystemInventoryView(_scan, OpenSetting));
             UpdateBreadcrumbs("System Explorer");
+            return;
+        }
+
+        if (tag == "services")
+        {
+            SetContent(new ServicesView(_scan));
+            UpdateBreadcrumbs("Services");
             return;
         }
 
@@ -270,7 +294,8 @@ public partial class MainWindow : Window
                         _elevation,
                         _changes,
                         RunScanAsync,
-                        this));
+                        this,
+                        completeModifyOperation: CompleteModifyOperation));
                     UpdateBreadcrumbs(
                         category,
                         group: DomainGroup(domain),
@@ -303,6 +328,20 @@ public partial class MainWindow : Window
             HighlightNav(btn);
 
         Navigate(tag);
+    }
+
+    private void OpenSettingsList(SettingsListTarget target)
+    {
+        var tag = $"category:{target.Domain}:{target.Category}";
+        _currentNav = tag;
+        var domainTag = $"domain:{target.Domain}";
+        var button = _navButtons.FirstOrDefault(b => b.Tag as string == domainTag);
+        if (button is not null) HighlightNav(button);
+        SetContent(new CategoryView(_scan, target.Domain, target.Category, OpenSetting, _elevation,
+            _changes, RunScanAsync, this, target.Filter, target.HighlightObjectId, CompleteModifyOperation));
+        UpdateBreadcrumbs(target.Category, group: DomainGroup(target.Domain),
+            domainName: NavigationBuilder.HumanizeDomain(target.Domain), domainTag: domainTag,
+            categoryName: target.Category, categoryTag: tag);
     }
 
     private void OpenSetting(string objectId)
@@ -451,6 +490,18 @@ public partial class MainWindow : Window
         BreadcrumbPanel.Children.Add(btn);
     }
 
+    private void CompleteModifyOperation()
+    {
+        _elevation.ExitModifyMode();
+        if (_startedForModify && ElevationService.IsProcessElevated())
+        {
+            _log.Auth("MainWindow", "Elevated process completed its confirmed batch and is exiting.");
+            Application.Current.Shutdown();
+            return;
+        }
+        ModeCombo.SelectedIndex = 0;
+    }
+
     private void SetContent(object content)
     {
         ContentHost.Content = content;
@@ -486,7 +537,7 @@ public partial class MainWindow : Window
         if (string.IsNullOrEmpty(q) || _scan.Query is null)
             return;
 
-        SetContent(new SearchResultsView(_scan, q, OpenSetting));
+        SetContent(new SearchResultsView(_scan, q, OpenSettingsList, OpenSetting));
         UpdateBreadcrumbs($"Search: {q}");
     }
 
@@ -547,6 +598,15 @@ public partial class MainWindow : Window
         else
         {
             _elevation.ExitModifyMode();
+            if (_startedForModify && ElevationService.IsProcessElevated())
+            {
+                _log.Auth("MainWindow", "Elevated Modify session ended; closing instead of retaining an elevated inspection shell.");
+                MessageBox.Show(this,
+                    "The elevated Modify session will now close. Reopen Windows Privacy Platform normally for Inspect mode.",
+                    "Modify session ended", MessageBoxButton.OK, MessageBoxImage.Information);
+                Application.Current.Shutdown();
+                return;
+            }
             StatusText.Text = "Inspect mode is read-only.";
             Navigate(_currentNav);
         }
@@ -563,15 +623,13 @@ public partial class MainWindow : Window
     {
         try
         {
-            if (!File.Exists(_prefsPath))
-                return;
-            var lines = File.ReadAllLines(_prefsPath);
+            var lines = AtomicLocalFile.ReadAllLines(_appDataRoot, _prefsPath);
             if (lines.Length < 4)
                 return;
-            if (double.TryParse(lines[0], out var left) &&
-                double.TryParse(lines[1], out var top) &&
-                double.TryParse(lines[2], out var width) &&
-                double.TryParse(lines[3], out var height))
+            if (double.TryParse(lines[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var left) &&
+                double.TryParse(lines[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var top) &&
+                double.TryParse(lines[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var width) &&
+                double.TryParse(lines[3], NumberStyles.Float, CultureInfo.InvariantCulture, out var height))
             {
                 var workArea = SystemParameters.WorkArea;
                 var safeWidth = Math.Min(Math.Max(MinWidth, width), workArea.Width);
@@ -593,15 +651,16 @@ public partial class MainWindow : Window
 
     private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
     {
+        _cts?.Cancel();
         try
         {
             var bounds = WindowState == WindowState.Normal ? new Rect(Left, Top, Width, Height) : RestoreBounds;
-            File.WriteAllLines(_prefsPath, new[]
+            AtomicLocalFile.WriteAllLines(_appDataRoot, _prefsPath, new[]
             {
-                bounds.Left.ToString("F0"),
-                bounds.Top.ToString("F0"),
-                bounds.Width.ToString("F0"),
-                bounds.Height.ToString("F0"),
+                bounds.Left.ToString("F0", CultureInfo.InvariantCulture),
+                bounds.Top.ToString("F0", CultureInfo.InvariantCulture),
+                bounds.Width.ToString("F0", CultureInfo.InvariantCulture),
+                bounds.Height.ToString("F0", CultureInfo.InvariantCulture),
                 _sidebarCollapsed.ToString()
             });
         }

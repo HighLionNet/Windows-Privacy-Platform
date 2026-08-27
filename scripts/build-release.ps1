@@ -52,12 +52,30 @@ if ($LASTEXITCODE -ne 0) { throw "Publish failed with exit code $LASTEXITCODE." 
 
 & (Join-Path $PSScriptRoot "sign-release.ps1") -ExecutablePath $executablePath
 
+Get-ChildItem -LiteralPath $publishPath -Recurse -File -Filter "*.pdb" | Remove-Item -Force
+$forbiddenReleaseFiles = Get-ChildItem -LiteralPath $publishPath -Recurse -File | Where-Object {
+    $_.Extension -in @('.pfx', '.p12', '.snk', '.cs', '.xaml', '.ps1', '.user', '.suo') -or
+    $_.Name -match '(?i)(secret|credential|password|token)'
+}
+if ($forbiddenReleaseFiles) {
+    throw "Publish output contains forbidden development or secret-like files: $($forbiddenReleaseFiles.Name -join ', ')"
+}
+
 Copy-Item -LiteralPath $startHerePath -Destination (Join-Path $publishPath "START_HERE.md")
+$manifestLines = Get-ChildItem -LiteralPath $publishPath -Recurse -File | Sort-Object FullName | ForEach-Object {
+    $relative = $_.FullName.Substring($publishPath.Length).TrimStart([char[]]@('\', '/'))
+    $fileHash = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash
+    "$fileHash  $relative"
+}
+Set-Content -LiteralPath (Join-Path $publishPath "RELEASE_MANIFEST.txt") -Value $manifestLines -Encoding Ascii
 Compress-Archive -Path (Join-Path $publishPath "*") -DestinationPath $zipPath -CompressionLevel Optimal
 
 if (-not (Test-Path -LiteralPath $zipPath)) {
     throw "Release archive was not created."
 }
+
+& (Join-Path $PSScriptRoot "verify-release.ps1") -ArchivePath $zipPath
+if ($LASTEXITCODE -ne 0) { throw "Release archive verification failed with exit code $LASTEXITCODE." }
 
 $hash = Get-FileHash -LiteralPath $zipPath -Algorithm SHA256
 Set-Content -LiteralPath $checksumPath -Value "$($hash.Hash)  WindowsPrivacyPlatform-win-x64.zip" -Encoding Ascii

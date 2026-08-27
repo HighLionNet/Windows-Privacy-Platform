@@ -21,6 +21,7 @@ public partial class DomainView : UserControl
         Action<ProductDomain, string> openCategory,
         Action<string> openSetting)
     {
+        _ = openSetting; // Detail navigation is intentionally unavailable from a domain index.
         InitializeComponent();
         TitleText.Text = NavigationBuilder.HumanizeDomain(domain);
 
@@ -57,26 +58,13 @@ public partial class DomainView : UserControl
                 m.Observation?.Effective?.HasConflict == true);
             var unknowns = group.Count(IsUnknown);
 
-            if (CatalogPolicy.RequiresDrillDown(group.Count()))
-            {
-                CategoryList.Children.Add(BuildCategoryRow(
-                    group.Key,
-                    group.Count(),
-                    conflicts,
-                    unknowns,
-                    () => openCategory(domain, group.Key)));
-            }
-            else
-            {
-                CategoryList.Children.Add(new TextBlock
-                {
-                    Text = group.Key,
-                    Style = (Style)FindResource("GroupHeader"),
-                    Margin = new Thickness(12, 10, 12, 4)
-                });
-                foreach (var setting in group.OrderBy(m => m.ObjectName, StringComparer.OrdinalIgnoreCase))
-                    CategoryList.Children.Add(BuildSettingRow(setting, () => openSetting(setting.ObjectId)));
-            }
+            CategoryList.Children.Add(BuildCategoryRow(
+                group.Key,
+                group.Count(),
+                conflicts,
+                unknowns,
+                CategoryContent.For(domain, group.Key),
+                () => openCategory(domain, group.Key)));
         }
     }
 
@@ -132,7 +120,7 @@ public partial class DomainView : UserControl
         return badge;
     }
 
-    private Button BuildCategoryRow(string name, int count, int conflicts, int unknowns, Action open)
+    private Button BuildCategoryRow(string name, int count, int conflicts, int unknowns, CategoryCopy copy, Action open)
     {
         var row = new Button
         {
@@ -152,6 +140,14 @@ public partial class DomainView : UserControl
             FontWeight = FontWeights.SemiBold,
             FontSize = 13,
             Foreground = (Brush)FindResource("BrushTextPrimary")
+        });
+        left.Children.Add(new TextBlock
+        {
+            Text = copy.Description,
+            FontSize = 11,
+            Foreground = (Brush)FindResource("BrushTextSecondary"),
+            TextWrapping = TextWrapping.Wrap,
+            Margin = new Thickness(0, 2, 12, 0)
         });
 
         if (conflicts > 0)
@@ -205,7 +201,7 @@ public partial class DomainView : UserControl
         grid.Children.Add(attention);
 
         row.Content = grid;
-        AutomationProperties.SetName(row, $"{name}. {count} settings. {conflicts} conflicts.");
+        AutomationProperties.SetName(row, $"{name}. {count} settings. {conflicts} conflicts. {copy.Description}");
         row.Click += (_, _) => open();
         return row;
     }

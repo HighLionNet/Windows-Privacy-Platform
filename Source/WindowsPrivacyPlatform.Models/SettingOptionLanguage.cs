@@ -39,7 +39,7 @@ public static class SettingOptionLanguage
             };
 
         if (id.Contains("firewall.profile") && id.EndsWith(".enabled"))
-            return raw == "1" ? new("Enable", "Firewall protects this profile") : new("Disable", "Firewall stops protecting this profile");
+            return raw == "1" ? new("Set to On", "Firewall protects this profile") : new("Set to Off", "Firewall stops protecting this profile");
         if (id.Contains("firewall.profile") && id.EndsWith(".inbound"))
             return raw == "0" ? new("Block", "Block unmatched inbound traffic") : new("Allow", "Allow unmatched inbound traffic");
         if (id.Contains("firewall.profile") && id.EndsWith(".outbound"))
@@ -48,18 +48,18 @@ public static class SettingOptionLanguage
             return raw == "0" ? new("Notify", "Show blocked-app notifications") : new("Silence", "Hide blocked-app notifications");
 
         if (id == "policy.remote.rdp")
-            return raw == "0" ? new("Allow", "Accept Remote Desktop connections") : new("Block", "Reject Remote Desktop connections");
+            return raw == "0" ? new("Allow connections", "Accept Remote Desktop connections") : new("Block connections", "Reject Remote Desktop connections");
         if (id == "policy.copilot.turnoff")
             return raw == "1" ? new("Hide legacy integration", "Legacy Copilot entry is hidden") : new("Show legacy integration", "Legacy Copilot entry is available");
         if (id == "policy.network.llmnr")
-            return raw == "0" ? new("Disable", "Block multicast name resolution") : new("Enable", "Allow multicast name resolution");
+            return raw == "0" ? new("Turn off", "Block multicast name resolution") : new("Leave on", "Allow multicast name resolution");
 
         if (id.Contains("disable") || item.ObjectName.StartsWith("Disable", StringComparison.OrdinalIgnoreCase) ||
             item.ObjectName.StartsWith("Turn Off", StringComparison.OrdinalIgnoreCase))
             return raw switch
             {
-                "0" => new("Keep enabled", "Feature remains available"),
-                "1" => new("Disable", "Feature is blocked"),
+                "0" => new("Leave on", "Feature remains available"),
+                "1" => new("Turn off", "Feature is blocked"),
                 _ => FromMeaning(value)
             };
 
@@ -68,7 +68,7 @@ public static class SettingOptionLanguage
             var allow = id.Contains("allow") || item.ObjectName.StartsWith("Allow", StringComparison.OrdinalIgnoreCase);
             if (allow)
                 return raw == "1" ? new("Allow", "Feature is available") : new("Block", "Feature is blocked");
-            return raw == "1" ? new("Enable", "Policy is enabled") : new("Disable", "Policy is disabled");
+            return raw == "1" ? new("Set to On", "Policy is enabled") : new("Set to Off", "Policy is disabled");
         }
 
         return FromMeaning(value);

@@ -8,7 +8,7 @@ namespace WindowsPrivacyPlatform.App.Views;
 
 public partial class HomeView : UserControl
 {
-    public HomeView(ScanService scan, Action<string> openSetting)
+    public HomeView(ScanService scan, Action<SettingsListTarget> openSettingsList)
     {
         InitializeComponent();
         var overview = scan.Overview;
@@ -35,7 +35,11 @@ public partial class HomeView : UserControl
             copy.Children.Add(new TextBlock { Text = finding.Title, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
             copy.Children.Add(new TextBlock { Text = finding.Summary, FontSize = 11, Foreground = (Brush)FindResource("BrushTextSecondary") });
             Grid.SetColumn(copy, 1); grid.Children.Add(copy); row.Content = grid;
-            row.Click += (_, _) => openSetting((string)row.Tag);
+            row.Click += (_, _) =>
+            {
+                var item = scan.SettingsCatalog.First(setting => setting.ObjectId == (string)row.Tag);
+                openSettingsList(SettingsListTarget.For(item));
+            };
             FindingsList.Children.Add(row);
         }
 

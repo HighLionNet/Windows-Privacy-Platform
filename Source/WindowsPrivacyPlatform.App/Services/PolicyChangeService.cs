@@ -34,6 +34,63 @@ public sealed class PolicyChangeService
     /// Returns true only when the system registry read-back matches the intended state including kind.
     /// </summary>
     public bool TryApply(ManagedObject mo, string? rawValue, Window? owner, out string message)
+        => TryApplyCore(mo, rawValue, owner, skipConfirmation: false, out message);
+
+    public bool TryApplyBatch(
+        IReadOnlyList<PendingPolicyChange> changes,
+        Window? owner,
+        out IReadOnlyList<PolicyChangeOutcome> outcomes)
+    {
+        var results = new List<PolicyChangeOutcome>();
+        outcomes = results;
+        if (changes is null || changes.Count == 0)
+            return false;
+        if (changes.Count > 32 || changes.Any(c => c?.Setting is null) ||
+            changes.Select(c => c.Setting.ObjectId).Distinct(StringComparer.OrdinalIgnoreCase).Count() != changes.Count)
+        {
+            results.Add(new PolicyChangeOutcome(string.Empty, false, "The pending batch is malformed or exceeds 32 unique settings."));
+            return false;
+        }
+
+        var preview = new List<string>();
+        foreach (var change in changes)
+        {
+            if (!TryPrepare(change.Setting, change.RawValue, out var before, out var error))
+            {
+                results.Add(new PolicyChangeOutcome(change.Setting.ObjectId, false, error));
+                return false;
+            }
+            var intended = string.IsNullOrWhiteSpace(change.RawValue) ? "Use Windows default" : OptionLabel(change.Setting, change.RawValue!);
+            preview.Add($"• {change.Setting.ObjectName}\n  Current: {before}\n  Proposed: {intended}");
+        }
+
+        var confirmation = MessageBox.Show(
+            owner,
+            $"Apply {changes.Count} pending change{(changes.Count == 1 ? string.Empty : "s")} in one elevated operation?\n\n" +
+            string.Join("\n\n", preview) +
+            "\n\nEach target will be read again before writing and accepted only after typed read-back verification.",
+            "Confirm pending changes",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning,
+            MessageBoxResult.No);
+
+        if (confirmation != MessageBoxResult.Yes)
+        {
+            foreach (var change in changes)
+                results.Add(new PolicyChangeOutcome(change.Setting.ObjectId, false, "Change cancelled."));
+            return false;
+        }
+
+        foreach (var change in changes)
+        {
+            var success = TryApplyCore(change.Setting, change.RawValue, owner, skipConfirmation: true, out var message);
+            results.Add(new PolicyChangeOutcome(change.Setting.ObjectId, success, message));
+        }
+
+        return results.All(r => r.Success);
+    }
+
+    private bool TryApplyCore(ManagedObject mo, string? rawValue, Window? owner, bool skipConfirmation, out string message)
     {
         message = string.Empty;
 
@@ -71,6 +128,17 @@ public sealed class PolicyChangeService
         {
             message = "This setting cannot be changed on the scanned device. " + mo.ApplicabilityReason;
             _log.Change("PolicyChangeService", $"DENIED {mo.ObjectId}: not applicable on this device.");
+            return false;
+        }
+        if (!_elevation.CanModifyHive(target.Hive, out var identityError))
+        {
+            message = identityError;
+            return false;
+        }
+        if (!ManagedObjectCatalog.IsAuthorizedWriteTarget(mo))
+        {
+            message = "Modification is not authorized by the installed catalog.";
+            _log.Change("PolicyChangeService", $"DENIED {mo.ObjectId}: runtime target differs from catalog authorization.");
             return false;
         }
 
@@ -137,26 +205,27 @@ public sealed class PolicyChangeService
         _log.Change("PolicyChangeService",
             $"BEFORE {mo.ObjectId} | {targetPath} | status={before.Status} kind={before.Kind} value={before.Normalized ?? "(absent)"}");
 
-        var confirm = MessageBox.Show(
-            owner,
-            $"Change setting:\n\n" +
-            $"{mo.ObjectName}\n" +
-            $"ObjectId: {mo.ObjectId}\n\n" +
-            $"Registry: {targetPath} ({target.View})\n" +
-            $"Current (system): {FormatRead(before)}\n" +
-            $"Intended: {intendedDisplay}\n\n" +
-            "The change is only accepted if a fresh registry read-back matches value and type.\n" +
-            "Continue?",
-            "Confirm change",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning,
-            MessageBoxResult.No);
-
-        if (confirm != MessageBoxResult.Yes)
+        if (!skipConfirmation)
         {
-            message = "Change cancelled.";
-            _log.Change("PolicyChangeService", $"CANCELLED {mo.ObjectId} → {intendedDisplay}");
-            return false;
+            var confirm = MessageBox.Show(
+                owner,
+                $"Change setting:\n\n" +
+                $"{mo.ObjectName}\n\n" +
+                $"Current (system): {FormatRead(before)}\n" +
+                $"Proposed: {OptionLabel(mo, rawValue)}\n\n" +
+                "Technical target and raw value are available in the setting disclosure and audit record.\n" +
+                "The change is accepted only if a fresh read-back matches value and type.\n\nContinue?",
+                "Confirm change",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Warning,
+                MessageBoxResult.No);
+
+            if (confirm != MessageBoxResult.Yes)
+            {
+                message = "Change cancelled.";
+                _log.Change("PolicyChangeService", $"CANCELLED {mo.ObjectId} → {intendedDisplay}");
+                return false;
+            }
         }
 
         if (StateMatches(before, rawValue, target.ValueKind))
@@ -228,21 +297,88 @@ public sealed class PolicyChangeService
                 ? "Verified: value is absent (Not configured)."
                 : $"Verified: system value is {after.Normalized} ({after.Kind}).";
             _log.Change("PolicyChangeService",
-                $"VERIFIED {mo.ObjectId} | {targetPath} = {after.Normalized ?? "(absent)"} | kind={after.Kind} | by {Environment.UserName}");
+                $"VERIFIED {mo.ObjectId} | {targetPath} = {after.Normalized ?? "(absent)"} | kind={after.Kind}");
             return true;
         }
-        catch (UnauthorizedAccessException ex)
+        catch (UnauthorizedAccessException)
         {
             message = "Access denied. Process may not be fully elevated.";
-            _log.Change("PolicyChangeService", $"ACCESS_DENIED {mo.ObjectId}: {ex.Message}");
+            _log.Change("PolicyChangeService", $"ACCESS_DENIED {mo.ObjectId}");
             return false;
         }
         catch (Exception ex)
         {
-            message = "Change failed: " + ex.Message;
-            _log.Change("PolicyChangeService", $"EXCEPTION {mo.ObjectId}: {ex}");
+            message = "The system change failed. No success was reported; review the audit category and rescan.";
+            _log.Change("PolicyChangeService", $"EXCEPTION {mo.ObjectId}: category={ex.GetType().Name}");
             return false;
         }
+    }
+
+    private bool TryPrepare(ManagedObject item, string? rawValue, out string beforeDisplay, out string error)
+    {
+        beforeDisplay = "Unknown";
+        error = string.Empty;
+        if (!_elevation.IsModifyAuthorized)
+        {
+            error = "Modify mode is not authorized for this session.";
+            return false;
+        }
+        var target = item.WritableTarget;
+        if (target is null || !target.IsComplete || target.Kind != WritableTargetKind.Registry)
+        {
+            error = "The setting has no complete, authorized registry target.";
+            return false;
+        }
+        if (!_elevation.CanModifyHive(target.Hive, out error))
+            return false;
+        if (!ManagedObjectCatalog.IsAuthorizedWriteTarget(item))
+        {
+            error = "The runtime target does not match the installed catalog authorization.";
+            return false;
+        }
+        if (!item.IsApplicableHere)
+        {
+            error = "The setting is not applicable on this Windows edition or build.";
+            return false;
+        }
+        if (target.RequiresElevation && !ElevationService.IsProcessElevated())
+        {
+            error = "This batch requires an elevated Modify session.";
+            return false;
+        }
+        if (string.IsNullOrWhiteSpace(rawValue) && !target.SupportsDeletion)
+        {
+            error = "Use Windows default is not supported for this setting.";
+            return false;
+        }
+        if (!string.IsNullOrWhiteSpace(rawValue) &&
+            !target.SupportedRawValues.Contains(rawValue, StringComparer.OrdinalIgnoreCase))
+        {
+            error = "The proposed value is outside the setting allowlist.";
+            return false;
+        }
+        if (!TryParseHive(target.Hive, out var hive))
+        {
+            error = "The target hive is invalid.";
+            return false;
+        }
+        var before = ReadValue(hive, MapView(target.View), target.SubKey.Trim(), target.ValueName.Trim());
+        beforeDisplay = FormatRead(before);
+        if (before.Status is RegistryReadStatus.AccessDenied or RegistryReadStatus.Error)
+        {
+            error = "The current system state could not be read, so the batch was not started.";
+            return false;
+        }
+        return true;
+    }
+
+    private static string OptionLabel(ManagedObject item, string? rawValue)
+    {
+        if (string.IsNullOrWhiteSpace(rawValue))
+            return "Use Windows default";
+        var meaning = item.ValueSemantics.FirstOrDefault(v =>
+            string.Equals(v.RawValue, rawValue, StringComparison.OrdinalIgnoreCase));
+        return meaning is null ? "Selected supported value" : SettingOptionLanguage.For(item, meaning).Action;
     }
 
     // ---------- registry primitives (exact view) ----------

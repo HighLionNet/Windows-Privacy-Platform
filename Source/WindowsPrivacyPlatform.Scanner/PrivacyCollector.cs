@@ -1,5 +1,6 @@
 // Source/WindowsPrivacyPlatform.Scanner/PrivacyCollector.cs
 using System;
+using System.Threading;
 using Microsoft.Win32;
 using WindowsPrivacyPlatform.Models;
 
@@ -48,16 +49,16 @@ namespace WindowsPrivacyPlatform.Scanner
             "wifiData"
         };
 
-        public void Collect(InventorySnapshot snapshot)
+        public void Collect(InventorySnapshot snapshot, CancellationToken cancellationToken = default)
         {
             if (snapshot is null)
                 throw new ArgumentNullException(nameof(snapshot));
 
-            CollectConsentStore(snapshot);
-            CollectRelatedPrivacyValues(snapshot);
+            CollectConsentStore(snapshot, cancellationToken);
+            CollectRelatedPrivacyValues(snapshot, cancellationToken);
         }
 
-        private static void CollectConsentStore(InventorySnapshot snapshot)
+        private static void CollectConsentStore(InventorySnapshot snapshot, CancellationToken cancellationToken)
         {
             try
             {
@@ -70,25 +71,53 @@ namespace WindowsPrivacyPlatform.Scanner
 
                 foreach (var name in CapabilityNames)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     try
                     {
                         using var key = root.OpenSubKey(name, writable: false);
                         if (key is null)
+                        {
+                            snapshot.PrivacySettings.Add(new PrivacySettingInfo
+                            {
+                                Name = name,
+                                Value = "Not configured",
+                                Status = RegistryObservationStatus.NotConfigured
+                            });
                             continue;
+                        }
 
-                        // Value "Value" is typically "Allow", "Deny", or "Prompt"
-                        var value = key.GetValue("Value") as string ?? "Not set";
+                        var raw = key.GetValue("Value", null, RegistryValueOptions.DoNotExpandEnvironmentNames);
+                        var present = raw is not null && key.GetValueNames().Contains("Value", StringComparer.OrdinalIgnoreCase);
                         snapshot.PrivacySettings.Add(new PrivacySettingInfo
                         {
                             Name = name,
-                            Value = value
+                            Value = present ? raw!.ToString() ?? "Unknown" : "Not configured",
+                            ValueKind = present ? key.GetValueKind("Value").ToString() : string.Empty,
+                            Status = present ? RegistryObservationStatus.Present : RegistryObservationStatus.NotConfigured
                         });
+                    }
+                    catch (UnauthorizedAccessException)
+                    {
+                        snapshot.PrivacySettings.Add(new PrivacySettingInfo
+                        {
+                            Name = name,
+                            Value = "Access denied",
+                            Status = RegistryObservationStatus.AccessDenied
+                        });
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
                     }
                     catch
                     {
                         // Individual key may be missing or inaccessible; skip.
                     }
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch
             {
@@ -100,8 +129,9 @@ namespace WindowsPrivacyPlatform.Scanner
         /// Additional current-user privacy preferences that matter for the product.
         /// All reads are HKCU, writable:false.
         /// </summary>
-        private static void CollectRelatedPrivacyValues(InventorySnapshot snapshot)
+        private static void CollectRelatedPrivacyValues(InventorySnapshot snapshot, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             // Advertising ID
             TryAddRegistryValue(
                 snapshot,
@@ -153,16 +183,43 @@ namespace WindowsPrivacyPlatform.Scanner
             {
                 using var key = Registry.CurrentUser.OpenSubKey(subKeyPath, writable: false);
                 if (key is null)
+                {
+                    snapshot.PrivacySettings.Add(new PrivacySettingInfo
+                    {
+                        Name = displayName,
+                        Value = "Not configured",
+                        Status = RegistryObservationStatus.NotConfigured
+                    });
                     return;
+                }
 
-                var raw = key.GetValue(valueName);
+                var raw = key.GetValue(valueName, null, RegistryValueOptions.DoNotExpandEnvironmentNames);
                 if (raw is null)
+                {
+                    snapshot.PrivacySettings.Add(new PrivacySettingInfo
+                    {
+                        Name = displayName,
+                        Value = "Not configured",
+                        Status = RegistryObservationStatus.NotConfigured
+                    });
                     return;
+                }
 
                 snapshot.PrivacySettings.Add(new PrivacySettingInfo
                 {
                     Name = displayName,
-                    Value = raw.ToString() ?? "Not set"
+                    Value = raw.ToString() ?? "Unknown",
+                    ValueKind = key.GetValueKind(valueName).ToString(),
+                    Status = RegistryObservationStatus.Present
+                });
+            }
+            catch (UnauthorizedAccessException)
+            {
+                snapshot.PrivacySettings.Add(new PrivacySettingInfo
+                {
+                    Name = displayName,
+                    Value = "Access denied",
+                    Status = RegistryObservationStatus.AccessDenied
                 });
             }
             catch

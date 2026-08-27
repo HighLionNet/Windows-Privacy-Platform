@@ -165,6 +165,15 @@ public sealed class ScanService
             ValidationPassed = validationResults.Count(r => r.IsValid);
             ValidationFailed = validationResults.Count(r => !r.IsValid);
 
+            // Fail closed: a definition that fails any catalog rule cannot remain on the editable surface.
+            var invalidIds = validationResults.Where(result => !result.IsValid)
+                .Select(result => result.ObjectId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (var invalid in catalog.Where(item => item.Bucket == CatalogBucket.Settings && invalidIds.Contains(item.ObjectId)))
+            {
+                invalid.Bucket = CatalogBucket.InternalReference;
+                logger.Warning("ScanService", $"Excluded invalid editable definition: {invalid.ObjectId}");
+            }
+
             Catalog = catalog;
             Query = new SettingsQuery(catalog);
             NavigationRoot = NavigationBuilder.BuildDomainTree(catalog.Where(m => m.Bucket == CatalogBucket.Settings).ToList());
@@ -218,8 +227,8 @@ public sealed class ScanService
         }
         catch (Exception ex)
         {
-            LastError = ex.Message;
-            Report($"Scan error: {ex.Message}");
+            LastError = "The scan failed (" + ex.GetType().Name + ").";
+            Report(LastError);
             RestoreLastGoodIfNeeded();
             ScanCompleted?.Invoke();
         }

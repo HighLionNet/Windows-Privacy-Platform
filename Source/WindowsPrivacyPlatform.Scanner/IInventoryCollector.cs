@@ -6,6 +6,6 @@ namespace WindowsPrivacyPlatform.Scanner
     public interface IInventoryCollector
     {
         string Name { get; }
-        void Collect(InventorySnapshot snapshot);
+        void Collect(InventorySnapshot snapshot, CancellationToken cancellationToken = default);
     }
 }
