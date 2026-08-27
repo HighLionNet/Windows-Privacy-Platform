@@ -47,9 +47,10 @@ public partial class DomainView : UserControl
             m.Observation?.Resolution?.HasConflict == true ||
             m.Observation?.Effective?.HasConflict == true);
 
+        var categoryCount = $"{groups.Count} categor{(groups.Count == 1 ? "y" : "ies")}";
         SubtitleText.Text = conflictTotal > 0
-            ? $"{groups.Count} categor{(groups.Count == 1 ? "y" : "ies")} · {items.Count} settings · {conflictTotal} conflict(s)"
-            : $"{groups.Count} categor{(groups.Count == 1 ? "y" : "ies")} · {items.Count} settings";
+            ? $"{categoryCount} covering {items.Count} settings. {conflictTotal} need attention."
+            : $"{categoryCount} covering {items.Count} settings.";
 
         foreach (var group in groups)
         {

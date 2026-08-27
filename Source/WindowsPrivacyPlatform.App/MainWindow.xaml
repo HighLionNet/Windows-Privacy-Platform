@@ -50,9 +50,9 @@
 
         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
           <TextBlock Text="Mode:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{DynamicResource BrushTextSecondary}"/>
-          <ComboBox x:Name="ModeCombo" Width="116" Height="34" SelectedIndex="0" VerticalContentAlignment="Center"
+          <ComboBox x:Name="ModeCombo" Width="148" Height="34" SelectedIndex="0" VerticalContentAlignment="Center"
                     SelectionChanged="ModeCombo_SelectionChanged" DropDownOpened="ModeCombo_DropDownOpened">
-            <ComboBoxItem Content="View-only" IsSelected="True"/><ComboBoxItem Content="Admin"/>
+            <ComboBoxItem Content="View-only" IsSelected="True"/><ComboBoxItem Content="Administrator"/>
           </ComboBox>
         </StackPanel>
 
@@ -62,8 +62,11 @@
         </StackPanel>
 
         <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
-          <Button Style="{StaticResource ActionNeutral}" Width="40" Padding="0" Margin="0,0,6,0" ToolTip="App Settings" Click="SettingsButton_Click">
-            <Viewbox Width="18" Height="18"><TextBlock Text="&#xE713;" FontFamily="Segoe MDL2 Assets" Foreground="{DynamicResource BrushTextPrimary}"/></Viewbox>
+          <Button Style="{StaticResource ActionNeutral}" MinWidth="104" Padding="11,5" Margin="0,0,6,0" ToolTip="App Settings" Click="SettingsButton_Click">
+            <StackPanel Orientation="Horizontal">
+              <Viewbox Width="17" Height="17" Margin="0,0,7,0"><TextBlock Text="&#xE713;" FontFamily="Segoe MDL2 Assets" Foreground="{DynamicResource BrushTextPrimary}"/></Viewbox>
+              <TextBlock Text="Settings" FontWeight="SemiBold" VerticalAlignment="Center"/>
+            </StackPanel>
           </Button>
           <Button x:Name="CancelScanButton" Content="Cancel" Style="{StaticResource ActionNeutral}" Click="CancelScanButton_Click" MinWidth="72" Margin="0,0,6,0" Visibility="Collapsed"/>
           <Button x:Name="ScanButton" Content="Scan" Style="{StaticResource ActionPrimary}" Click="ScanButton_Click" MinWidth="76"/>

@@ -79,9 +79,9 @@ public static class ThemeManager
     private static IReadOnlyDictionary<string, string> Palette(AppTheme theme) => theme switch
     {
         AppTheme.SlateLight => Values(
-            "#D9E3E5", "#102227", "#E7EEF0", "#F3F7F7", "#D6E6E8", "#C8DDE1", "#DDE8EA", "#E9F0F1", "#E1EAEC",
-            "#BCCDD0", "#91AAB0", "#48666C", "#12282D", "#365158", "#657C82", "#286E7A", "#1F5963", "#248FA2", "#D0E8EC",
-            "#F0FAFA", "#A8C1C4", "#18343A", "#24515A", "#9A5E00", "#F7E9C8", "#B43C47", "#98313B", "#16806F", "#106657", "#D1EBE6", "#64747A", "#E1E7E8", "#CC4C3F", "#F4DCD7"),
+            "#D1DEED", "#151D3C", "#E3EAF7", "#F2F5FD", "#D3DDF6", "#BFCDF4", "#CED8F2", "#DCE4F5", "#D4DDF2",
+            "#A7B6DB", "#667EA8", "#364E84", "#111C38", "#334568", "#5B6C8B", "#3B50C5", "#2D3E9B", "#006F8F", "#CED5FF",
+            "#F7F8FF", "#C8D2F3", "#222D59", "#30408A", "#955A00", "#FFE5AC", "#B92F4D", "#93223C", "#00765F", "#005C4A", "#BDEADB", "#596B8A", "#DDE4F2", "#CA4437", "#F5D3CD"),
         AppTheme.NavyDark => Values(
             "#142033", "#0C1727", "#19283B", "#1F3046", "#294058", "#31516B", "#1B2C42", "#22354C", "#111E30",
             "#314A64", "#4D6A86", "#34516B", "#F7FAFF", "#D7E2F0", "#ABC0D6", "#6F9FCB", "#84B2DA", "#5FC5C9", "#233F5C",
@@ -91,9 +91,9 @@ public static class ThemeManager
             "#51363F", "#75515D", "#5B3944", "#FFF9F7", "#FFE1DA", "#D8B6B0", "#F36A4D", "#FF8165", "#F0A06F", "#552C27",
             "#FFF8F5", "#D9B9B4", "#2C1B21", "#552733", "#FFD477", "#4F3C1D", "#FF7063", "#FF9086", "#5BD4A6", "#7AE3BD", "#1E493A", "#D8C1BE", "#3B2A2F", "#FF7467", "#55292A"),
         _ => Values(
-            "#D9E7F0", "#071A2C", "#EAF2F8", "#F8FBFD", "#DCECF5", "#CBE6F2", "#DFEBF3", "#EEF5F8", "#E4EEF5",
-            "#C1D3DE", "#91ABB9", "#3C6275", "#102630", "#345461", "#647C88", "#147A93", "#0F6378", "#00A6B6", "#CFEAF0",
-            "#F1FBFC", "#9FC1C9", "#0E3044", "#13475E", "#9C6200", "#F7E8C1", "#B93D42", "#9F2E33", "#127D68", "#0C6555", "#CFEAE3", "#5D737B", "#DEE8EA", "#C64F42", "#F3DDD8")
+            "#C8E2F2", "#061B35", "#DFF1FA", "#F2FAFE", "#C4E7F6", "#9FD8EF", "#C5E7F6", "#D5EDF8", "#CBE8F6",
+            "#8FC5DC", "#4C91AF", "#145E7E", "#062538", "#214D61", "#476B7B", "#006BA8", "#005484", "#006F89", "#AEE1F2",
+            "#F5FBFF", "#B3D8E8", "#0D3A5D", "#0D5274", "#A35500", "#FFE1A3", "#C32F46", "#9D1F34", "#007A62", "#005F4D", "#BDECDC", "#526D7A", "#D6E6EC", "#D04432", "#F6CDC5")
     };
 
     private static IReadOnlyDictionary<string, string> HighContrast() => new Dictionary<string, string>
@@ -127,13 +127,13 @@ public static class ThemeManager
             "SidebarText", "SidebarMuted", "SidebarHover", "SidebarSelected", "Warning", "WarningSoft", "Error", "ErrorHover", "Success", "SuccessHover",
             "SuccessSoft", "Unknown", "UnknownSoft", "Conflict", "ConflictSoft" };
         var result = keys.Zip(values).ToDictionary(pair => pair.First, pair => pair.Second);
-        result["DomainPrivacy"] = themeColor(result["AccentCyan"]);
-        result["DomainSecurity"] = themeColor(result["Error"]);
-        result["DomainWindows"] = themeColor(result["Success"]);
-        result["DomainApps"] = result["Accent"];
-        result["DomainKnowledge"] = result["Warning"];
+        // Domain labels sit on the dark navigation rail in every palette. Keep a
+        // dedicated, high-luminance identity set instead of reusing body accents.
+        result["DomainPrivacy"] = "#4DDCF4";
+        result["DomainSecurity"] = "#FF8D86";
+        result["DomainWindows"] = "#52DDA7";
+        result["DomainApps"] = "#C5AEFF";
+        result["DomainKnowledge"] = "#FFD56F";
         return result;
-
-        static string themeColor(string value) => value;
     }
 }

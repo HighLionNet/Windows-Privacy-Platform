@@ -7,17 +7,17 @@
     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
     <TextBlock Text="Choose how to open" FontSize="24" FontWeight="SemiBold" />
     <TextBlock Grid.Row="1" Margin="0,6,0,18" TextWrapping="Wrap" Foreground="{DynamicResource BrushTextSecondary}"
-               Text="Both modes scan locally. Admin can apply only the verified settings shown by the app."/>
+               Text="Both modes scan locally. Only Administrator mode can change the verified settings shown by the app."/>
     <Grid Grid.Row="2">
       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
       <Border Style="{StaticResource CardAccent}" Margin="0,0,8,0" Padding="16" CornerRadius="4">
         <Grid>
           <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
           <DockPanel><Border DockPanel.Dock="Right" Style="{StaticResource BadgeSuccess}"><TextBlock Text="RECOMMENDED" FontSize="9" FontWeight="Bold"/></Border>
-            <TextBlock Text="Admin" FontSize="18" FontWeight="SemiBold"/></DockPanel>
+            <TextBlock Text="Administrator" FontSize="18" FontWeight="SemiBold"/></DockPanel>
           <TextBlock Grid.Row="1" Margin="0,10,0,14" TextWrapping="Wrap" LineHeight="20"
-                     Text="Enter an administrator password once for this session. Every change is confirmed and accepted only after read-back."/>
-          <Button x:Name="AdminButton" Grid.Row="2" Content="Continue to Admin" Style="{StaticResource ActionPrimary}" Click="Admin_Click"/>
+                     Text="Windows UAC decides whether this account can elevate. Every change still requires confirmation and verified read-back."/>
+          <Button x:Name="AdminButton" Grid.Row="2" Content="Continue to Administrator" Style="{StaticResource ActionPrimary}" Click="Admin_Click"/>
         </Grid>
       </Border>
       <Border Grid.Column="1" Style="{StaticResource CardAccent}" Margin="8,0,0,0" Padding="16" CornerRadius="4">
@@ -31,6 +31,6 @@
       </Border>
     </Grid>
     <TextBlock Grid.Row="3" Margin="0,14,0,0" TextWrapping="Wrap" FontSize="10.5" Foreground="{DynamicResource BrushTextMuted}"
-               Text="WPP always verifies an administrator password through Windows CredUI. Windows UAC may still use its configured consent behavior when an elevated token is needed."/>
+               Text="WPP delegates elevation to Windows UAC. Windows may show a consent button or request an eligible account."/>
   </Grid>
 </Window>

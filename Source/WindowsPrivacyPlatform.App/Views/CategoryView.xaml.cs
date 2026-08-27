@@ -38,8 +38,8 @@ public partial class CategoryView : UserControl
 
         TitleText.Text = category;
         DescriptionText.Text = CategoryContent.For(domain, category).Description;
-        SubtitleText.Text = $"{NavigationBuilder.HumanizeDomain(domain)} · {_allItems.Count} settings · " +
-                            (_elevation.IsAdminAuthorized ? "Admin" : "View-only");
+        SubtitleText.Text = $"{_allItems.Count} settings in {NavigationBuilder.HumanizeDomain(domain)}. " +
+                            (_elevation.IsAdminAuthorized ? "Administrator mode is active." : "View-only mode is active.");
         FilterBox.Text = initialFilter ?? string.Empty;
         Render();
     }

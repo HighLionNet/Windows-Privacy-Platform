@@ -31,7 +31,7 @@ public partial class SearchResultsView : UserControl
             SubtitleText.Text = "No matches";
             List.Items.Add(new TextBlock
             {
-                Text = "Try ObjectId fragment, name, domain, or description term.",
+                Text = "Try a setting name or text from its identifier and description.",
                 Foreground = (Brush)FindResource("BrushTextMuted"),
                 Margin = new Thickness(10, 8, 10, 8),
                 TextWrapping = TextWrapping.Wrap

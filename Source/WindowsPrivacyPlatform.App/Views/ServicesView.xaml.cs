@@ -24,7 +24,7 @@ public partial class ServicesView : UserControl
         var visible = ServiceInspection.Apply(_services, filter);
         ServiceList.ItemsSource = visible.Select(service => new ServiceRow(service)).ToList();
         var flagged = visible.Count(service => ServiceInspection.Classify(service) != ServiceEvidenceState.Normal);
-        SubtitleText.Text = $"{visible.Count:N0} of {_services.Count:N0} visible · {flagged:N0} need review";
+        SubtitleText.Text = $"Showing {visible.Count:N0} of {_services.Count:N0} services. {flagged:N0} need review.";
     }
 
     private static string Selected(ComboBox box) => (box.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "All";

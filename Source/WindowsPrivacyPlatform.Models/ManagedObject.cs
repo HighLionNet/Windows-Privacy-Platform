@@ -6,7 +6,7 @@ namespace WindowsPrivacyPlatform.Models;
 /// Conceptual separation:
 /// - Definition fields come from the static catalog.
 /// - Observation holds live discovered values after binding.
-/// - WritableTarget (optional) is the ONLY authorization for Admin mode.
+/// - WritableTarget (optional) is the ONLY authorization for Administrator mode.
 /// - Absence of WritableTarget means the setting is observation-only.
 /// </summary>
 public class ManagedObject
@@ -105,7 +105,7 @@ public class ManagedObject
     // ========== WRITE AUTHORIZATION (explicit, deny-by-default) ==========
 
     /// <summary>
-    /// When non-null and complete, this setting may be changed under Admin mode.
+    /// When non-null and complete, this setting may be changed under Administrator mode.
     /// When null, modification is refused regardless of DiscoveryMethod or Observation paths.
     /// </summary>
     public WritableTarget? WritableTarget { get; set; }

@@ -9,10 +9,10 @@ namespace WindowsPrivacyPlatform.Tests;
 public sealed class V250AcceptanceTests
 {
     [Fact]
-    public void Public_mode_terms_are_view_only_and_admin()
+    public void Public_mode_terms_are_view_only_and_administrator()
     {
         Assert.Equal("View-only", SessionPresentation.ViewOnly);
-        Assert.Equal("Admin", SessionPresentation.Admin);
+        Assert.Equal("Administrator", SessionPresentation.Admin);
         Assert.DoesNotContain("Inspect", new[] { SessionPresentation.ViewOnly, SessionPresentation.Admin });
         Assert.DoesNotContain("Modify", new[] { SessionPresentation.ViewOnly, SessionPresentation.Admin });
     }
@@ -22,33 +22,22 @@ public sealed class V250AcceptanceTests
         Assert.True(SessionPresentation.KeepProcessOpenAfterApply);
 
     [Fact]
-    public void Credential_failure_never_authorizes_admin()
+    public void Elevated_windows_token_authorizes_administrator_mode_without_a_group_name_check()
     {
-        var elevation = new ElevationService(new NullLogger(), new RejectingCredentialPrompt());
-        Assert.Equal(AdminEntryResult.Denied, elevation.TryEnterAdminMode(null));
-        Assert.False(elevation.IsAdminAuthorized);
-    }
-
-    [Theory]
-    [InlineData("c-137", "", "c-137", ".", "local")]
-    [InlineData("CORP\\c-137", "", "c-137", "CORP", "domain")]
-    [InlineData("person@example.com", "ignored", "person@example.com", null, "upn")]
-    public void Credential_account_forms_are_normalized_for_LogonUser(string inputUser, string inputDomain,
-        string expectedUser, string? expectedDomain, string expectedForm)
-    {
-        var account = CredentialPromptService.NormalizeAccount(inputUser, inputDomain);
-        Assert.Equal(expectedUser, account.UserName);
-        Assert.Equal(expectedDomain, account.Domain);
-        Assert.Equal(expectedForm, account.Form);
+        var elevation = new ElevationService(new NullLogger(), () => true,
+            () => throw new InvalidOperationException("UAC relaunch must not run for an elevated token."));
+        Assert.Equal(AdminEntryResult.Authorized, elevation.TryEnterAdminMode(null));
+        Assert.True(elevation.IsAdminAuthorized);
     }
 
     [Fact]
-    public void Machine_qualified_credential_uses_the_local_account_database()
+    public void Unelevated_session_delegates_authorization_to_windows_uac()
     {
-        var account = CredentialPromptService.NormalizeAccount($"{Environment.MachineName}\\c-137", string.Empty);
-        Assert.Equal("c-137", account.UserName);
-        Assert.Equal(".", account.Domain);
-        Assert.Equal("local", account.Form);
+        var relaunchRequested = false;
+        var elevation = new ElevationService(new NullLogger(), () => false, () => relaunchRequested = true);
+        Assert.Equal(AdminEntryResult.RelaunchStarted, elevation.TryEnterAdminMode(null));
+        Assert.True(relaunchRequested);
+        Assert.False(elevation.IsAdminAuthorized);
     }
 
     [Fact]
@@ -130,12 +119,6 @@ public sealed class V250AcceptanceTests
             RequiresElevation = item.WritableTarget.RequiresElevation
         }
     };
-
-    private sealed class RejectingCredentialPrompt : ICredentialPromptService
-    {
-        public CredentialAuthorizationResult AuthorizeAdmin(System.Windows.Window? owner, string reason) =>
-            new(false, false, "Rejected for test.");
-    }
 
     private sealed class NullLogger : IAuditLogger
     {

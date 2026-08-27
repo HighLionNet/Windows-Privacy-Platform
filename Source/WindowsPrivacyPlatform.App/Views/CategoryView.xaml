@@ -22,13 +22,16 @@
             </ComboBox>
           </WrapPanel>
           <WrapPanel x:Name="SummaryPanel"/>
-          <TextBlock Margin="0,5,0,0" Text="Choices are staged here. Nothing changes until Apply is confirmed."
+          <TextBlock Margin="0,5,0,0" Text="Only Administrator mode can make changes. Choices remain staged until Apply is confirmed."
                      Foreground="{DynamicResource BrushTextMuted}" FontSize="11"/>
         </StackPanel>
         <Button x:Name="ApplyPendingButton" Grid.Column="1" Content="Apply (0)" Style="{StaticResource ActionPrimary}"
                 Margin="16,0,0,0" MinWidth="128" VerticalAlignment="Top" Click="ApplyPending_Click" IsEnabled="False"/>
       </Grid>
     </Border>
+    <Grid Style="{StaticResource ResultsDivider}">
+      <Border Width="132" Background="{DynamicResource BrushAccent}" HorizontalAlignment="Left"/>
+    </Grid>
     <TextBlock x:Name="EmptyText" Visibility="Collapsed" Margin="4,8" Foreground="{DynamicResource BrushTextMuted}" Text="No settings match these filters."/>
     <StackPanel x:Name="SettingsList"/>
   </StackPanel>

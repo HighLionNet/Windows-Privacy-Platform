@@ -28,7 +28,7 @@ public static class CommandLinePolicy
             var argument = arguments[index];
             if (argument.Equals("--authorize-modify", StringComparison.OrdinalIgnoreCase))
             {
-                if (admin) return Fail("Duplicate Admin authorization marker.", out parsed, out error);
+                if (admin) return Fail("Duplicate Administrator authorization marker.", out parsed, out error);
                 admin = true;
             }
             else if (argument.Equals("--initiating-sid", StringComparison.OrdinalIgnoreCase))

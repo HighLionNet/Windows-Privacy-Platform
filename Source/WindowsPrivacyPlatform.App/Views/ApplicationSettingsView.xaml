@@ -5,7 +5,7 @@
   <StackPanel MaxWidth="1180" HorizontalAlignment="Stretch">
     <TextBlock Text="CONSOLE CONFIGURATION / LOCAL ONLY" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushAccentCyan}" />
     <TextBlock Text="App Settings" Style="{StaticResource SectionTitle}" />
-    <TextBlock Text="Session, appearance, scanning, and local integrity." Style="{StaticResource SectionSubtitle}" />
+    <TextBlock Text="Configure this local console and review its integrity." Style="{StaticResource SectionSubtitle}" />
     <Border Style="{StaticResource HeaderRule}" />
 
     <Border Style="{StaticResource PropertySheet}">
@@ -16,18 +16,18 @@
           <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
           <TextBlock Text="Default dialog highlight" Style="{StaticResource PropLabel}" />
           <ComboBox x:Name="DefaultModeBox" Grid.Column="1" Height="34" MaxWidth="380" HorizontalAlignment="Left" SelectionChanged="PreferenceChanged">
-            <ComboBoxItem Content="Ask every time (Admin recommended)" Tag="AskEveryTime" />
-            <ComboBoxItem Content="Admin" Tag="Admin" />
+            <ComboBoxItem Content="Ask every time (Administrator recommended)" Tag="AskEveryTime" />
+            <ComboBoxItem Content="Administrator" Tag="Admin" />
             <ComboBoxItem Content="View-only" Tag="ViewOnly" />
           </ComboBox>
-          <TextBlock Grid.Row="1" Text="Admin session lifetime" Style="{StaticResource PropLabel}" />
+          <TextBlock Grid.Row="1" Text="Administrator session lifetime" Style="{StaticResource PropLabel}" />
           <ComboBox x:Name="SessionLifetimeBox" Grid.Row="1" Grid.Column="1" Height="34" MaxWidth="380" HorizontalAlignment="Left" SelectionChanged="PreferenceChanged">
             <ComboBoxItem Content="Until I close the app or change mode" Tag="0" />
             <ComboBoxItem Content="15 minutes" Tag="15"/><ComboBoxItem Content="30 minutes" Tag="30"/>
             <ComboBoxItem Content="60 minutes" Tag="60"/><ComboBoxItem Content="240 minutes" Tag="240"/>
           </ComboBox>
           <TextBlock Grid.Row="2" Text="Mode changes" Style="{StaticResource PropLabel}" />
-          <CheckBox Grid.Row="2" Grid.Column="1" Content="Require Windows credential verification" IsChecked="True" IsEnabled="False" VerticalAlignment="Center" />
+          <CheckBox Grid.Row="2" Grid.Column="1" Content="Use Windows UAC for Administrator mode" IsChecked="True" IsEnabled="False" VerticalAlignment="Center" />
           <TextBlock Grid.Row="3" Text="Applying changes" Style="{StaticResource PropLabel}" />
           <CheckBox Grid.Row="3" Grid.Column="1" Content="Require confirmation before each Apply" IsChecked="True" IsEnabled="False" VerticalAlignment="Center" />
         </Grid>
@@ -68,7 +68,7 @@
       <StackPanel>
         <Border Style="{StaticResource PropertySheetHeader}"><TextBlock Text="Privacy of this app" FontWeight="SemiBold" /></Border>
         <StackPanel Margin="12,9,12,11">
-          <TextBlock Text="No cloud account, telemetry, crash analytics, background service, or network listener is used." TextWrapping="Wrap" />
+          <TextBlock Text="The app stays local. It does not sign in to cloud services or transmit background telemetry." TextWrapping="Wrap" />
           <TextBlock Text="Audit and authorization records stay under your local Windows profile and rotate at 2 MiB per log." Margin="0,5,0,10" TextWrapping="Wrap" Foreground="{DynamicResource BrushTextSecondary}" />
           <Button Content="Open local data folder" Style="{StaticResource ActionNeutral}" HorizontalAlignment="Left" Click="OpenDataFolder_Click" />
         </StackPanel>

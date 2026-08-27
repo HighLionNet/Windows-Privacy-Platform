@@ -4,7 +4,7 @@
   <StackPanel>
     <TextBlock Text="DEVICE POSTURE / LOCAL XDR" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushAccentCyan}"/>
     <TextBlock Text="Overview" Style="{StaticResource SectionTitle}" Margin="0,3,0,0"/>
-    <TextBlock Text="Identity, protection telemetry, and actionable configuration signals for this endpoint." Style="{StaticResource SectionSubtitle}"/>
+    <TextBlock Text="Review this endpoint’s identity alongside its protection posture and actionable signals." Style="{StaticResource SectionSubtitle}"/>
     <Border Style="{StaticResource HeaderRule}"/>
 
     <Border Style="{StaticResource PropertySheet}" Margin="0,0,0,14" BorderThickness="4,1,1,1" BorderBrush="{DynamicResource BrushAccent}">

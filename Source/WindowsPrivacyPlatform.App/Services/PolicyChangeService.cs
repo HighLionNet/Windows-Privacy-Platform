@@ -101,8 +101,8 @@ public sealed class PolicyChangeService
 
         if (!_elevation.IsAdminAuthorized)
         {
-            message = "Admin mode is not authorized for this session.";
-            _log.Change("PolicyChangeService", $"DENIED {mo.ObjectId}: Admin mode not authorized.");
+            message = "Administrator mode is not authorized for this session.";
+            _log.Change("PolicyChangeService", $"DENIED {mo.ObjectId}: Administrator mode not authorized.");
             return false;
         }
 
@@ -326,7 +326,7 @@ public sealed class PolicyChangeService
         error = string.Empty;
         if (!_elevation.IsAdminAuthorized)
         {
-            error = "Admin mode is not authorized for this session.";
+            error = "Administrator mode is not authorized for this session.";
             return false;
         }
         if (!ManagedObjectCatalog.HasValidAuthorizationHash())
@@ -354,7 +354,7 @@ public sealed class PolicyChangeService
         }
         if (target.RequiresElevation && !ElevationService.IsProcessElevated())
         {
-            error = "This batch requires an elevated Admin session.";
+            error = "This batch requires an elevated Administrator session.";
             return false;
         }
         if (string.IsNullOrWhiteSpace(rawValue) && !target.SupportsDeletion)

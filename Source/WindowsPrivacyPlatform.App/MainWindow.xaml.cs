@@ -94,8 +94,8 @@ public partial class MainWindow : Window
         {
             if (!_elevation.AuthorizeRelaunchedSession(startup.InitiatingSid))
             {
-                MessageBox.Show(this, "The Admin relaunch marker was not accepted. No write authority was granted.",
-                    "Admin authorization failed", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(this, "The Administrator relaunch marker was not accepted. No write authority was granted.",
+                    "Administrator authorization failed", MessageBoxButton.OK, MessageBoxImage.Error);
                 Close();
                 return false;
             }
@@ -155,7 +155,7 @@ public partial class MainWindow : Window
                 return false;
             }
 
-            MessageBox.Show(this, _elevation.LastError, "Admin not authorized",
+            MessageBox.Show(this, _elevation.LastError, "Administrator not authorized",
                 MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
@@ -180,7 +180,7 @@ public partial class MainWindow : Window
     {
         SetContent(new TextBlock
         {
-            Text = "Scan this PC to review local privacy and security evidence.\n\nView-only never changes Windows. Admin allows only catalog-approved changes after confirmation and verified read-back.",
+            Text = "Scan this PC to review local privacy and security evidence.\n\nView-only never changes Windows. Only Administrator mode can make catalog-approved changes, which require confirmation and verified read-back.",
             FontSize = 14,
             Foreground = (Brush)FindResource("BrushTextSecondary"),
             TextWrapping = TextWrapping.Wrap,
@@ -391,7 +391,7 @@ public partial class MainWindow : Window
         ModeCombo.SelectedIndex = admin ? 1 : 0;
         _modeChangeInProgress = false;
         StatusText.Text = admin
-            ? "Admin authorized. Changes remain deny-by-default and require confirmation."
+            ? "Administrator mode authorized. Changes remain deny-by-default and require confirmation."
             : "View-only mode. Scanning is available; Windows settings cannot be changed.";
         _reportedExpiredSession = false;
     }
@@ -451,7 +451,7 @@ public partial class MainWindow : Window
         var result = _elevation.TryEnterAdminMode(this);
         if (result == AdminEntryResult.Authorized)
         {
-            StatusText.Text = "Admin authorization renewed.";
+            StatusText.Text = "Administrator authorization renewed.";
             _reportedExpiredSession = false;
             Navigate(_currentNav);
         }
@@ -463,7 +463,7 @@ public partial class MainWindow : Window
     {
         if (ModeCombo.SelectedIndex != 1 || _elevation.IsAdminAuthorized || _reportedExpiredSession) return;
         _reportedExpiredSession = true;
-        StatusText.Text = "Admin authorization expired. Open Mode to authorize the next Admin action.";
+        StatusText.Text = "Administrator authorization expired. Open Mode before the next protected action.";
         Navigate(_currentNav);
     }
 
@@ -471,8 +471,8 @@ public partial class MainWindow : Window
     {
         if (!SessionPresentation.KeepProcessOpenAfterApply)
             throw new InvalidOperationException("The product contract requires Apply to keep the session open.");
-        StatusText.Text = "Apply complete. Evidence refreshed; Admin mode remains open.";
-        _log.Change("MainWindow", "Apply completed without ending the Admin session.");
+        StatusText.Text = "Apply complete. Evidence refreshed; Administrator mode remains open.";
+        _log.Change("MainWindow", "Apply completed without ending the Administrator session.");
     }
 
     private void PreferencesChanged()

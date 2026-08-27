@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Windows;
+using Microsoft.Win32.SafeHandles;
 using WindowsPrivacyPlatform.Logging;
 
 namespace WindowsPrivacyPlatform.App.Services;
@@ -15,20 +16,27 @@ public enum AdminEntryResult
     Denied
 }
 
-/// <summary>Credential authorization and operating-system token authority for Admin mode.</summary>
+/// <summary>Windows UAC authorization and operating-system token authority for Administrator mode.</summary>
 public sealed class ElevationService
 {
     private readonly IAuditLogger _log;
-    private readonly ICredentialPromptService _credentials;
+    private readonly Func<bool> _isElevated;
+    private readonly Func<bool> _launchElevated;
     private bool _adminAuthorized;
     private DateTime _authorizedUtc;
     private int _sessionMinutes;
     private string _initiatingSid;
 
-    public ElevationService(IAuditLogger log, ICredentialPromptService? credentials = null)
+    public ElevationService(IAuditLogger log)
+        : this(log, IsProcessElevated, null)
+    {
+    }
+
+    internal ElevationService(IAuditLogger log, Func<bool> isElevated, Func<bool>? launchElevated)
     {
         _log = log ?? throw new ArgumentNullException(nameof(log));
-        _credentials = credentials ?? new CredentialPromptService(log);
+        _isElevated = isElevated ?? throw new ArgumentNullException(nameof(isElevated));
+        _launchElevated = launchElevated ?? TryRelaunchElevated;
         _initiatingSid = CurrentSid();
     }
 
@@ -36,11 +44,11 @@ public sealed class ElevationService
     {
         get
         {
-            if (!_adminAuthorized || !IsProcessElevated()) return false;
+            if (!_adminAuthorized || !_isElevated()) return false;
             if (_sessionMinutes == 0 || DateTime.UtcNow - _authorizedUtc < TimeSpan.FromMinutes(_sessionMinutes))
                 return true;
             _adminAuthorized = false;
-            _log.Auth("ElevationService", "Admin authorization expired by the configured session lifetime.");
+            _log.Auth("ElevationService", "Administrator authorization expired by the configured session lifetime.");
             return false;
         }
     }
@@ -55,7 +63,10 @@ public sealed class ElevationService
         try
         {
             using var identity = WindowsIdentity.GetCurrent();
-            return new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator);
+            if (!GetTokenInformation(identity.AccessToken, TokenElevationInformationClass, out var elevation,
+                    Marshal.SizeOf<TokenElevationInfo>(), out _))
+                return false;
+            return elevation.TokenIsElevated != 0;
         }
         catch
         {
@@ -65,57 +76,50 @@ public sealed class ElevationService
 
     public AdminEntryResult TryEnterAdminMode(Window? owner)
     {
+        _ = owner;
         LastError = string.Empty;
         if (IsAdminAuthorized) return AdminEntryResult.Authorized;
 
-        _log.Auth("ElevationService", $"Admin mode request. Elevated={IsProcessElevated()}.");
-        var authorization = _credentials.AuthorizeAdmin(owner,
-            "Enter an administrator password to authorize Admin mode for Windows Privacy Platform. " +
-            "The password is verified locally by Windows and is not stored.");
-        if (!authorization.Authorized)
+        var elevated = _isElevated();
+        _log.Auth("ElevationService", $"Administrator mode request. Elevated={elevated}.");
+        if (!elevated)
         {
-            LastError = authorization.Error;
+            if (_launchElevated()) return AdminEntryResult.RelaunchStarted;
+            LastError = "Windows UAC elevation was cancelled or could not start.";
             return AdminEntryResult.Denied;
         }
 
         _initiatingSid = CurrentSid();
-        if (!IsProcessElevated())
-        {
-            if (TryRelaunchElevated()) return AdminEntryResult.RelaunchStarted;
-            LastError = "Windows elevation was cancelled or could not start.";
-            return AdminEntryResult.Denied;
-        }
-
-        AuthorizeInMemory("Admin mode authorized after local password verification.");
+        AuthorizeInMemory("Administrator mode authorized from the Windows-elevated process token.");
         return AdminEntryResult.Authorized;
     }
 
     public bool ConfirmAdminModeExit(Window? owner)
     {
-        var result = _credentials.AuthorizeAdmin(owner,
-            "Confirm your administrator password to leave Admin mode. The app will restart in View-only so the elevated token is dropped.");
-        LastError = result.Error;
-        return result.Authorized;
+        return MessageBox.Show(owner,
+            "Leave Administrator mode? The app will restart in View-only and drop its elevated token.",
+            "Leave Administrator mode", MessageBoxButton.YesNo, MessageBoxImage.Question,
+            MessageBoxResult.No) == MessageBoxResult.Yes;
     }
 
     public void ExitAdminMode()
     {
         _adminAuthorized = false;
         _authorizedUtc = default;
-        _log.Auth("ElevationService", "Admin authorization cleared from memory.");
+        _log.Auth("ElevationService", "Administrator authorization cleared from memory.");
     }
 
     public bool AuthorizeRelaunchedSession(string? initiatingSid)
     {
-        if (!IsProcessElevated() || string.IsNullOrWhiteSpace(initiatingSid) || initiatingSid.Length > 184 ||
+        if (!_isElevated() || string.IsNullOrWhiteSpace(initiatingSid) || initiatingSid.Length > 184 ||
             !initiatingSid.StartsWith("S-1-", StringComparison.OrdinalIgnoreCase))
         {
-            _log.Auth("ElevationService", "Admin relaunch marker rejected.");
+            _log.Auth("ElevationService", "Administrator relaunch marker rejected.");
             return false;
         }
 
         _initiatingSid = initiatingSid;
-        AuthorizeInMemory("Admin mode inherited from the parent process after CredUI and UAC completed.");
+        AuthorizeInMemory("Administrator mode inherited after Windows UAC completed.");
         return true;
     }
 
@@ -240,4 +244,17 @@ public sealed class ElevationService
             return string.Empty;
         }
     }
+
+    private const int TokenElevationInformationClass = 20;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct TokenElevationInfo
+    {
+        public int TokenIsElevated;
+    }
+
+    [DllImport("advapi32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetTokenInformation(SafeAccessTokenHandle tokenHandle, int tokenInformationClass,
+        out TokenElevationInfo tokenInformation, int tokenInformationLength, out int returnLength);
 }
