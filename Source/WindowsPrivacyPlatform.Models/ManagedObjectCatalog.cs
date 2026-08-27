@@ -19,6 +19,10 @@ public static class ManagedObjectCatalog
     public static IReadOnlyList<ManagedObject> FirewallSettings { get; } = Finalize(CreateFirewallBatch());
     public static IReadOnlyList<ManagedObject> All { get; } =
         PrivacySettings.Concat(PolicySettings).Concat(FirewallSettings).ToList().AsReadOnly();
+    public static string AuthorizationHash { get; } = AuthorizationTableIntegrity.Compute(All);
+
+    public static bool HasValidAuthorizationHash() =>
+        AuthorizationTableIntegrity.Matches(AuthorizationHash, All);
 
     /// <summary>Revalidates a runtime object against the immutable catalog authorization.</summary>
     public static bool IsAuthorizedWriteTarget(ManagedObject candidate)

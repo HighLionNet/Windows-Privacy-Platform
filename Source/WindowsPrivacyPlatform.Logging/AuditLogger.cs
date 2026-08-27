@@ -1,6 +1,8 @@
 // Source/WindowsPrivacyPlatform.Logging/AuditLogger.cs
 using System;
 using System.IO;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace WindowsPrivacyPlatform.Logging
@@ -17,6 +19,7 @@ namespace WindowsPrivacyPlatform.Logging
         private readonly string _authLogPath;
         private readonly string _changeLogPath;
         private readonly bool _fileLoggingEnabled;
+        private readonly Dictionary<string, string> _previousHashes = new(StringComparer.OrdinalIgnoreCase);
         private const long MaxLogBytes = 2 * 1024 * 1024;
 
         public AuditLogger()
@@ -89,11 +92,58 @@ namespace WindowsPrivacyPlatform.Logging
             }
         }
 
-        private static void AppendBounded(string path, string line)
+        private void AppendBounded(string path, string line)
         {
             if (File.Exists(path) && new FileInfo(path).Length >= MaxLogBytes)
                 File.Move(path, path + ".previous", overwrite: true);
-            File.AppendAllText(path, line + Environment.NewLine, System.Text.Encoding.UTF8);
+            if (!_previousHashes.TryGetValue(path, out var previous))
+                previous = ReadLastHash(path) ?? new string('0', 64);
+            var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(previous + "|" + line)));
+            var chained = $"{line} [PREV:{previous}] [HASH:{hash}]";
+            File.AppendAllText(path, chained + Environment.NewLine, new UTF8Encoding(false));
+            _previousHashes[path] = hash;
+        }
+
+        private static string? ReadLastHash(string path)
+        {
+            if (!File.Exists(path)) return null;
+            try
+            {
+                using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                if (stream.Length > MaxLogBytes) return null;
+                using var reader = new StreamReader(stream, Encoding.UTF8, true, 4096, leaveOpen: false);
+                string? line;
+                string? last = null;
+                while ((line = reader.ReadLine()) is not null) last = line;
+                if (last is null) return null;
+                var marker = last.LastIndexOf("[HASH:", StringComparison.Ordinal);
+                if (marker < 0 || marker + 71 > last.Length) return null;
+                var candidate = last.Substring(marker + 6, 64);
+                return candidate.All(Uri.IsHexDigit) ? candidate.ToUpperInvariant() : null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        public static bool VerifyHashChain(IEnumerable<string> lines)
+        {
+            var expectedPrevious = new string('0', 64);
+            foreach (var fullLine in lines)
+            {
+                var previousMarker = fullLine.LastIndexOf(" [PREV:", StringComparison.Ordinal);
+                var hashMarker = fullLine.LastIndexOf(" [HASH:", StringComparison.Ordinal);
+                if (previousMarker < 0 || hashMarker < 0 || hashMarker <= previousMarker) return false;
+                var previous = fullLine.Substring(previousMarker + 7, 64);
+                var actual = fullLine.Substring(hashMarker + 7, 64);
+                if (!previous.Equals(expectedPrevious, StringComparison.OrdinalIgnoreCase)) return false;
+                var payload = fullLine[..previousMarker];
+                var computed = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(previous + "|" + payload)));
+                if (!computed.Equals(actual, StringComparison.OrdinalIgnoreCase)) return false;
+                expectedPrevious = actual;
+            }
+            return true;
         }
 
         public static string SanitizeField(string value, int maxLength = 8192)

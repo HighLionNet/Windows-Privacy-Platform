@@ -2,51 +2,61 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" HorizontalContentAlignment="Stretch">
   <StackPanel>
-    <TextBlock Text="Privacy &amp; Security Overview" Style="{StaticResource SectionTitle}" />
-    <TextBlock Text="High-impact observations from configured policies. Unknown values are never counted as safe."
-               Style="{StaticResource SectionSubtitle}" />
-    <Border Style="{StaticResource HeaderRule}" />
-
-    <UniformGrid Columns="3" Rows="1" Margin="0,0,0,14">
-      <Border Style="{StaticResource Card}" Margin="0,0,8,0" Background="{StaticResource BrushConflictSoft}"
-              BorderBrush="{StaticResource BrushConflict}" BorderThickness="1,1,1,3">
-        <StackPanel><TextBlock Text="HIGH ATTENTION" FontSize="10" Foreground="{StaticResource BrushConflict}" FontWeight="SemiBold" />
-          <TextBlock x:Name="HighCountText" FontSize="28" FontWeight="SemiBold" Margin="0,2,0,0" /></StackPanel>
-      </Border>
-      <Border Style="{StaticResource Card}" Margin="4,0,4,0" Background="{StaticResource BrushWarningSoft}"
-              BorderBrush="{StaticResource BrushWarning}" BorderThickness="1,1,1,3">
-        <StackPanel><TextBlock Text="REVIEW" FontSize="10" Foreground="{StaticResource BrushWarning}" FontWeight="SemiBold" />
-          <TextBlock x:Name="ReviewCountText" FontSize="28" FontWeight="SemiBold" Margin="0,2,0,0" /></StackPanel>
-      </Border>
-      <Border Style="{StaticResource Card}" Margin="8,0,0,0" Background="{StaticResource BrushSuccessSoft}"
-              BorderBrush="{StaticResource BrushSuccess}" BorderThickness="1,1,1,3">
-        <StackPanel><TextBlock Text="PROTECTIONS OBSERVED" TextWrapping="Wrap" FontSize="10" Foreground="{StaticResource BrushSuccess}" FontWeight="SemiBold" />
-          <TextBlock x:Name="ProtectedCountText" FontSize="28" FontWeight="SemiBold" Margin="0,2,0,0" /></StackPanel>
-      </Border>
-    </UniformGrid>
+    <TextBlock Text="Overview" Style="{StaticResource SectionTitle}"/>
+    <TextBlock Text="This PC, its protections, and what needs attention." Style="{StaticResource SectionSubtitle}"/>
+    <Border Style="{StaticResource HeaderRule}"/>
 
     <Border Style="{StaticResource PropertySheet}" Margin="0,0,0,14">
       <StackPanel>
-        <Border Style="{StaticResource PropertySheetHeader}"><TextBlock Text="Attention priorities" FontWeight="SemiBold" /></Border>
-        <StackPanel x:Name="FindingsList" Margin="0,2,0,2" />
-      </StackPanel>
-    </Border>
-
-    <Border Style="{StaticResource PropertySheet}" Margin="0,0,0,12">
-      <StackPanel>
-        <Border Style="{StaticResource PropertySheetHeader}"><TextBlock Text="Windows security essentials" FontWeight="SemiBold" /></Border>
-        <Grid Margin="0,4,0,7">
-          <Grid.ColumnDefinitions><ColumnDefinition Width="145" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-          <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-          <TextBlock Text="Secure Boot" Style="{StaticResource SheetLabel}" /><TextBlock x:Name="SecureBootText" Grid.Column="1" Style="{StaticResource SheetValue}" />
-          <TextBlock Grid.Row="1" Text="TPM" Style="{StaticResource SheetLabel}" /><TextBlock x:Name="TpmText" Grid.Row="1" Grid.Column="1" Style="{StaticResource SheetValue}" />
-          <TextBlock Grid.Row="2" Text="BitLocker" Style="{StaticResource SheetLabel}" /><TextBlock x:Name="BitLockerText" Grid.Row="2" Grid.Column="1" Style="{StaticResource SheetValue}" />
-          <TextBlock Grid.Row="3" Text="Firewall" Style="{StaticResource SheetLabel}" /><TextBlock x:Name="FirewallText" Grid.Row="3" Grid.Column="1" Style="{StaticResource SheetValue}" />
-          <TextBlock Grid.Row="4" Text="Defender" Style="{StaticResource SheetLabel}" /><TextBlock x:Name="DefenderText" Grid.Row="4" Grid.Column="1" Style="{StaticResource SheetValue}" />
+        <Border Style="{StaticResource PropertySheetHeader}"><TextBlock Text="PC and user" FontWeight="SemiBold"/></Border>
+        <Grid Margin="12,7,12,10">
+          <Grid.ColumnDefinitions><ColumnDefinition Width="130"/><ColumnDefinition Width="*"/><ColumnDefinition Width="130"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+          <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+          <TextBlock Text="Computer" Style="{StaticResource PropLabel}"/><TextBlock x:Name="ComputerText" Grid.Column="1" Style="{StaticResource PropValue}" FontWeight="SemiBold"/>
+          <TextBlock Grid.Column="2" Text="Signed-in user" Style="{StaticResource PropLabel}"/><TextBlock x:Name="UserText" Grid.Column="3" Style="{StaticResource PropValue}" FontWeight="SemiBold"/>
+          <TextBlock Grid.Row="1" Text="Account" Style="{StaticResource PropLabel}"/><TextBlock x:Name="AccountText" Grid.Row="1" Grid.Column="1" Style="{StaticResource PropValue}"/>
+          <TextBlock Grid.Row="1" Grid.Column="2" Text="Windows" Style="{StaticResource PropLabel}"/><TextBlock x:Name="WindowsText" Grid.Row="1" Grid.Column="3" Style="{StaticResource PropValue}"/>
+          <TextBlock Grid.Row="2" Text="Architecture" Style="{StaticResource PropLabel}"/><TextBlock x:Name="ArchitectureText" Grid.Row="2" Grid.Column="1" Style="{StaticResource PropValue}"/>
+          <TextBlock Grid.Row="2" Grid.Column="2" Text="Hardware" Style="{StaticResource PropLabel}"/><TextBlock x:Name="HardwareText" Grid.Row="2" Grid.Column="3" Style="{StaticResource PropValue}"/>
+          <TextBlock Grid.Row="3" Text="Processor" Style="{StaticResource PropLabel}"/><TextBlock x:Name="ProcessorText" Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="3" Style="{StaticResource PropValue}"/>
+          <TextBlock Grid.Row="4" Text="Memory" Style="{StaticResource PropLabel}"/><TextBlock x:Name="MemoryText" Grid.Row="4" Grid.Column="1" Style="{StaticResource PropValue}"/>
+          <TextBlock Grid.Row="4" Grid.Column="2" Text="Domain / Entra" Style="{StaticResource PropLabel}"/><TextBlock x:Name="JoinText" Grid.Row="4" Grid.Column="3" Style="{StaticResource PropValue}"/>
+          <TextBlock Grid.Row="5" Text="Secure Boot" Style="{StaticResource PropLabel}"/><TextBlock x:Name="SecureBootText" Grid.Row="5" Grid.Column="1" Style="{StaticResource PropValue}"/>
+          <TextBlock Grid.Row="5" Grid.Column="2" Text="TPM" Style="{StaticResource PropLabel}"/><TextBlock x:Name="TpmText" Grid.Row="5" Grid.Column="3" Style="{StaticResource PropValue}"/>
+          <TextBlock Grid.Row="6" Text="Encryption" Style="{StaticResource PropLabel}"/><TextBlock x:Name="BitLockerText" Grid.Row="6" Grid.Column="1" Style="{StaticResource PropValue}"/>
+          <TextBlock Grid.Row="6" Grid.Column="2" Text="Protection" Style="{StaticResource PropLabel}"/><TextBlock x:Name="ProtectionText" Grid.Row="6" Grid.Column="3" Style="{StaticResource PropValue}"/>
+          <TextBlock Grid.Row="7" Text="Last scan" Style="{StaticResource PropLabel}"/><TextBlock x:Name="LastScanText" Grid.Row="7" Grid.Column="1" Grid.ColumnSpan="3" Style="{StaticResource PropValue}"/>
         </Grid>
       </StackPanel>
     </Border>
 
-    <TextBlock x:Name="PlatformText" Margin="2,2,2,0" FontSize="11" Foreground="{StaticResource BrushTextMuted}" />
+    <Grid Margin="0,0,0,14">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+      <Button Style="{StaticResource ActionNeutral}" Height="100" Background="{DynamicResource BrushConflictSoft}" BorderBrush="{DynamicResource BrushConflict}" Click="HighTile_Click">
+        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+          <TextBlock Text="High attention" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" TextWrapping="Wrap"/>
+          <TextBlock x:Name="HighCountText" Grid.Column="1" FontSize="34" FontWeight="Bold" Margin="12,0,0,0" VerticalAlignment="Center"/>
+        </Grid>
+      </Button>
+      <Button Grid.Column="2" Style="{StaticResource ActionNeutral}" Height="100" Background="{DynamicResource BrushWarningSoft}" BorderBrush="{DynamicResource BrushWarning}" Click="ReviewTile_Click">
+        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+          <TextBlock Text="Review" FontSize="15" FontWeight="Bold" VerticalAlignment="Center"/>
+          <TextBlock x:Name="ReviewCountText" Grid.Column="1" FontSize="34" FontWeight="Bold" Margin="12,0,0,0" VerticalAlignment="Center"/>
+        </Grid>
+      </Button>
+      <Button Grid.Column="4" Style="{StaticResource ActionNeutral}" Height="100" Background="{DynamicResource BrushSuccessSoft}" BorderBrush="{DynamicResource BrushSuccess}" Click="ProtectionsTile_Click">
+        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+          <TextBlock Text="Protections" FontSize="15" FontWeight="Bold" VerticalAlignment="Center" TextWrapping="Wrap"/>
+          <TextBlock x:Name="ProtectedCountText" Grid.Column="1" FontSize="34" FontWeight="Bold" Margin="12,0,0,0" VerticalAlignment="Center"/>
+        </Grid>
+      </Button>
+    </Grid>
+
+    <Border Style="{StaticResource PropertySheet}">
+      <StackPanel>
+        <Border Style="{StaticResource PropertySheetHeader}"><TextBlock Text="High-risk findings" FontWeight="SemiBold"/></Border>
+        <StackPanel x:Name="FindingsList" Margin="0,2,0,2"/>
+      </StackPanel>
+    </Border>
   </StackPanel>
 </UserControl>

@@ -16,21 +16,27 @@ public partial class SettingDetailPage : UserControl
             : detail.DomainPath;
         ObservedText.Text = detail.CurrentStateDisplay ?? "Unknown";
         EffectiveText.Text = detail.EffectiveValueDisplay ?? "Unknown";
-        SourceText.Text = detail.EffectiveSourceDisplay ?? "Unknown";
+        SourceText.Text = TechnicalLocationFormatter.DirectPath(detail.TechnicalLocation);
         if (detail.HasConflict) EffectiveText.Foreground = (Brush)FindResource("BrushConflict");
 
-        SummaryText.Text = string.IsNullOrWhiteSpace(detail.Narrative.Summary)
-            ? detail.Explanation.WhatIsIt
-            : detail.Narrative.Summary;
         TechnicalLocationText.Text = TechnicalLocationFormatter.DirectPath(detail.TechnicalLocation);
         WhatText.Text = detail.Explanation.WhatIsIt;
+        DoesText.Text = detail.Narrative.Mechanics;
         WhyText.Text = detail.Explanation.WhyItMatters;
-        GuidanceText.Text = detail.Explanation.DecisionGuidance;
-        TradeoffsText.Text = $"Privacy: {detail.Explanation.PrivacyImpactText}\nSecurity: {detail.Explanation.SecurityImpactText}\nSide effects: {detail.Explanation.SideEffects}";
+        GuidanceText.Text = detail.Explanation.DecisionGuidance + " " + detail.Explanation.UserImpact;
+        TradeoffsText.Text = string.Join("\n", new[]
+        {
+            detail.Explanation.SideEffects,
+            detail.Explanation.Exceptions,
+            detail.Explanation.CommonMisconceptions
+        }.Where(value => !string.IsNullOrWhiteSpace(value)));
         RestartText.Text = detail.Applicability == ApplicabilityState.Applicable
             ? $"Supported on this scanned device. Restart expectation: {detail.RestartExpectation}."
             : detail.ApplicabilityReason;
-        VerificationText.Text = $"Object ID: {detail.ObjectId}\nEvidence confidence: {detail.Confidence}\nResolution: {detail.ResolutionReason ?? "No additional resolution explanation."}";
+        VerificationText.Text = $"Effective source: {detail.EffectiveSourceDisplay ?? "Unknown"}\n" +
+                                $"Evidence confidence: {detail.Confidence}\n" +
+                                $"Resolution: {detail.ResolutionReason ?? "No additional resolution explanation."}\n" +
+                                $"Catalog ID: {detail.ObjectId}";
 
         if (detail.Bucket == CatalogBucket.SystemInventory)
         {

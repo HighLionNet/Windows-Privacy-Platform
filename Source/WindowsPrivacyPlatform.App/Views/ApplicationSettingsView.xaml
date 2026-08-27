@@ -1,0 +1,92 @@
+<UserControl x:Class="WindowsPrivacyPlatform.App.Views.ApplicationSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             HorizontalContentAlignment="Stretch">
+  <StackPanel MaxWidth="1180" HorizontalAlignment="Stretch">
+    <TextBlock Text="App Settings" Style="{StaticResource SectionTitle}" />
+    <TextBlock Text="Session, appearance, scanning, and local integrity." Style="{StaticResource SectionSubtitle}" />
+    <Border Style="{StaticResource HeaderRule}" />
+
+    <Border Style="{StaticResource PropertySheet}">
+      <StackPanel>
+        <Border Style="{StaticResource PropertySheetHeader}"><TextBlock Text="Session and authorization" FontWeight="SemiBold" /></Border>
+        <Grid Margin="12,8,12,10">
+          <Grid.ColumnDefinitions><ColumnDefinition Width="240"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+          <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+          <TextBlock Text="Default dialog highlight" Style="{StaticResource PropLabel}" />
+          <ComboBox x:Name="DefaultModeBox" Grid.Column="1" Height="34" MaxWidth="380" HorizontalAlignment="Left" SelectionChanged="PreferenceChanged">
+            <ComboBoxItem Content="Ask every time (Admin recommended)" Tag="AskEveryTime" />
+            <ComboBoxItem Content="Admin" Tag="Admin" />
+            <ComboBoxItem Content="View-only" Tag="ViewOnly" />
+          </ComboBox>
+          <TextBlock Grid.Row="1" Text="Admin session lifetime" Style="{StaticResource PropLabel}" />
+          <ComboBox x:Name="SessionLifetimeBox" Grid.Row="1" Grid.Column="1" Height="34" MaxWidth="380" HorizontalAlignment="Left" SelectionChanged="PreferenceChanged">
+            <ComboBoxItem Content="Until I close the app or change mode" Tag="0" />
+            <ComboBoxItem Content="15 minutes" Tag="15"/><ComboBoxItem Content="30 minutes" Tag="30"/>
+            <ComboBoxItem Content="60 minutes" Tag="60"/><ComboBoxItem Content="240 minutes" Tag="240"/>
+          </ComboBox>
+          <TextBlock Grid.Row="2" Text="Mode changes" Style="{StaticResource PropLabel}" />
+          <CheckBox Grid.Row="2" Grid.Column="1" Content="Require Windows credential verification" IsChecked="True" IsEnabled="False" VerticalAlignment="Center" />
+          <TextBlock Grid.Row="3" Text="Applying changes" Style="{StaticResource PropLabel}" />
+          <CheckBox Grid.Row="3" Grid.Column="1" Content="Require confirmation before each Apply" IsChecked="True" IsEnabled="False" VerticalAlignment="Center" />
+        </Grid>
+      </StackPanel>
+    </Border>
+
+    <Border Style="{StaticResource PropertySheet}">
+      <StackPanel>
+        <Border Style="{StaticResource PropertySheetHeader}"><TextBlock Text="Appearance" FontWeight="SemiBold" /></Border>
+        <Grid Margin="12,8,12,10">
+          <Grid.ColumnDefinitions><ColumnDefinition Width="240"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+          <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+          <TextBlock Text="Theme" Style="{StaticResource PropLabel}" />
+          <ComboBox x:Name="ThemeBox" Grid.Column="1" Height="34" Width="240" HorizontalAlignment="Left" SelectionChanged="ThemeChanged" />
+          <TextBlock Grid.Row="1" Text="First launch" Style="{StaticResource PropLabel}" />
+          <CheckBox x:Name="StartMaximizedBox" Grid.Row="1" Grid.Column="1" Content="Start maximized" VerticalAlignment="Center" Click="PreferenceChanged" />
+          <TextBlock Grid.Row="2" Text="Window" Style="{StaticResource PropLabel}" />
+          <CheckBox x:Name="RememberPositionBox" Grid.Row="2" Grid.Column="1" Content="Remember restored position and window state" VerticalAlignment="Center" Click="PreferenceChanged" />
+        </Grid>
+      </StackPanel>
+    </Border>
+
+    <Border Style="{StaticResource PropertySheet}">
+      <StackPanel>
+        <Border Style="{StaticResource PropertySheetHeader}"><TextBlock Text="Scanning" FontWeight="SemiBold" /></Border>
+        <Grid Margin="12,8,12,10">
+          <Grid.ColumnDefinitions><ColumnDefinition Width="240"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+          <Grid.RowDefinitions><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+          <TextBlock Text="At launch" Style="{StaticResource PropLabel}" />
+          <CheckBox x:Name="ScanOnLaunchBox" Grid.Column="1" Content="Scan this PC after choosing a mode" VerticalAlignment="Center" Click="PreferenceChanged" />
+          <TextBlock Grid.Row="1" Text="After Apply" Style="{StaticResource PropLabel}" />
+          <CheckBox Grid.Row="1" Grid.Column="1" Content="Refresh evidence after verified changes" IsChecked="True" IsEnabled="False" VerticalAlignment="Center" />
+        </Grid>
+      </StackPanel>
+    </Border>
+
+    <Border Style="{StaticResource PropertySheet}">
+      <StackPanel>
+        <Border Style="{StaticResource PropertySheetHeader}"><TextBlock Text="Privacy of this app" FontWeight="SemiBold" /></Border>
+        <StackPanel Margin="12,9,12,11">
+          <TextBlock Text="No cloud account, telemetry, crash analytics, background service, or network listener is used." TextWrapping="Wrap" />
+          <TextBlock Text="Audit and authorization records stay under your local Windows profile and rotate at 2 MiB per log." Margin="0,5,0,10" TextWrapping="Wrap" Foreground="{DynamicResource BrushTextSecondary}" />
+          <Button Content="Open local data folder" Style="{StaticResource ActionNeutral}" HorizontalAlignment="Left" Click="OpenDataFolder_Click" />
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <Border Style="{StaticResource PropertySheet}">
+      <StackPanel>
+        <Border Style="{StaticResource PropertySheetHeader}"><TextBlock Text="Integrity" FontWeight="SemiBold" /></Border>
+        <Grid Margin="12,8,12,10">
+          <Grid.ColumnDefinitions><ColumnDefinition Width="150"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+          <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+          <TextBlock Text="Version" Style="{StaticResource PropLabel}"/><TextBlock x:Name="VersionText" Grid.Column="1" Style="{StaticResource PropValue}"/>
+          <TextBlock Grid.Row="1" Text="Executable" Style="{StaticResource PropLabel}"/><TextBlock x:Name="PathText" Grid.Row="1" Grid.Column="1" Style="{StaticResource PropValue}" FontFamily="Cascadia Mono, Consolas"/>
+          <TextBlock Grid.Row="2" Text="SHA-256" Style="{StaticResource PropLabel}"/><TextBlock x:Name="HashText" Grid.Row="2" Grid.Column="1" Style="{StaticResource PropValue}" FontFamily="Cascadia Mono, Consolas"/>
+          <TextBlock Grid.Row="3" Text="Signing state" Style="{StaticResource PropLabel}"/><TextBlock x:Name="SigningText" Grid.Row="3" Grid.Column="1" Style="{StaticResource PropValue}"/>
+          <TextBlock Grid.Row="4" Text="Catalog hash" Style="{StaticResource PropLabel}"/><TextBlock x:Name="CatalogHashText" Grid.Row="4" Grid.Column="1" Style="{StaticResource PropValue}" FontFamily="Cascadia Mono, Consolas"/>
+        </Grid>
+      </StackPanel>
+    </Border>
+  </StackPanel>
+</UserControl>

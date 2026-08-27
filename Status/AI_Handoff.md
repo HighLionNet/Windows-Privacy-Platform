@@ -16,7 +16,7 @@
 
 ## Release verification
 
-Run restore, Release build, tests without rebuilding, release packaging, `scripts/verify-release.ps1`, repository hygiene scans, and a later extracted-archive launch smoke test. The source-only v2.4.0 implementation pass compiled the solution but deliberately did not execute tests or launch the app under its task constraint.
+For an implementation check, run restore, Release build, tests without rebuilding, repository hygiene scans, and a GUI smoke test. Distribution packaging and release verification remain separate work when that scope is requested.
 
 ## Safe future finishing work
 

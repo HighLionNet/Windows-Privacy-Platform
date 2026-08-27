@@ -2,183 +2,147 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:WindowsPrivacyPlatform.App"
-        Title=""
-        Height="860" Width="1320"
-        MinHeight="600" MinWidth="1000"
-        WindowStartupLocation="CenterScreen"
-        PreviewKeyDown="Window_PreviewKeyDown"
+        Title="" Height="860" Width="1320" MinHeight="600" MinWidth="1000"
+        WindowStartupLocation="CenterScreen" PreviewKeyDown="Window_PreviewKeyDown"
         Closing="Window_Closing">
   <Window.Resources>
     <local:SubtractConverter x:Key="ContentWidthConverter" Amount="40" />
   </Window.Resources>
   <DockPanel>
-
-    <Menu DockPanel.Dock="Top" Background="{StaticResource BrushBgMenu}"
-          BorderBrush="{StaticResource BrushBorderStrong}" BorderThickness="0,0,0,1">
-      <MenuItem Header="_File">
-        <MenuItem Header="_Scan" InputGestureText="F5" Click="MenuScan_Click" />
-        <Separator />
-        <MenuItem Header="E_xit" Click="MenuExit_Click" />
-      </MenuItem>
+    <Menu DockPanel.Dock="Top" Background="{DynamicResource BrushBgMenu}"
+          BorderBrush="{DynamicResource BrushBorderStrong}" BorderThickness="0,0,0,1">
+      <MenuItem Header="_File"><MenuItem Header="_Scan" InputGestureText="F5" Click="MenuScan_Click"/><Separator/><MenuItem Header="E_xit" Click="MenuExit_Click"/></MenuItem>
       <MenuItem Header="_View">
-        <MenuItem Header="_Privacy &amp; Security Overview" Click="MenuHome_Click" />
-        <MenuItem Header="_System Explorer" Click="MenuInventory_Click" />
-        <MenuItem Header="_Services (read-only)" Click="MenuServices_Click" />
-        <Separator />
-        <MenuItem Header="Toggle _Navigation Pane" Click="ToggleSidebar_Click" />
-        <MenuItem Header="_Refresh" InputGestureText="Ctrl+R" Click="MenuScan_Click" />
+        <MenuItem Header="_Overview" Click="MenuHome_Click"/><MenuItem Header="_System Explorer" Click="MenuInventory_Click"/>
+        <MenuItem Header="_Services (read-only)" Click="MenuServices_Click"/><Separator/>
+        <MenuItem Header="_Back" InputGestureText="Alt+Left" Click="BackButton_Click"/>
+        <MenuItem Header="_Forward" InputGestureText="Alt+Right" Click="ForwardButton_Click"/>
+        <Separator/><MenuItem Header="Toggle _Navigation Pane" Click="ToggleSidebar_Click"/>
+        <MenuItem Header="_Refresh" InputGestureText="Ctrl+R" Click="MenuScan_Click"/>
       </MenuItem>
-      <MenuItem Header="_Tools">
-        <MenuItem Header="_Search…" InputGestureText="Ctrl+F" Click="MenuSearch_Click" />
-      </MenuItem>
-      <MenuItem Header="_Help">
-        <MenuItem Header="_About" Click="MenuAbout_Click" />
-      </MenuItem>
+      <MenuItem Header="_Settings" Click="MenuSettings_Click" />
+      <MenuItem Header="_Tools"><MenuItem Header="_Search…" InputGestureText="Ctrl+F" Click="MenuSearch_Click"/></MenuItem>
+      <MenuItem Header="_Help"><MenuItem Header="_About" Click="MenuAbout_Click"/></MenuItem>
     </Menu>
 
-    <Border DockPanel.Dock="Top" Background="{StaticResource BrushHeaderChrome}"
-            BorderBrush="{StaticResource BrushBorderStrong}" BorderThickness="0,0,0,1" Padding="12,8">
+    <Border DockPanel.Dock="Top" Background="{DynamicResource BrushHeaderChrome}"
+            BorderBrush="{DynamicResource BrushBorderStrong}" BorderThickness="0,0,0,1" Padding="10,8">
       <Grid>
         <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="*" />
-          <ColumnDefinition Width="Auto" />
-          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
-
-        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-          <Image Width="34" Height="34" Source="Assets/WindowsPrivacyPlatform.png" Stretch="Uniform"
-                 Margin="0,0,11,0" RenderOptions.BitmapScalingMode="HighQuality" />
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" MinWidth="230">
+          <Image Width="36" Height="36" Source="Assets/WindowsPrivacyPlatform.png" Stretch="Uniform" Margin="0,0,10,0" RenderOptions.BitmapScalingMode="HighQuality"/>
           <StackPanel VerticalAlignment="Center">
-            <TextBlock x:Name="ProductNameText" Text="" FontSize="16" FontWeight="SemiBold"
-                       Foreground="{StaticResource BrushTextPrimary}" />
-            <TextBlock x:Name="ScanTimeLabel" Text="" FontSize="11"
-                       Foreground="{StaticResource BrushTextMuted}" />
-          </StackPanel>
-          <TextBlock x:Name="HeaderVersionText" Text="" Margin="14,0,0,0" VerticalAlignment="Center"
-                     Foreground="{StaticResource BrushTextMuted}" FontSize="12" FontWeight="SemiBold" />
-          <Border Margin="16,0,0,0" Padding="8,3" BorderBrush="{StaticResource BrushBorderStrong}"
-                  BorderThickness="1" Background="{StaticResource BrushBgHeader}" VerticalAlignment="Center">
             <StackPanel Orientation="Horizontal">
-              <TextBlock Text="Mode" FontSize="11" Foreground="{StaticResource BrushTextMuted}"
-                         VerticalAlignment="Center" Margin="0,0,6,0" />
-              <ComboBox x:Name="ModeCombo" Width="96" Height="22"
-                        VerticalContentAlignment="Center" SelectedIndex="0" FontSize="11"
-                        SelectionChanged="ModeCombo_SelectionChanged">
-                <ComboBoxItem Content="Inspect" IsSelected="True" />
-                <ComboBoxItem Content="Modify" />
-              </ComboBox>
+              <TextBlock x:Name="ProductNameText" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource BrushTextPrimary}"/>
+              <TextBlock x:Name="HeaderVersionText" Margin="10,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource BrushTextMuted}" FontWeight="SemiBold"/>
             </StackPanel>
-          </Border>
-        </StackPanel>
-
-        <TextBox x:Name="SearchBox" Grid.Column="1" Width="190" Height="28"
-                 VerticalContentAlignment="Center" Padding="8,0" Margin="0,0,10,0"
-                 ToolTip="Search (Ctrl+F). Enter to run. Esc clears."
-                 KeyDown="SearchBox_KeyDown" />
-
-        <StackPanel Grid.Column="2">
-          <StackPanel Orientation="Horizontal">
-            <Button x:Name="CancelScanButton" Content="Cancel" Style="{StaticResource SecondaryButton}"
-                    Click="CancelScanButton_Click" MinWidth="66" Margin="0,0,6,0" Visibility="Collapsed"
-                    ToolTip="Cancel the current scan and retain the last completed evidence" />
-            <Button x:Name="ScanButton" Content="Scan" Style="{StaticResource PrimaryButton}"
-                    Click="ScanButton_Click" MinWidth="70" ToolTip="Scan (F5)" />
+            <TextBlock x:Name="ScanTimeLabel" FontSize="10.5" Foreground="{DynamicResource BrushTextMuted}"/>
           </StackPanel>
-          <ProgressBar x:Name="ScanProgress" IsIndeterminate="True" Height="2" Margin="0,3,0,0"
-                       Visibility="Collapsed" />
         </StackPanel>
+
+        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,10,0">
+          <Button x:Name="BackButton" Content="←" Width="38" Style="{StaticResource ActionNeutral}" Padding="0" ToolTip="Back (Alt+Left)" Click="BackButton_Click" IsEnabled="False"/>
+          <Button x:Name="ForwardButton" Content="→" Width="38" Style="{StaticResource ActionNeutral}" Padding="0" Margin="6,0,0,0" ToolTip="Forward (Alt+Right)" Click="ForwardButton_Click" IsEnabled="False"/>
+        </StackPanel>
+
+        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+          <TextBlock Text="Mode:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{DynamicResource BrushTextSecondary}"/>
+          <ComboBox x:Name="ModeCombo" Width="116" Height="34" SelectedIndex="0" VerticalContentAlignment="Center"
+                    SelectionChanged="ModeCombo_SelectionChanged" DropDownOpened="ModeCombo_DropDownOpened">
+            <ComboBoxItem Content="View-only" IsSelected="True"/><ComboBoxItem Content="Admin"/>
+          </ComboBox>
+        </StackPanel>
+
+        <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0">
+          <TextBlock Text="Search:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{DynamicResource BrushTextSecondary}"/>
+          <TextBox x:Name="SearchBox" Width="180" Height="34" VerticalContentAlignment="Center" KeyDown="SearchBox_KeyDown" ToolTip="Enter to search. Esc clears."/>
+        </StackPanel>
+
+        <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
+          <Button Content="⚙" Style="{StaticResource ActionNeutral}" Width="40" Padding="0" Margin="0,0,6,0" ToolTip="App Settings" Click="SettingsButton_Click"/>
+          <Button x:Name="CancelScanButton" Content="Cancel" Style="{StaticResource ActionNeutral}" Click="CancelScanButton_Click" MinWidth="72" Margin="0,0,6,0" Visibility="Collapsed"/>
+          <Button x:Name="ScanButton" Content="Scan" Style="{StaticResource ActionPrimary}" Click="ScanButton_Click" MinWidth="76"/>
+        </StackPanel>
+        <ProgressBar x:Name="ScanProgress" Grid.Column="0" Grid.ColumnSpan="5" IsIndeterminate="True" Height="2" VerticalAlignment="Bottom" Margin="0,0,0,-8" Visibility="Collapsed"/>
       </Grid>
     </Border>
 
-    <Border DockPanel.Dock="Bottom" Background="{StaticResource BrushBgMenu}"
-            BorderBrush="{StaticResource BrushBorderStrong}" BorderThickness="0,1,0,0" Padding="12,4">
-      <Grid>
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="*" />
-          <ColumnDefinition Width="Auto" />
-        </Grid.ColumnDefinitions>
-        <TextBlock x:Name="StatusText" Text="Ready" AutomationProperties.LiveSetting="Polite"
-                   Foreground="{StaticResource BrushTextSecondary}" FontSize="11"
-                   TextTrimming="CharacterEllipsis" />
+    <Border DockPanel.Dock="Bottom" Background="{DynamicResource BrushBgMenu}" BorderBrush="{DynamicResource BrushBorderStrong}" BorderThickness="0,1,0,0" Padding="12,4">
+      <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <TextBlock x:Name="StatusText" Text="Ready" AutomationProperties.LiveSetting="Polite" Foreground="{DynamicResource BrushTextSecondary}" FontSize="11" TextTrimming="CharacterEllipsis"/>
         <StackPanel Grid.Column="1" Orientation="Horizontal">
-          <TextBlock x:Name="CatalogCountLabel" Text="Settings: —" Margin="8,0,0,0"
-                     Foreground="{StaticResource BrushTextMuted}" FontSize="11" />
-          <TextBlock x:Name="ConflictCountLabel" Text="Explorer: —" Margin="12,0,0,0"
-                     Foreground="{StaticResource BrushTextMuted}" FontSize="11" />
-          <TextBlock x:Name="FooterVersionText" Text="" Margin="14,0,0,0"
-                     Foreground="{StaticResource BrushAccent}" FontSize="11" FontWeight="SemiBold" />
+          <TextBlock x:Name="CatalogCountLabel" Text="Settings: —" Margin="8,0,0,0" Foreground="{DynamicResource BrushTextMuted}" FontSize="11"/>
+          <TextBlock x:Name="ConflictCountLabel" Text="Explorer: —" Margin="12,0,0,0" Foreground="{DynamicResource BrushTextMuted}" FontSize="11"/>
+          <TextBlock x:Name="FooterVersionText" Margin="14,0,0,0" Foreground="{DynamicResource BrushAccent}" FontSize="11" FontWeight="SemiBold"/>
         </StackPanel>
       </Grid>
     </Border>
 
     <Grid>
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition x:Name="SidebarColumn" Width="240" MinWidth="0" />
-        <ColumnDefinition Width="*" />
-      </Grid.ColumnDefinitions>
-
-      <Border Grid.Column="0" Background="{StaticResource BrushSidebarChrome}"
-              BorderBrush="{StaticResource BrushBorderStrong}" BorderThickness="0,0,1,0">
-        <ScrollViewer VerticalScrollBarVisibility="Auto" x:Name="NavScroll">
+      <Grid.ColumnDefinitions><ColumnDefinition x:Name="SidebarColumn" Width="240" MinWidth="0"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+      <Border Grid.Column="0" Background="{DynamicResource BrushSidebarChrome}" BorderBrush="{DynamicResource BrushBorderStrong}" BorderThickness="0,0,1,0">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" CanContentScroll="False" x:Name="NavScroll">
           <StackPanel Margin="0,6,0,10" x:Name="NavPanel">
-            <TextBlock Text="HUB" Style="{StaticResource SidebarGroupLabel}" Margin="12,8,8,4" />
-            <Button x:Name="NavHome" Content="Overview" Style="{StaticResource SidebarButtonSelected}"
-                    Click="Nav_Click" Tag="home" />
-            <Button x:Name="NavInventory" Content="System Explorer" Style="{StaticResource SidebarButton}"
-                    Click="Nav_Click" Tag="inventory" ToolTip="Grouped read-only Windows components" />
-            <Button x:Name="NavServices" Content="Services" Style="{StaticResource SidebarButton}"
-                    Click="Nav_Click" Tag="services" ToolTip="Filter and inspect read-only service evidence" />
-
-            <Border Style="{StaticResource SectionRule}" Margin="10,8,10,2" />
-            <TextBlock Text="PRIVACY" Style="{StaticResource SidebarGroupLabel}" Foreground="{StaticResource BrushDomainPrivacy}" />
-            <Button Content="App permissions" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:ConsentStore" />
-            <Button Content="App policy controls" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:AppPrivacy" />
-            <Button Content="Diagnostics &amp; feedback" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Telemetry" />
-            <Button Content="Location" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Location" />
-            <Button Content="Personalization" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:CloudContent" />
-            <Button Content="Advertising" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Advertising" />
-            <Button Content="Activity" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:ActivityHistory" />
-            <Button Content="Device privacy" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Device" />
-            <Button Content="Speech" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Speech" />
-            <Button Content="Clipboard" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Other" />
-
-            <Border Style="{StaticResource SectionRule}" Margin="10,8,10,2" />
-            <TextBlock Text="SECURITY" Style="{StaticResource SidebarGroupLabel}" Foreground="{StaticResource BrushDomainSecurity}" />
-            <Button Content="Microsoft Defender" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Defender" />
-            <Button Content="Firewall" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Firewall" />
-            <Button Content="Biometrics" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Biometrics" />
-            <Button Content="Local security" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:LocalSecurity" />
-            <Button Content="Network security" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Network" />
-            <Button Content="Remote access" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:RemoteAccess" />
-
-            <Border Style="{StaticResource SectionRule}" Margin="10,8,10,2" />
-            <TextBlock Text="WINDOWS APPS" Style="{StaticResource SidebarGroupLabel}" Foreground="{StaticResource BrushDomainApps}" />
-            <Button Content="Copilot" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Copilot" />
-            <Button Content="Recall &amp; Click to Do" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Recall" />
-            <Button Content="Search" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Search" />
-            <Button Content="Microsoft Edge" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Edge" />
-            <Button Content="OneDrive" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:OneDrive" />
-            <Button Content="Widgets" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Widgets" />
-
-            <Border Style="{StaticResource SectionRule}" Margin="10,8,10,2" />
-            <TextBlock Text="ABOUT" Style="{StaticResource SidebarGroupLabel}" />
-            <Button Content="About" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="about" />
+            <TextBlock Text="HUB" Style="{StaticResource SidebarGroupLabel}" Margin="12,8,8,4"/>
+            <Button x:Name="NavHome" Content="Overview" Style="{StaticResource SidebarButtonSelected}" Click="Nav_Click" Tag="home"/>
+            <Button x:Name="NavInventory" Content="System Explorer" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="inventory"/>
+            <Button x:Name="NavServices" Content="Services" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="services"/>
+            <Border Style="{StaticResource SectionRule}" Margin="10,8,10,2"/>
+            <TextBlock Text="PRIVACY" Style="{StaticResource SidebarGroupLabel}" Foreground="{DynamicResource BrushDomainPrivacy}"/>
+            <Button Content="App permissions" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:ConsentStore"/>
+            <Button Content="App policy controls" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:AppPrivacy"/>
+            <Button Content="Diagnostics &amp; feedback" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Telemetry"/>
+            <Button Content="Location" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Location"/>
+            <Button Content="Personalization" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:CloudContent"/>
+            <Button Content="Advertising" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Advertising"/>
+            <Button Content="Activity" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:ActivityHistory"/>
+            <Button Content="Device privacy" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Device"/>
+            <Button Content="Speech" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Speech"/>
+            <Button Content="Clipboard" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Other"/>
+            <Border Style="{StaticResource SectionRule}" Margin="10,8,10,2"/>
+            <TextBlock Text="SECURITY" Style="{StaticResource SidebarGroupLabel}" Foreground="{DynamicResource BrushDomainSecurity}"/>
+            <Button Content="Microsoft Defender" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Defender"/>
+            <Button Content="Firewall" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Firewall"/>
+            <Button Content="Biometrics" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Biometrics"/>
+            <Button Content="Local security" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:LocalSecurity"/>
+            <Button Content="Network security" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Network"/>
+            <Button Content="Remote access" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:RemoteAccess"/>
+            <Border Style="{StaticResource SectionRule}" Margin="10,8,10,2"/>
+            <TextBlock Text="WINDOWS APPS" Style="{StaticResource SidebarGroupLabel}" Foreground="{DynamicResource BrushDomainApps}"/>
+            <Button Content="Copilot" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Copilot"/>
+            <Button Content="Recall &amp; Click to Do" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Recall"/>
+            <Button Content="Search" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Search"/>
+            <Button Content="Microsoft Edge" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Edge"/>
+            <Button Content="OneDrive" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:OneDrive"/>
+            <Button Content="Widgets" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Widgets"/>
+            <Border Style="{StaticResource SectionRule}" Margin="10,8,10,2"/>
+            <TextBlock Text="APP" Style="{StaticResource SidebarGroupLabel}"/>
+            <Button Content="Settings" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="settings"/>
+            <Button Content="About" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="about"/>
           </StackPanel>
         </ScrollViewer>
       </Border>
 
-      <DockPanel Grid.Column="1" Background="{StaticResource BrushBgWindow}">
-        <Border DockPanel.Dock="Top" Background="{StaticResource BrushBgHeader}"
-                BorderBrush="{StaticResource BrushBorderStrong}" BorderThickness="0,0,0,1"
-                Padding="16,6">
-          <StackPanel x:Name="BreadcrumbPanel" Orientation="Horizontal" />
+      <DockPanel Grid.Column="1" Background="{DynamicResource BrushBgWindow}">
+        <Border DockPanel.Dock="Top" Background="{DynamicResource BrushBgHeader}" BorderBrush="{DynamicResource BrushBorderStrong}" BorderThickness="0,0,0,1" Padding="16,6">
+          <StackPanel x:Name="BreadcrumbPanel" Orientation="Horizontal"/>
         </Border>
-        <ScrollViewer x:Name="ContentScroll" VerticalScrollBarVisibility="Auto" Padding="18,14,18,18"
-                      HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch">
-          <ContentControl x:Name="ContentHost"
-                          Width="{Binding ActualWidth, ElementName=ContentScroll, Converter={StaticResource ContentWidthConverter}}"
-                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" />
-        </ScrollViewer>
+        <Grid>
+          <ScrollViewer x:Name="ContentScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                        CanContentScroll="False" Padding="18,14,18,18" HorizontalContentAlignment="Stretch"
+                        VerticalContentAlignment="Stretch" ScrollChanged="ContentScroll_ScrollChanged">
+            <ContentControl x:Name="ContentHost"
+                            Width="{Binding ActualWidth, ElementName=ContentScroll, Converter={StaticResource ContentWidthConverter}}"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                            VerticalAlignment="Stretch" VerticalContentAlignment="Stretch"/>
+          </ScrollViewer>
+          <Button x:Name="BackToTopButton" Content="↑  Back to top" Style="{StaticResource ActionNeutral}"
+                  HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,22,22" Visibility="Collapsed"
+                  Click="BackToTopButton_Click"/>
+        </Grid>
       </DockPanel>
     </Grid>
   </DockPanel>

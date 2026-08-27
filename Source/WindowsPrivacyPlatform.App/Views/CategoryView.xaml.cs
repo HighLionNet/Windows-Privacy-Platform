@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
@@ -11,7 +7,6 @@ using WindowsPrivacyPlatform.Models;
 
 namespace WindowsPrivacyPlatform.App.Views;
 
-/// <summary>Category-first settings list with scoped filtering and an explicit pending batch.</summary>
 public partial class CategoryView : UserControl
 {
     private readonly ElevationService _elevation;
@@ -32,146 +27,137 @@ public partial class CategoryView : UserControl
         string? initialFilter = null, string? highlightObjectId = null, Action? completeModifyOperation = null)
     {
         InitializeComponent();
-        _elevation = elevation;
-        _changes = changes;
-        _refreshScan = refreshScan;
-        _owner = owner;
-        _openSetting = openSetting;
+        _elevation = elevation; _changes = changes; _refreshScan = refreshScan; _owner = owner;
+        _openSetting = openSetting; _highlightObjectId = highlightObjectId; _completeModifyOperation = completeModifyOperation;
         _windowsVersion = scan.Overview?.WindowsVersion ?? string.Empty;
         _edition = scan.Overview?.WindowsEdition ?? string.Empty;
-        _highlightObjectId = highlightObjectId;
-        _completeModifyOperation = completeModifyOperation;
-        _allItems = scan.SettingsCatalog.Where(m => m.ProductDomain == domain && string.Equals(
-                string.IsNullOrWhiteSpace(m.SubCategory) ? domain.ToString() : m.SubCategory,
+        _allItems = scan.SettingsCatalog.Where(item => item.ProductDomain == domain && string.Equals(
+                string.IsNullOrWhiteSpace(item.SubCategory) ? domain.ToString() : item.SubCategory,
                 category, StringComparison.OrdinalIgnoreCase))
-            .OrderBy(m => m.ObjectName, StringComparer.OrdinalIgnoreCase).ToList();
+            .OrderBy(item => item.ObjectName, StringComparer.OrdinalIgnoreCase).ToList();
 
         TitleText.Text = category;
-        var copy = CategoryContent.For(domain, category);
-        DescriptionText.Text = copy.Description;
-        WhyText.Text = "Why it matters: " + copy.WhyItMatters;
+        DescriptionText.Text = CategoryContent.For(domain, category).Description;
         SubtitleText.Text = $"{NavigationBuilder.HumanizeDomain(domain)} · {_allItems.Count} settings · " +
-                            (_elevation.IsModifyAuthorized ? "Modify mode" : "Inspect mode (read-only)");
+                            (_elevation.IsAdminAuthorized ? "Admin" : "View-only");
         FilterBox.Text = initialFilter ?? string.Empty;
         Render();
     }
 
-    private void FilterBox_TextChanged(object sender, TextChangedEventArgs e) => Render();
+    private void FilterChanged(object sender, RoutedEventArgs e) => Render();
+    private void FilterChanged(object sender, SelectionChangedEventArgs e) => Render();
 
     private void Render()
     {
-        if (SettingsList is null || SummaryPanel is null || FilterBox is null)
-            return;
+        if (SettingsList is null || SummaryPanel is null || FilterBox is null || StateBox is null) return;
         var filter = FilterBox.Text.Trim();
         if (filter.Length > 200) filter = filter[..200];
-        var items = _allItems.Where(item => filter.Length == 0 || SearchText(item)
-            .Contains(filter, StringComparison.OrdinalIgnoreCase)).ToList();
+        var selectedState = (StateBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "All";
+        var items = _allItems.Where(item => filter.Length == 0 || SearchText(item).Contains(filter, StringComparison.OrdinalIgnoreCase))
+            .Where(item => selectedState == "All" || EvidenceStateSemantics.Label(EvidenceStateSemantics.Classify(item))
+                .Equals(selectedState, StringComparison.OrdinalIgnoreCase)).ToList();
 
         SettingsList.Children.Clear();
         foreach (var item in items) SettingsList.Children.Add(BuildCard(item));
         EmptyText.Visibility = items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-
         SummaryPanel.Children.Clear();
         var summary = CategoryStateSummary.From(items);
-        AddSummary("Visible", summary.Visible, "BadgeUnknown");
-        AddSummary("Configured", summary.Configured, "BadgeSuccess");
-        AddSummary("Not configured", summary.NotConfigured, "BadgeUnknown");
-        AddSummary("Unknown", summary.Unknown, "BadgeWarning");
-        AddSummary("Unsupported", summary.Unsupported, "BadgeUnknown");
-        AddSummary("Access denied", summary.AccessDenied, "BadgeWarning");
-        AddSummary("Stale", summary.Stale, "BadgeWarning");
-        AddSummary("Errors", summary.Error, "BadgeConflict");
-        ApplyPendingButton.Content = $"Apply pending ({_pending.Count})";
-        ApplyPendingButton.IsEnabled = _pending.Count > 0 && _elevation.IsModifyAuthorized && !_applyInProgress;
+        AddSummary("Visible", summary.Visible, "BadgeUnknown"); AddSummary("Configured", summary.Configured, "BadgeSuccess");
+        AddSummary("Not configured", summary.NotConfigured, "BadgeUnknown"); AddSummary("Unknown", summary.Unknown, "BadgeWarning");
+        AddSummary("Unsupported", summary.Unsupported, "BadgeUnknown"); AddSummary("Access denied", summary.AccessDenied, "BadgeWarning");
+        AddSummary("Stale", summary.Stale, "BadgeWarning"); AddSummary("Errors", summary.Error, "BadgeConflict");
+        ApplyPendingButton.Content = $"Apply ({_pending.Count})";
+        ApplyPendingButton.IsEnabled = _pending.Count > 0 && _elevation.IsAdminAuthorized && !_applyInProgress;
     }
 
     private Border BuildCard(ManagedObject item)
     {
-        var evidence = EvidenceStateSemantics.Classify(item);
-        var highlighted = string.Equals(item.ObjectId, _highlightObjectId, StringComparison.OrdinalIgnoreCase);
+        var highlighted = item.ObjectId.Equals(_highlightObjectId, StringComparison.OrdinalIgnoreCase);
         var card = new Border
         {
-            Margin = new Thickness(0, 0, 0, 10), Padding = new Thickness(14, 12, 14, 12),
+            Margin = new Thickness(0, 0, 0, 10), Padding = new Thickness(16, 13, 16, 14),
             Background = highlighted ? (Brush)FindResource("BrushBgSelected") : (Brush)FindResource("BrushBgCard"),
             BorderBrush = highlighted ? (Brush)FindResource("BrushAccent") : (Brush)FindResource("BrushBorderStrong"),
-            BorderThickness = new Thickness(highlighted ? 2 : 1), CornerRadius = new CornerRadius(8)
+            BorderThickness = new Thickness(highlighted ? 2 : 1), CornerRadius = new CornerRadius(4)
         };
         var root = new StackPanel();
-        var heading = new DockPanel();
-        heading.Children.Add(Badge(EvidenceStateSemantics.Label(evidence), BadgeStyle(evidence)));
-        heading.Children.Add(new TextBlock { Text = item.ObjectName, FontSize = 14, FontWeight = FontWeights.SemiBold,
-            Foreground = (Brush)FindResource("BrushTextPrimary"), TextWrapping = TextWrapping.Wrap });
-        root.Children.Add(heading);
-        root.Children.Add(Text(item.Narrative.Summary, 12, "BrushTextSecondary", 4));
-        root.Children.Add(Text("Privacy / security consequence: " + First(item.Rationale, item.WhenIgnored, item.Narrative.WhyItMatters), 11, "BrushTextSecondary", 4));
-        root.Children.Add(Text($"Observed: {NavigationBuilder.DisplayValue(item.CurrentState)} · Scope: {FriendlyScope(item)} · Applicability: {Applicability(item)}", 11, "BrushTextPrimary", 7));
-        root.Children.Add(Text(EvidenceStateSemantics.Detail(evidence), 10, "BrushTextMuted", 2));
+        root.Children.Add(Text(item.ObjectName, 15, "BrushTextPrimary", 0, FontWeights.SemiBold));
+        root.Children.Add(Text(Introduction(item), 12, "BrushTextSecondary", 4));
+        var current = CurrentChoice(item);
+        root.Children.Add(Text("Observed: " + ObservedText(item, current), 12, "BrushTextPrimary", 9, FontWeights.SemiBold));
+        root.Children.Add(Text("Effective: " + EffectiveText(item, current), 12, "BrushTextSecondary", 3));
 
         var options = BuildOptions(item);
         if (options.Count > 0)
         {
-            var optionsPanel = new WrapPanel { Margin = new Thickness(0, 9, 0, 0) };
+            var choices = new WrapPanel { Margin = new Thickness(0, 12, 0, 1) };
             foreach (var option in options)
             {
                 var raw = option.Raw;
-                var pending = _pending.TryGetValue(item.ObjectId, out var selected) && string.Equals(selected, raw, StringComparison.OrdinalIgnoreCase);
+                var selected = _pending.TryGetValue(item.ObjectId, out var pendingRaw) &&
+                               string.Equals(pendingRaw, raw, StringComparison.OrdinalIgnoreCase);
+                var observed = string.Equals(current?.Raw, raw, StringComparison.OrdinalIgnoreCase);
                 var button = new Button
                 {
-                    Content = pending ? $"Proposed: {option.Label}" : option.Label,
-                    Style = (Style)FindResource("OptionButton"), Margin = new Thickness(0, 0, 7, 5),
-                    IsEnabled = item.IsWritable && item.IsApplicableHere && option.IsApplicable && _elevation.IsModifyAuthorized && !_applyInProgress,
-                    ToolTip = option.Effect + " Selection is pending until Apply pending is confirmed."
+                    Content = option.Label + (observed && !selected ? "  ·  Current" : string.Empty),
+                    Style = (Style)FindResource(ChoiceStyle(option.Label, selected)),
+                    MinWidth = 108,
+                    Margin = new Thickness(0, 0, 8, 7),
+                    IsEnabled = item.IsWritable && item.IsApplicableHere && option.IsApplicable &&
+                                _elevation.IsAdminAuthorized && !_applyInProgress,
+                    ToolTip = option.Effect + " Nothing is written until Apply is confirmed."
                 };
-                if (pending) { button.BorderBrush = (Brush)FindResource("BrushAccent"); button.BorderThickness = new Thickness(2); }
+                if (observed && !selected)
+                {
+                    button.BorderBrush = (Brush)FindResource("BrushTextPrimary");
+                    button.BorderThickness = new Thickness(2);
+                }
                 button.Click += (_, _) => { _pending[item.ObjectId] = raw; Render(); };
-                AutomationProperties.SetName(button, $"Propose {option.Label} for {item.ObjectName}");
-                optionsPanel.Children.Add(button);
+                AutomationProperties.SetName(button, $"{option.Label} for {item.ObjectName}");
+                choices.Children.Add(button);
             }
-            root.Children.Add(optionsPanel);
-            if (_pending.TryGetValue(item.ObjectId, out var proposed))
+            root.Children.Add(choices);
+            if (_pending.TryGetValue(item.ObjectId, out var staged))
             {
-                var proposal = options.FirstOrDefault(o => string.Equals(o.Raw, proposed, StringComparison.OrdinalIgnoreCase));
-                root.Children.Add(Text($"Pending comparison — observed: {NavigationBuilder.DisplayValue(item.CurrentState)}; proposed: {proposal?.Label ?? "Use Windows default"}", 11, "BrushAccent", 2));
+                var selected = options.FirstOrDefault(option => string.Equals(option.Raw, staged, StringComparison.OrdinalIgnoreCase));
+                root.Children.Add(Text("Ready to apply: " + (selected?.Label ?? "Use Windows default"), 11, "BrushAccent", 2, FontWeights.SemiBold));
             }
         }
-        else root.Children.Add(Text(item.IsWritable ? "No supported choice is available on this device." : CatalogPolicy.ExclusionReasonText(item.ExclusionReason), 11, "BrushTextMuted", 8));
+        else
+            root.Children.Add(Text(item.IsWritable ? "No supported choice is available on this device." : CatalogPolicy.ExclusionReasonText(item.ExclusionReason),
+                11, "BrushTextMuted", 10));
 
-        var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 0) };
-        var detail = new Button { Content = "Open setting details", Style = (Style)FindResource("SecondaryButton"), Padding = new Thickness(10, 4, 10, 4), ToolTip = "Open the full explanation and technical disclosure" };
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 10, 0, 0) };
+        var detail = new Button { Content = "Details", Style = (Style)FindResource("ActionNeutral"), MinWidth = 105 };
         detail.Click += (_, _) => _openSetting(item.ObjectId);
         actions.Children.Add(detail);
         if (_pending.ContainsKey(item.ObjectId))
         {
-            var clear = new Button { Content = "Remove pending", Style = (Style)FindResource("LinkButton"), Margin = new Thickness(8, 0, 0, 0) };
+            var clear = new Button { Content = "Clear choice", Style = (Style)FindResource("ActionNeutral"), Margin = new Thickness(8, 0, 0, 0) };
             clear.Click += (_, _) => { _pending.Remove(item.ObjectId); Render(); };
             actions.Children.Add(clear);
         }
         root.Children.Add(actions);
-        var tech = new Expander { Header = "Technical details", Style = (Style)FindResource("DetailExpander") };
-        tech.Content = Text($"Object ID: {item.ObjectId}\nSource: {item.DiscoveryMethod}\nTarget: {TechnicalLocationFormatter.DirectPath(item.TechnicalLocation)}\nVerification: {item.VerificationMethod}\nReboot: {item.RebootRequirement}", 10, "BrushTextMuted", 4);
-        root.Children.Add(tech);
         card.Child = root;
-        AutomationProperties.SetName(card, $"{item.ObjectName}. {EvidenceStateSemantics.Label(evidence)}. {Applicability(item)}.");
+        AutomationProperties.SetName(card, $"{item.ObjectName}. {ObservedText(item, current)}.");
         return card;
     }
 
     private async void ApplyPending_Click(object sender, RoutedEventArgs e)
     {
         if (_applyInProgress || _pending.Count == 0) return;
-        _applyInProgress = true;
-        Render();
+        _applyInProgress = true; Render();
         try
         {
             var requests = _pending.Select(pair => new PendingPolicyChange(
                 _allItems.First(item => item.ObjectId.Equals(pair.Key, StringComparison.OrdinalIgnoreCase)), pair.Value)).ToList();
             var success = _changes.TryApplyBatch(requests, _owner, out var outcomes);
             var summary = PolicyBatchSummary.From(outcomes);
-            var verified = summary.Verified;
-            var failed = summary.NotVerified;
             if (success) _pending.Clear();
-            MessageBox.Show(_owner, $"Verified: {verified}. Not accepted: {failed}.\n\n" +
-                string.Join("\n", outcomes.Where(o => !o.Success).Select(o => o.Message).Distinct()),
-                success ? "Pending changes verified" : "Batch completed with unverified changes",
+            var failures = string.Join("\n", outcomes.Where(outcome => !outcome.Success).Select(outcome => outcome.Message).Distinct());
+            MessageBox.Show(_owner, $"Verified: {summary.Verified}. Not accepted: {summary.NotVerified}." +
+                (failures.Length == 0 ? string.Empty : "\n\n" + failures),
+                success ? "Changes verified" : "Apply completed with unverified changes",
                 MessageBoxButton.OK, success ? MessageBoxImage.Information : MessageBoxImage.Warning);
             await _refreshScan();
             _completeModifyOperation?.Invoke();
@@ -181,46 +167,71 @@ public partial class CategoryView : UserControl
 
     private void AddSummary(string label, int count, string style)
     {
-        var badge = Badge($"{label}: {count}", style);
-        badge.Margin = new Thickness(0, 0, 6, 5);
+        var badge = new Border { Style = (Style)FindResource(style), Margin = new Thickness(0, 0, 6, 5) };
+        badge.Child = new TextBlock { Text = $"{label}: {count}", FontSize = 9, FontWeight = FontWeights.SemiBold };
         SummaryPanel.Children.Add(badge);
     }
 
-    private Border Badge(string value, string style)
-    {
-        var badge = new Border { Style = (Style)FindResource(style), Margin = new Thickness(8, 0, 0, 0) };
-        DockPanel.SetDock(badge, Dock.Right);
-        badge.Child = new TextBlock { Text = value, FontSize = 9, FontWeight = FontWeights.SemiBold };
-        return badge;
-    }
-
-    private static string BadgeStyle(EvidenceState state) => state switch
-    {
-        EvidenceState.Configured => "BadgeSuccess", EvidenceState.Error => "BadgeConflict",
-        EvidenceState.AccessDenied or EvidenceState.Stale or EvidenceState.Unknown => "BadgeWarning", _ => "BadgeUnknown"
-    };
-
-    private static TextBlock Text(string? value, double size, string brush, double top) => new()
+    private static TextBlock Text(string? value, double size, string brush, double top, FontWeight? weight = null) => new()
     {
         Text = string.IsNullOrWhiteSpace(value) ? "Not documented." : value, FontSize = size,
-        Foreground = (Brush)Application.Current.FindResource(brush), TextWrapping = TextWrapping.Wrap,
-        Margin = new Thickness(0, top, 0, 0)
+        FontWeight = weight ?? FontWeights.Normal, Foreground = (Brush)Application.Current.FindResource(brush),
+        TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, top, 0, 0)
     };
 
-    private static string SearchText(ManagedObject item) => string.Join(' ', new[]
+    private static string Introduction(ManagedObject item)
     {
-        item.ObjectName, item.Description, item.Narrative.Summary, item.CurrentState,
-        item.InterfaceScope, item.ApplicabilityReason, item.ObjectId
-    }.Where(value => !string.IsNullOrWhiteSpace(value)));
+        var text = string.IsNullOrWhiteSpace(item.Description) ? item.Narrative.Summary : item.Description;
+        if (string.Equals(text?.TrimEnd('.'), item.ObjectName.TrimEnd('.'), StringComparison.OrdinalIgnoreCase))
+            text = item.Narrative.Summary;
+        return string.IsNullOrWhiteSpace(text) ? "Windows policy setting." : text;
+    }
 
-    private static string First(params string?[] values) =>
-        values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? "No additional consequence is documented.";
-    private static string FriendlyScope(ManagedObject item) =>
-        string.IsNullOrWhiteSpace(item.InterfaceScope) ? item.RemediationScope?.ToString() ?? "Not documented" : item.InterfaceScope!;
-    private static string Applicability(ManagedObject item) => item.IsApplicableHere
-        ? "Supported here" : CatalogPolicy.ApplicabilityBadgeText(item.Applicability) + " — " + item.ApplicabilityReason;
+    private static string ObservedText(ManagedObject item, Choice? current)
+    {
+        var observed = NavigationBuilder.DisplayValue(item.CurrentState);
+        if (current is not null) return $"{observed} — {current.Effect}";
+        return $"{observed} — {EvidenceStateSemantics.Detail(EvidenceStateSemantics.Classify(item))}";
+    }
+
+    private static string EffectiveText(ManagedObject item, Choice? current)
+    {
+        var semantic = item.Observation?.Resolution?.SemanticDisplay ?? item.Observation?.Effective?.SemanticDisplay;
+        if (!string.IsNullOrWhiteSpace(semantic)) return semantic;
+        if (current is not null) return current.Effect;
+        var value = item.Observation?.Resolution?.EffectiveValue ?? item.Observation?.Effective?.EffectiveValue ?? item.CurrentState;
+        return NavigationBuilder.DisplayValue(value);
+    }
+
+    private static string ChoiceStyle(string label, bool selected)
+    {
+        if (selected) return "ActionChoiceSelected";
+        if (label.Contains("Disable", StringComparison.OrdinalIgnoreCase) || label.Contains("Block", StringComparison.OrdinalIgnoreCase) ||
+            label.Contains("Deny", StringComparison.OrdinalIgnoreCase) || label.Contains("Turn off", StringComparison.OrdinalIgnoreCase)) return "ActionDanger";
+        if (label.Contains("Enable", StringComparison.OrdinalIgnoreCase) || label.Contains("Allow", StringComparison.OrdinalIgnoreCase) ||
+            label.Contains("Turn on", StringComparison.OrdinalIgnoreCase)) return "ActionSuccess";
+        return "ActionChoice";
+    }
+
+    private static string SearchText(ManagedObject item) => string.Join(' ', new[]
+    { item.ObjectName, item.Description, item.Narrative.Summary, item.CurrentState }.Where(value => !string.IsNullOrWhiteSpace(value)));
 
     private sealed record Choice(string? Raw, string Label, string Effect, bool IsApplicable);
+
+    private Choice? CurrentChoice(ManagedObject item)
+    {
+        var raw = RawToken(item.CurrentState);
+        return BuildOptions(item).FirstOrDefault(choice => string.Equals(choice.Raw, raw, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string? RawToken(string? state)
+    {
+        if (string.IsNullOrWhiteSpace(state)) return null;
+        var value = state.Trim();
+        if (value.Equals("Not configured", StringComparison.OrdinalIgnoreCase)) return null;
+        return value.Split(' ', '(', ')', ';')[0];
+    }
+
     private List<Choice> BuildOptions(ManagedObject item)
     {
         var result = item.ValueSemantics.Where(value => !string.IsNullOrWhiteSpace(value.RawValue))

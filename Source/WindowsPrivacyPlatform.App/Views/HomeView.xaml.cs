@@ -8,9 +8,12 @@ namespace WindowsPrivacyPlatform.App.Views;
 
 public partial class HomeView : UserControl
 {
-    public HomeView(ScanService scan, Action<SettingsListTarget> openSettingsList)
+    private readonly Action<string> _openPosture;
+
+    public HomeView(ScanService scan, Action<SettingsListTarget> openSettingsList, Action<string> openPosture)
     {
         InitializeComponent();
+        _openPosture = openPosture;
         var overview = scan.Overview;
         if (overview is null) return;
 
@@ -19,22 +22,29 @@ public partial class HomeView : UserControl
         ReviewCountText.Text = posture.ReviewCount.ToString();
         ProtectedCountText.Text = posture.ProtectedCount.ToString();
 
-        foreach (var finding in posture.Findings.Take(6))
+        ComputerText.Text = Display(overview.ComputerName);
+        UserText.Text = Display(overview.SignedInUser);
+        AccountText.Text = Display(overview.AccountType);
+        WindowsText.Text = $"{Display(overview.WindowsEdition)} · {Display(overview.WindowsVersion)} · build {overview.BuildNumber}";
+        ArchitectureText.Text = Display(overview.Architecture);
+        HardwareText.Text = string.Join(" · ", new[] { overview.DeviceManufacturer, overview.DeviceModel }.Where(value => !string.IsNullOrWhiteSpace(value)));
+        ProcessorText.Text = Display(overview.Processor);
+        MemoryText.Text = overview.TotalPhysicalMemoryMiB > 0 ? $"{overview.TotalPhysicalMemoryMiB / 1024d:F1} GiB" : "Unknown";
+        JoinText.Text = $"Domain: {Display(overview.DomainMembership)} · Entra: {Display(overview.AzureAdJoined)}";
+        SecureBootText.Text = Display(overview.SecureBootState);
+        TpmText.Text = $"{Display(overview.TpmPresent)} · {Display(overview.TpmVersion)}";
+        BitLockerText.Text = Display(overview.BitLockerProtectionStatus);
+        ProtectionText.Text = $"Firewall: {Display(overview.FirewallServiceState)} · Defender: {Display(overview.DefenderServiceState)}";
+        LastScanText.Text = $"{overview.LastScanUtc:yyyy-MM-dd HH:mm:ss} UTC";
+
+        var highFindings = posture.Findings.Where(finding => finding.Severity == PostureFindingSeverity.High).ToList();
+        foreach (var finding in highFindings)
         {
             var row = new Button { Style = (Style)FindResource("ListRowButton"), Tag = finding.ObjectId };
-            var grid = new Grid();
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(115) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            grid.Children.Add(new TextBlock
-            {
-                Text = finding.Severity == PostureFindingSeverity.High ? "HIGH" : "REVIEW",
-                Foreground = (Brush)FindResource(finding.Severity == PostureFindingSeverity.High ? "BrushConflict" : "BrushWarning"),
-                FontWeight = FontWeights.SemiBold, FontSize = 10, VerticalAlignment = VerticalAlignment.Center
-            });
-            var copy = new StackPanel();
-            copy.Children.Add(new TextBlock { Text = finding.Title, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
-            copy.Children.Add(new TextBlock { Text = finding.Summary, FontSize = 11, Foreground = (Brush)FindResource("BrushTextSecondary") });
-            Grid.SetColumn(copy, 1); grid.Children.Add(copy); row.Content = grid;
+            var panel = new StackPanel();
+            panel.Children.Add(new TextBlock { Text = finding.Title, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
+            panel.Children.Add(new TextBlock { Text = finding.Summary, FontSize = 11, Foreground = (Brush)FindResource("BrushTextSecondary"), TextWrapping = TextWrapping.Wrap });
+            row.Content = panel;
             row.Click += (_, _) =>
             {
                 var item = scan.SettingsCatalog.First(setting => setting.ObjectId == (string)row.Tag);
@@ -43,21 +53,17 @@ public partial class HomeView : UserControl
             FindingsList.Children.Add(row);
         }
 
-        if (posture.Findings.Count == 0)
+        if (highFindings.Count == 0)
             FindingsList.Children.Add(new TextBlock
             {
-                Text = "No high-impact configured issues were found. Unconfigured and unknown values are not counted as safe.",
+                Text = "No high-risk configured finding was observed. Unknown values are not counted as safe.",
                 Margin = new Thickness(12, 10, 12, 10), TextWrapping = TextWrapping.Wrap,
                 Foreground = (Brush)FindResource("BrushTextSecondary")
             });
-
-        SecureBootText.Text = Display(overview.SecureBootState);
-        TpmText.Text = $"{Display(overview.TpmPresent)} · {Display(overview.TpmVersion)}";
-        BitLockerText.Text = Display(overview.BitLockerProtectionStatus);
-        FirewallText.Text = $"{Display(overview.FirewallServiceState)} · {Display(overview.FirewallProfilesSummary)}";
-        DefenderText.Text = Display(overview.DefenderServiceState);
-        PlatformText.Text = $"{Display(overview.WindowsVersion)} · {Display(overview.WindowsEdition)} · build {overview.BuildNumber} · scanned {overview.LastScanUtc:yyyy-MM-dd HH:mm} UTC";
     }
 
+    private void HighTile_Click(object sender, RoutedEventArgs e) => _openPosture("high");
+    private void ReviewTile_Click(object sender, RoutedEventArgs e) => _openPosture("review");
+    private void ProtectionsTile_Click(object sender, RoutedEventArgs e) => _openPosture("protections");
     private static string Display(string? value) => string.IsNullOrWhiteSpace(value) ? "Unknown" : value;
 }

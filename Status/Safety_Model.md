@@ -2,7 +2,7 @@
 
 ## Authority boundaries
 
-Inspect mode has no mutation authority. Modify mode is an explicit session choice; elevation satisfies an operating-system privilege requirement but does not create new catalog permissions.
+View-only mode has no mutation authority. Admin mode is an explicit, password-authorized session choice; elevation satisfies an operating-system privilege requirement but does not create new catalog permissions.
 
 A target is writable only when all of the following are true:
 
@@ -25,7 +25,7 @@ The registry-policy backend implements this sequence:
 4. Revalidate and execute each typed registry operation.
 5. Read each target again through an independent path.
 6. Report each success only when the typed state matches the request; retain structured partial-failure results.
-7. Write bounded local audit records that do not leave the device, rescan, and exit the elevated process.
+7. Write bounded local audit records that do not leave the device, then rescan while the authorized Admin session stays open.
 
 Registry verification includes value kind. Firewall-profile verification checks the exact profile values. Non-registry targets are rejected before any operation is attempted.
 
@@ -42,6 +42,6 @@ Unknown, not observed, not configured, unsupported, error, and access denied are
 
 ## Process and data handling
 
-External collection commands use fixed absolute executables, structured fixed arguments, bounded output, timeouts, and cancellation without a generic runner exposed to the UI. Discovered text is display-only. Local preferences and shortcut state are atomically replaced beneath LocalAppData; logs are sanitized and rotated there. The application has no telemetry or cloud backend. Local audit records are not claimed to be cryptographically tamper-proof.
+External collection commands use fixed absolute executables, structured fixed arguments, bounded output, timeouts, and cancellation without a generic runner exposed to the UI. Discovered text is display-only. Local preferences and shortcut state are atomically replaced beneath LocalAppData; logs are sanitized, rotated, and previous-hash chained there. The local-data ACL is limited to the current user, SYSTEM, and Administrators. The application has no telemetry or cloud backend. Local audit records are not claimed to be immutable or cryptographically tamper-proof.
 
-The current v2.4.0 elevation boundary is safer but not a separate authenticated IPC broker: the elevated executable hosts the Modify presentation for the duration of one prepared batch, accepts only compiled typed targets, and exits after it. A future broker must preserve the same default-deny checks and add authenticated, bounded IPC rather than accepting arbitrary serialized objects.
+The v2.5.0 elevation boundary is not a separate authenticated IPC broker. CredUI verifies an administrator password before Admin mode; UAC supplies an elevated token when required. The in-process Admin session remains open after Apply, and leaving Admin relaunches View-only through the Windows shell so the elevated token is dropped. A future broker must preserve the same default-deny checks and add authenticated, bounded IPC rather than accepting arbitrary serialized objects.

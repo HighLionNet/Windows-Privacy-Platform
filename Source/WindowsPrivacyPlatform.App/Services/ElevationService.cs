@@ -1,245 +1,243 @@
-// Source/WindowsPrivacyPlatform.App/Services/ElevationService.cs
-using System;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Windows;
 using WindowsPrivacyPlatform.Logging;
 
 namespace WindowsPrivacyPlatform.App.Services;
 
-/// <summary>
-/// Elevation gate for Modify mode.
-/// Uses WindowsIdentity / WindowsPrincipal. Can relaunch the process elevated via UAC.
-/// Session authorization is explicit after elevation. All decisions go to auth.log.
-/// </summary>
+public enum AdminEntryResult
+{
+    Authorized,
+    RelaunchStarted,
+    Denied
+}
+
+/// <summary>Credential authorization and operating-system token authority for Admin mode.</summary>
 public sealed class ElevationService
 {
     private readonly IAuditLogger _log;
-    private bool _modifyAuthorized;
+    private readonly ICredentialPromptService _credentials;
+    private bool _adminAuthorized;
+    private DateTime _authorizedUtc;
+    private int _sessionMinutes;
     private string _initiatingSid;
 
-    public ElevationService(IAuditLogger log)
+    public ElevationService(IAuditLogger log, ICredentialPromptService? credentials = null)
     {
         _log = log ?? throw new ArgumentNullException(nameof(log));
+        _credentials = credentials ?? new CredentialPromptService(log);
         _initiatingSid = CurrentSid();
     }
 
-    public bool IsModifyAuthorized => _modifyAuthorized && IsProcessElevated();
+    public bool IsAdminAuthorized
+    {
+        get
+        {
+            if (!_adminAuthorized || !IsProcessElevated()) return false;
+            if (_sessionMinutes == 0 || DateTime.UtcNow - _authorizedUtc < TimeSpan.FromMinutes(_sessionMinutes))
+                return true;
+            _adminAuthorized = false;
+            _log.Auth("ElevationService", "Admin authorization expired by the configured session lifetime.");
+            return false;
+        }
+    }
+
+    public string LastError { get; private set; } = string.Empty;
+
+    public void SetSessionLifetime(int minutes) =>
+        _sessionMinutes = minutes is 0 or 15 or 30 or 60 or 240 ? minutes : 0;
 
     public static bool IsProcessElevated()
     {
         try
         {
             using var identity = WindowsIdentity.GetCurrent();
-            var principal = new WindowsPrincipal(identity);
-            return principal.IsInRole(WindowsBuiltInRole.Administrator);
+            return new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator);
         }
-        catch (Exception)
+        catch
         {
-            Debug.WriteLine("Elevation check failed.");
             return false;
         }
     }
 
-    /// <summary>
-    /// Enter Modify mode. If not elevated, offers UAC relaunch.
-    /// If elevated, requires explicit confirmation for this session.
-    /// </summary>
-    public bool TryEnterModifyMode(Window owner)
+    public AdminEntryResult TryEnterAdminMode(Window? owner)
     {
-        var elevated = IsProcessElevated();
+        LastError = string.Empty;
+        if (IsAdminAuthorized) return AdminEntryResult.Authorized;
 
-        _log.Auth("ElevationService", $"Modify mode request. Elevated={elevated}. Authorized={_modifyAuthorized}.");
-
-        if (_modifyAuthorized && elevated)
+        _log.Auth("ElevationService", $"Admin mode request. Elevated={IsProcessElevated()}.");
+        var authorization = _credentials.AuthorizeAdmin(owner,
+            "Enter an administrator password to authorize Admin mode for Windows Privacy Platform. " +
+            "The password is verified locally by Windows and is not stored.");
+        if (!authorization.Authorized)
         {
-            _log.Auth("ElevationService", "Modify mode already authorized for this session.");
-            return true;
+            LastError = authorization.Error;
+            return AdminEntryResult.Denied;
         }
 
-        if (!elevated)
-        {
-            _log.Auth("ElevationService", "Process not elevated — offering UAC relaunch.");
-            var relaunch = MessageBox.Show(
-                owner,
-                "Modify mode requires Administrator privileges.\n\n" +
-                "Windows will prompt for elevation (UAC). The application will restart elevated.\n\n" +
-                "Continue?",
-                "Elevation required",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning,
-                MessageBoxResult.No);
-
-            if (relaunch != MessageBoxResult.Yes)
-            {
-                _log.Auth("ElevationService", "UAC relaunch declined by user.");
-                return false;
-            }
-
-            if (TryRelaunchElevated())
-            {
-                _log.Auth("ElevationService", "UAC relaunch started. Current process will exit.");
-                Application.Current.Shutdown();
-                return false; // current process is going away
-            }
-
-            _log.Auth("ElevationService", "UAC relaunch failed or was cancelled.");
-            MessageBox.Show(
-                owner,
-                "Could not restart elevated. UAC may have been cancelled, or the executable path could not be resolved.\n\n" +
-                "You can also right-click the app shortcut and choose Run as administrator.",
-                "Elevation failed",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
-            return false;
-        }
-
-        var result = MessageBox.Show(
-            owner,
-            "This process is running elevated.\n\n" +
-            "Authorize Modify mode for this session?\n\n" +
-                "• Only explicit catalog-authorized settings can change.\n" +
-                "• Every change is pre-read, confirmed, logged, and independently verified.\n" +
-            "• You can switch back to Inspect at any time.\n\n" +
-            "Continue?",
-            "Authorize Modify mode",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Question,
-            MessageBoxResult.No);
-
-        if (result != MessageBoxResult.Yes)
-        {
-            _log.Auth("ElevationService", "Modify mode authorization declined by user.");
-            return false;
-        }
-
-        _modifyAuthorized = true;
-        _log.Auth("ElevationService", "Modify mode authorized for elevated session.");
-        return true;
-    }
-
-    public void ExitModifyMode()
-    {
-        if (_modifyAuthorized)
-        {
-            _modifyAuthorized = false;
-            _log.Auth("ElevationService", "Modify mode exited for this session.");
-        }
-    }
-
-    /// <summary>Consumes the explicit relaunch marker after Windows has completed the single UAC transition.</summary>
-    public bool AuthorizeRelaunchedSession(string? initiatingSid)
-    {
+        _initiatingSid = CurrentSid();
         if (!IsProcessElevated())
         {
-            _log.Auth("ElevationService", "Relaunch marker rejected because the process is not elevated.");
+            if (TryRelaunchElevated()) return AdminEntryResult.RelaunchStarted;
+            LastError = "Windows elevation was cancelled or could not start.";
+            return AdminEntryResult.Denied;
+        }
+
+        AuthorizeInMemory("Admin mode authorized after local password verification.");
+        return AdminEntryResult.Authorized;
+    }
+
+    public bool ConfirmAdminModeExit(Window? owner)
+    {
+        var result = _credentials.AuthorizeAdmin(owner,
+            "Confirm your administrator password to leave Admin mode. The app will restart in View-only so the elevated token is dropped.");
+        LastError = result.Error;
+        return result.Authorized;
+    }
+
+    public void ExitAdminMode()
+    {
+        _adminAuthorized = false;
+        _authorizedUtc = default;
+        _log.Auth("ElevationService", "Admin authorization cleared from memory.");
+    }
+
+    public bool AuthorizeRelaunchedSession(string? initiatingSid)
+    {
+        if (!IsProcessElevated() || string.IsNullOrWhiteSpace(initiatingSid) || initiatingSid.Length > 184 ||
+            !initiatingSid.StartsWith("S-1-", StringComparison.OrdinalIgnoreCase))
+        {
+            _log.Auth("ElevationService", "Admin relaunch marker rejected.");
             return false;
         }
 
-        if (string.IsNullOrWhiteSpace(initiatingSid) || initiatingSid.Length > 184 ||
-            !initiatingSid.StartsWith("S-1-", StringComparison.OrdinalIgnoreCase))
-        {
-            _log.Auth("ElevationService", "Relaunch marker rejected because the initiating identity marker is malformed.");
-            return false;
-        }
         _initiatingSid = initiatingSid;
-        _modifyAuthorized = true;
-        _log.Auth("ElevationService", "Modify mode authorized from the completed UAC relaunch.");
+        AuthorizeInMemory("Admin mode inherited from the parent process after CredUI and UAC completed.");
         return true;
     }
 
-    /// <summary>Prevents an over-the-shoulder administrator token from silently changing that administrator's HKCU.</summary>
     public bool CanModifyHive(string hive, out string reason)
     {
         reason = string.Empty;
         if (!hive.Equals("HKCU", StringComparison.OrdinalIgnoreCase) &&
             !hive.Equals("HKEY_CURRENT_USER", StringComparison.OrdinalIgnoreCase))
             return true;
-        if (string.Equals(_initiatingSid, CurrentSid(), StringComparison.OrdinalIgnoreCase))
-            return true;
+        if (string.Equals(_initiatingSid, CurrentSid(), StringComparison.OrdinalIgnoreCase)) return true;
         reason = "Per-user settings cannot be changed when Windows elevation used a different administrator account. Sign in as that user and run with that same account.";
         _log.Auth("ElevationService", "HKCU write denied because the elevated identity differs from the initiating identity.");
         return false;
     }
 
-    /// <summary>
-    /// Relaunch this process with a full admin token (UAC prompt).
-    /// Returns true if the elevated process was started.
-    /// </summary>
     public bool TryRelaunchElevated()
     {
         try
         {
-            var exePath = ResolveExecutablePath();
-            if (string.IsNullOrWhiteSpace(exePath) || !File.Exists(exePath))
+            var executable = ResolveExecutablePath();
+            if (!File.Exists(executable)) return false;
+            var start = new ProcessStartInfo
             {
-                _log.Auth("ElevationService", $"Cannot relaunch: executable not found ('{exePath}').");
-                return false;
-            }
-
-            var psi = new ProcessStartInfo
-            {
-                FileName = exePath,
+                FileName = executable,
                 UseShellExecute = true,
                 Verb = "runas",
-                WorkingDirectory = Path.GetDirectoryName(exePath) ?? Environment.CurrentDirectory
+                WorkingDirectory = Path.GetDirectoryName(executable) ?? Environment.CurrentDirectory
             };
-            psi.ArgumentList.Add("--authorize-modify");
-            psi.ArgumentList.Add("--initiating-sid");
-            psi.ArgumentList.Add(_initiatingSid);
-
-            var process = Process.Start(psi);
-            if (process is null)
-            {
-                _log.Auth("ElevationService", "Process.Start returned null for elevated relaunch.");
-                return false;
-            }
-
-            _log.Auth("ElevationService", $"Elevated process started. PID={process.Id}. Path={exePath}");
+            start.ArgumentList.Add("--authorize-modify");
+            start.ArgumentList.Add("--initiating-sid");
+            start.ArgumentList.Add(_initiatingSid);
+            start.ArgumentList.Add("--no-shortcut-offer");
+            var process = Process.Start(start);
+            if (process is null) return false;
+            _log.Auth("ElevationService", "Elevated self-relaunch started.");
             return true;
         }
         catch (Exception ex)
         {
-            // User cancelling UAC throws Win32Exception
-            _log.Auth("ElevationService", "Relaunch elevated failed: category=" + ex.GetType().Name);
+            _log.Auth("ElevationService", "Elevated self-relaunch failed: category=" + ex.GetType().Name);
             return false;
         }
     }
 
+    public bool TryRelaunchViewOnly()
+    {
+        try
+        {
+            var executable = ResolveExecutablePath();
+            if (!File.Exists(executable)) return false;
+            var shellType = Type.GetTypeFromProgID("Shell.Application", throwOnError: false);
+            var shell = shellType is null ? null : Activator.CreateInstance(shellType);
+            if (shell is not null)
+            {
+                try
+                {
+                    shellType!.InvokeMember("ShellExecute", BindingFlags.InvokeMethod, null, shell,
+                    [
+                        executable,
+                        "--inspect --no-shortcut-offer",
+                        Path.GetDirectoryName(executable) ?? Environment.CurrentDirectory,
+                        "open",
+                        1
+                    ]);
+                }
+                finally { if (Marshal.IsComObject(shell)) Marshal.FinalReleaseComObject(shell); }
+            }
+            else
+            {
+                var explorer = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe");
+                if (!File.Exists(explorer)) return false;
+                var start = new ProcessStartInfo { FileName = explorer, UseShellExecute = false };
+                start.ArgumentList.Add(executable);
+                start.ArgumentList.Add("--inspect");
+                start.ArgumentList.Add("--no-shortcut-offer");
+                if (Process.Start(start) is null) return false;
+            }
+            _log.Auth("ElevationService", "Unelevated View-only self-relaunch requested through the Windows shell.");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _log.Auth("ElevationService", "View-only self-relaunch failed: category=" + ex.GetType().Name);
+            return false;
+        }
+    }
+
+    private void AuthorizeInMemory(string logMessage)
+    {
+        _adminAuthorized = true;
+        _authorizedUtc = DateTime.UtcNow;
+        _log.Auth("ElevationService", logMessage);
+    }
+
     private static string ResolveExecutablePath()
     {
-        // Prefer the process module path (works for published EXE).
         try
         {
             var main = Process.GetCurrentProcess().MainModule?.FileName;
-            if (!string.IsNullOrWhiteSpace(main) && File.Exists(main))
-                return main;
+            if (!string.IsNullOrWhiteSpace(main) && File.Exists(main)) return main;
         }
-        catch { /* ignore */ }
+        catch { }
 
-        // Fallback: assembly location (may be .dll under dotnet host).
-        var loc = Assembly.GetEntryAssembly()?.Location
-                  ?? Assembly.GetExecutingAssembly().Location;
-        if (!string.IsNullOrWhiteSpace(loc))
+        var location = Assembly.GetEntryAssembly()?.Location ?? Assembly.GetExecutingAssembly().Location;
+        if (location.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
         {
-            if (loc.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
-            {
-                var candidate = Path.ChangeExtension(loc, ".exe");
-                if (File.Exists(candidate))
-                    return candidate;
-            }
-            if (File.Exists(loc))
-                return loc;
+            var executable = Path.ChangeExtension(location, ".exe");
+            if (File.Exists(executable)) return executable;
         }
-
-        return Environment.ProcessPath ?? string.Empty;
+        return File.Exists(location) ? location : Environment.ProcessPath ?? string.Empty;
     }
 
     private static string CurrentSid()
     {
-        try { using var identity = WindowsIdentity.GetCurrent(); return identity.User?.Value ?? string.Empty; }
-        catch { return string.Empty; }
+        try
+        {
+            using var identity = WindowsIdentity.GetCurrent();
+            return identity.User?.Value ?? string.Empty;
+        }
+        catch
+        {
+            return string.Empty;
+        }
     }
 }

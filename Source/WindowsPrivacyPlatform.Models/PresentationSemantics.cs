@@ -138,8 +138,8 @@ public static class CategoryContent
             $"Review Microsoft Edge policy for {Friendly(category)}.",
             "Browser policies can change tracking, suggestions, reporting, credentials, and compatibility for every Edge profile on the device."),
         _ => new(
-            $"Review the editable Windows controls grouped under {Friendly(category)}.",
-            "Each item shows the observed evidence, supported choices, scope, and verification result before a change is accepted.")
+            $"Review Windows controls for {Friendly(category)}.",
+            "Open Details for the full behavior, side effects, source, and raw values.")
     };
 
     private static string Friendly(string value) =>

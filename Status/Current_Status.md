@@ -1,6 +1,6 @@
 # Current Status
 
-**Release state:** v2.4.0 source and portable-build candidate
+**Release state:** v2.5.0 Release-build candidate
 **Updated:** 2026-08-27
 
 ## Product surface
@@ -25,8 +25,9 @@ The application separates two kinds of data:
 ## Write safety delivered
 
 - Deny-by-default typed targets with explicit exclusion reasons for every other setting.
-- Category-level pending batches, one Windows elevation transition, pre-read, one confirmation, typed operation, independent verification, local audit, and elevated-process exit.
+- CredUI password authorization for Admin, UAC elevation when required, category-level pending batches, pre-read, one themed confirmation, typed operation, independent verification, local audit, and stay-open Apply behavior.
 - Exact runtime-target comparison against the compiled registry allowlist and cross-account HKCU refusal.
+- Startup authorization-table hashing, bounded command-line markers, a single-instance boundary, LocalAppData ACL hardening, previous-hash audit chaining, and best-effort process mitigations.
 - Value- and edition-aware UI state; inapplicable controls cannot be changed.
 - Registry-only backend enforcement plus automated authorization/round-trip coverage.
 - Automated prose validation prevents technical identifiers from leaking back into user-facing explanation fields.
@@ -38,4 +39,4 @@ The application separates two kinds of data:
 - Reproducible win-x64 release archive, PDB/source/secret-file rejection, content-hash manifest, static ZIP audit, optional Authenticode hook, CI artifact, and tag-based GitHub Release publishing.
 - Repository-relative, fast-forward-only sync/build helper that never discards local changes.
 
-The remaining backlog includes an isolated authenticated elevation broker, signed publisher reputation, localization, Windows accessibility certification, maintained release screenshots, and optional report export. See `Review-v2.4.0.md` for the ranked limitations.
+The remaining backlog includes an isolated authenticated elevation broker, signed publisher reputation, localization, Windows accessibility certification, maintained release screenshots, and optional report export. See `Review-v2.5.0.md` for the current limitations.

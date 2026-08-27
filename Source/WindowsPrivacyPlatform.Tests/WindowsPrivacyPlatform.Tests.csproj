@@ -6,9 +6,11 @@
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <UseWPF>true</UseWPF>
   </PropertyGroup>
 
   <ItemGroup>
+    <Using Include="System.IO" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
@@ -23,6 +25,7 @@
     <ProjectReference Include="..\WindowsPrivacyPlatform.Validator\WindowsPrivacyPlatform.Validator.csproj" />
     <ProjectReference Include="..\WindowsPrivacyPlatform.Core\WindowsPrivacyPlatform.Core.csproj" />
     <ProjectReference Include="..\WindowsPrivacyPlatform.Logging\WindowsPrivacyPlatform.Logging.csproj" />
+    <ProjectReference Include="..\WindowsPrivacyPlatform.App\WindowsPrivacyPlatform.App.csproj" />
   </ItemGroup>
 
 </Project>

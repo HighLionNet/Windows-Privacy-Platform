@@ -15,17 +15,21 @@
       <Border Style="{StaticResource HeaderRule}" />
     </StackPanel>
 
-    <Grid Grid.Row="1" Margin="0,0,0,10">
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="*" />
-        <ColumnDefinition Width="190" />
-        <ColumnDefinition Width="210" />
-      </Grid.ColumnDefinitions>
-      <TextBox x:Name="FilterBox" Height="32" Padding="9,4" VerticalContentAlignment="Center"
-               ToolTip="Search name, state, group, or identifier" />
-      <ComboBox x:Name="TypeFilter" Grid.Column="1" Height="32" Margin="10,0,0,0" />
-      <ComboBox x:Name="GroupFilter" Grid.Column="2" Height="32" Margin="10,0,0,0" />
-    </Grid>
+    <Border Grid.Row="1" Style="{StaticResource ListContainer}" Padding="12" Margin="0,0,0,10">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/><ColumnDefinition Width="190"/>
+          <ColumnDefinition Width="Auto"/><ColumnDefinition Width="210"/>
+        </Grid.ColumnDefinitions>
+        <TextBlock Text="Search:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,0"/>
+        <TextBox x:Name="FilterBox" Grid.Column="1" Height="34" VerticalContentAlignment="Center"/>
+        <TextBlock Grid.Column="2" Text="Type:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0,6,0"/>
+        <ComboBox x:Name="TypeFilter" Grid.Column="3" Height="34" IsTextSearchEnabled="True"/>
+        <TextBlock Grid.Column="4" Text="Group:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0,6,0"/>
+        <ComboBox x:Name="GroupFilter" Grid.Column="5" Height="34" IsTextSearchEnabled="True"/>
+      </Grid>
+    </Border>
 
     <DockPanel Grid.Row="2" Margin="2,0,2,8" LastChildFill="False">
       <TextBlock Text="Observation only — changes belong in Windows management tools."
@@ -34,7 +38,7 @@
                  FontSize="11" FontWeight="SemiBold" Margin="18,0,0,0" />
     </DockPanel>
 
-    <Border Grid.Row="3" Style="{StaticResource ListContainer}" MaxHeight="610">
+    <Border Grid.Row="3" Style="{StaticResource ListContainer}" Margin="0">
       <ListBox x:Name="ExplorerList" BorderThickness="0" Background="Transparent"
                ScrollViewer.CanContentScroll="True" ScrollViewer.VerticalScrollBarVisibility="Auto"
                VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">

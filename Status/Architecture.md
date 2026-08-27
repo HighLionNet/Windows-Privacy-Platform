@@ -33,11 +33,11 @@ Collectors are fail-soft, cancellation-aware, and preserve unknown/error/access-
 
 ## Presentation
 
-The main shell exposes an evidence-based Overview, category-first editable privacy/security domains, System Explorer, a compact read-only Services page, search, and About. Every domain opens category rows; every category opens a filterable settings list. Search and Overview results land on that list with a highlighted card. Detail is explicit. Product and build identity comes from assembly metadata.
+The main shell exposes an identity-first Overview, category-first editable privacy/security domains, System Explorer, a virtualized read-only Services page, search, App Settings, and About. Navigation has history, breadcrumbs, and labeled search/filter controls. Four token-driven themes are selectable at runtime. Search and Overview results land on category lists with highlighted cards; detail is explicit. Product and build identity comes from assembly metadata.
 
 ## Mutation pipeline
 
-Registry policy and firewall-profile operations implement the verified-write contract. Selecting an option creates only pending UI state. `PolicyChangeService` accepts at most 32 unique changes, compares each complete runtime target to the compiled catalog authorization, enforces identity/elevation/applicability/value boundaries, pre-reads, confirms the batch once, writes typed values, and verifies independent read-back. Cross-account HKCU changes are refused and the elevated process exits after the operation.
+Registry policy and firewall-profile operations implement the verified-write contract. Selecting an option creates only pending UI state. `PolicyChangeService` accepts at most 32 unique changes, verifies the compiled authorization-table hash, compares each complete runtime target to the compiled catalog authorization, enforces identity/elevation/applicability/value boundaries, pre-reads, confirms the batch once, writes typed values, and verifies independent read-back. Cross-account HKCU changes are refused. Apply rescans and keeps the authorized Admin session open; leaving Admin relaunches View-only unelevated.
 
 Services, scheduled tasks, packages, Windows features, capabilities, arbitrary firewall rules, BitLocker, User Account Control, and live dynamic inventory have no backend route.
 

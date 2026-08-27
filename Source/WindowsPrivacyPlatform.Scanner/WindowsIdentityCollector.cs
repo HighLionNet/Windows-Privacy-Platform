@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Management;
 using System.Runtime.InteropServices;
+using System.Security.Principal;
 using System.Threading;
 using Microsoft.Win32;
 using WindowsPrivacyPlatform.Models;
@@ -31,6 +32,7 @@ namespace WindowsPrivacyPlatform.Scanner
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                CollectCurrentIdentity(snapshot, notes);
                 sourcesAttempted++;
                 var registryOk = TryCollectFromRegistry(snapshot, notes);
                 if (registryOk)
@@ -75,6 +77,31 @@ namespace WindowsPrivacyPlatform.Scanner
 
             snapshot.Identity.IdentityCollectionNotes = string.Join(" ", notes);
             snapshot.CaptureTimestamp = DateTime.UtcNow;
+        }
+
+        private static void CollectCurrentIdentity(InventorySnapshot snapshot, List<string> notes)
+        {
+            snapshot.Identity.ComputerName = Environment.MachineName;
+            try
+            {
+                using var identity = WindowsIdentity.GetCurrent();
+                snapshot.Identity.SignedInUser = string.IsNullOrWhiteSpace(identity.Name)
+                    ? $"{Environment.UserDomainName}\\{Environment.UserName}" : identity.Name;
+                var domain = snapshot.Identity.SignedInUser.Split('\\')[0];
+                snapshot.Identity.AccountType = domain.Equals("MicrosoftAccount", StringComparison.OrdinalIgnoreCase)
+                    ? "Microsoft account"
+                    : domain.Equals(Environment.MachineName, StringComparison.OrdinalIgnoreCase)
+                        ? "Local account"
+                        : domain.Equals("AzureAD", StringComparison.OrdinalIgnoreCase)
+                            ? "Microsoft Entra account"
+                            : "Domain or managed account";
+            }
+            catch
+            {
+                snapshot.Identity.SignedInUser = Environment.UserName;
+                snapshot.Identity.AccountType = "Unknown";
+            }
+            notes.Add("Computer and signed-in user identity collected from local Windows APIs.");
         }
 
         private static bool TryCollectFromRegistry(InventorySnapshot snapshot, List<string> notes)
@@ -254,13 +281,60 @@ namespace WindowsPrivacyPlatform.Scanner
                 notes.Add("Domain membership could not be verified with available read-only sources.");
             }
 
-            // Security hardware and encryption are optional, fail-soft providers.
+            // Security hardware and join state are optional, fail-soft providers.
+            TryCollectSecureBoot(snapshot, notes);
+            TryCollectTpm(snapshot, notes);
+            TryCollectAzureAdJoin(snapshot, notes);
+            TryCollectEncryptionStatus(snapshot, notes);
+            notes.Add("Unavailable security hardware and join values remain Unknown.");
+        }
+
+        private static void TryCollectSecureBoot(InventorySnapshot snapshot, List<string> notes)
+        {
             snapshot.Identity.SecureBootState = "Unknown";
+            try
+            {
+                using var key = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Control\SecureBoot\State", false);
+                var raw = key?.GetValue("UEFISecureBootEnabled");
+                if (raw is int value) snapshot.Identity.SecureBootState = value == 1 ? "Enabled" : "Disabled";
+            }
+            catch { notes.Add("Secure Boot state could not be read."); }
+        }
+
+        private static void TryCollectTpm(InventorySnapshot snapshot, List<string> notes)
+        {
             snapshot.Identity.TpmPresent = "Unknown";
             snapshot.Identity.TpmVersion = "Unknown";
+            try
+            {
+                var scope = new ManagementScope(@"\\.\root\CIMV2\Security\MicrosoftTpm");
+                scope.Connect();
+                using var searcher = new ManagementObjectSearcher(scope,
+                    new ObjectQuery("SELECT IsEnabled_InitialValue, SpecVersion FROM Win32_Tpm"));
+                using var results = searcher.Get();
+                foreach (ManagementObject tpm in results)
+                {
+                    using (tpm)
+                    {
+                        snapshot.Identity.TpmPresent = "Present";
+                        snapshot.Identity.TpmVersion = tpm["SpecVersion"]?.ToString()?.Trim() ?? "Version unavailable";
+                    }
+                    return;
+                }
+                snapshot.Identity.TpmPresent = "Not detected";
+            }
+            catch { notes.Add("TPM provider was unavailable."); }
+        }
+
+        private static void TryCollectAzureAdJoin(InventorySnapshot snapshot, List<string> notes)
+        {
             snapshot.Identity.AzureAdJoined = "Unknown";
-            TryCollectEncryptionStatus(snapshot, notes);
-            notes.Add("Secure Boot, TPM, and Entra join state may require additional providers or elevation; unavailable values remain Unknown.");
+            try
+            {
+                using var key = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Control\CloudDomainJoin\JoinInfo", false);
+                snapshot.Identity.AzureAdJoined = key?.GetSubKeyNames().Length > 0 ? "Joined" : "Not observed";
+            }
+            catch { notes.Add("Microsoft Entra join state could not be read."); }
         }
 
         private static void TryCollectEncryptionStatus(InventorySnapshot snapshot, List<string> notes)

@@ -7,6 +7,9 @@ namespace WindowsPrivacyPlatform.Models;
 
 public class IdentityInventory
 {
+    public string ComputerName { get; set; } = string.Empty;
+    public string SignedInUser { get; set; } = string.Empty;
+    public string AccountType { get; set; } = "Unknown";
     public string WindowsVersion { get; set; } = string.Empty;
     public string Edition { get; set; } = string.Empty;
     public int BuildNumber { get; set; }
@@ -107,6 +110,9 @@ public class FirewallRuleInfo
 /// </summary>
 public class MachineOverview
 {
+    public string ComputerName { get; set; } = string.Empty;
+    public string SignedInUser { get; set; } = string.Empty;
+    public string AccountType { get; set; } = "Unknown";
     public string WindowsEdition { get; set; } = string.Empty;
     public string WindowsVersion { get; set; } = string.Empty;
     public int BuildNumber { get; set; }
@@ -155,6 +161,9 @@ public class MachineOverview
 
         return new MachineOverview
         {
+            ComputerName = id.ComputerName,
+            SignedInUser = id.SignedInUser,
+            AccountType = id.AccountType,
             WindowsEdition = id.Edition,
             WindowsVersion = id.WindowsVersion,
             BuildNumber = id.BuildNumber,

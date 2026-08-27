@@ -1,26 +1,26 @@
 using System.Windows;
+using WindowsPrivacyPlatform.Models;
 
 namespace WindowsPrivacyPlatform.App;
 
 public partial class StartupModeDialog : Window
 {
-    public bool ModifyRequested { get; private set; }
+    public bool AdminRequested { get; private set; }
 
-    public StartupModeDialog()
+    public StartupModeDialog(DefaultModePreference preference)
     {
         InitializeComponent();
-        Title = Models.ProductInfoReader.Read().Name + " — Session mode";
+        Title = ProductInfoReader.Read().Name + " — Session mode";
+        Loaded += (_, _) =>
+        {
+            if (preference == DefaultModePreference.ViewOnly) ViewOnlyButton.Focus();
+            else AdminButton.Focus();
+        };
     }
 
-    private void Inspect_Click(object sender, RoutedEventArgs e)
-    {
-        ModifyRequested = false;
-        DialogResult = true;
-    }
+    private void ViewOnly_Click(object sender, RoutedEventArgs e)
+    { AdminRequested = false; DialogResult = true; }
 
-    private void Modify_Click(object sender, RoutedEventArgs e)
-    {
-        ModifyRequested = true;
-        DialogResult = true;
-    }
+    private void Admin_Click(object sender, RoutedEventArgs e)
+    { AdminRequested = true; DialogResult = true; }
 }

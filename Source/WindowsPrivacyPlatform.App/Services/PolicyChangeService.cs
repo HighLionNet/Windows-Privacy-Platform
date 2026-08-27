@@ -52,7 +52,15 @@ public sealed class PolicyChangeService
             return false;
         }
 
-        var preview = new List<string>();
+        if (!ManagedObjectCatalog.HasValidAuthorizationHash())
+        {
+            results.Add(new PolicyChangeOutcome(string.Empty, false,
+                "The installed authorization catalog failed its integrity check. No changes were made."));
+            _log.Change("PolicyChangeService", "DENIED batch: authorization catalog hash mismatch.");
+            return false;
+        }
+
+        var preview = new List<ChangeConfirmationItem>();
         foreach (var change in changes)
         {
             if (!TryPrepare(change.Setting, change.RawValue, out var before, out var error))
@@ -61,20 +69,11 @@ public sealed class PolicyChangeService
                 return false;
             }
             var intended = string.IsNullOrWhiteSpace(change.RawValue) ? "Use Windows default" : OptionLabel(change.Setting, change.RawValue!);
-            preview.Add($"• {change.Setting.ObjectName}\n  Current: {before}\n  Proposed: {intended}");
+            preview.Add(new ChangeConfirmationItem(change.Setting.ObjectName, before, intended));
         }
 
-        var confirmation = MessageBox.Show(
-            owner,
-            $"Apply {changes.Count} pending change{(changes.Count == 1 ? string.Empty : "s")} in one elevated operation?\n\n" +
-            string.Join("\n\n", preview) +
-            "\n\nEach target will be read again before writing and accepted only after typed read-back verification.",
-            "Confirm pending changes",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning,
-            MessageBoxResult.No);
-
-        if (confirmation != MessageBoxResult.Yes)
+        var confirmation = new ChangeConfirmationDialog(preview) { Owner = owner };
+        if (confirmation.ShowDialog() != true)
         {
             foreach (var change in changes)
                 results.Add(new PolicyChangeOutcome(change.Setting.ObjectId, false, "Change cancelled."));
@@ -100,10 +99,17 @@ public sealed class PolicyChangeService
             return false;
         }
 
-        if (!_elevation.IsModifyAuthorized)
+        if (!_elevation.IsAdminAuthorized)
         {
-            message = "Modify mode is not authorized for this session.";
-            _log.Change("PolicyChangeService", $"DENIED {mo.ObjectId}: Modify not authorized.");
+            message = "Admin mode is not authorized for this session.";
+            _log.Change("PolicyChangeService", $"DENIED {mo.ObjectId}: Admin mode not authorized.");
+            return false;
+        }
+
+        if (!ManagedObjectCatalog.HasValidAuthorizationHash())
+        {
+            message = "The installed authorization catalog failed its integrity check. No change was made.";
+            _log.Change("PolicyChangeService", $"DENIED {mo.ObjectId}: authorization catalog hash mismatch.");
             return false;
         }
 
@@ -212,7 +218,7 @@ public sealed class PolicyChangeService
                 $"Change setting:\n\n" +
                 $"{mo.ObjectName}\n\n" +
                 $"Current (system): {FormatRead(before)}\n" +
-                $"Proposed: {OptionLabel(mo, rawValue)}\n\n" +
+                $"New: {OptionLabel(mo, rawValue)}\n\n" +
                 "Technical target and raw value are available in the setting disclosure and audit record.\n" +
                 "The change is accepted only if a fresh read-back matches value and type.\n\nContinue?",
                 "Confirm change",
@@ -318,9 +324,14 @@ public sealed class PolicyChangeService
     {
         beforeDisplay = "Unknown";
         error = string.Empty;
-        if (!_elevation.IsModifyAuthorized)
+        if (!_elevation.IsAdminAuthorized)
         {
-            error = "Modify mode is not authorized for this session.";
+            error = "Admin mode is not authorized for this session.";
+            return false;
+        }
+        if (!ManagedObjectCatalog.HasValidAuthorizationHash())
+        {
+            error = "The installed authorization catalog failed its integrity check.";
             return false;
         }
         var target = item.WritableTarget;
@@ -343,7 +354,7 @@ public sealed class PolicyChangeService
         }
         if (target.RequiresElevation && !ElevationService.IsProcessElevated())
         {
-            error = "This batch requires an elevated Modify session.";
+            error = "This batch requires an elevated Admin session.";
             return false;
         }
         if (string.IsNullOrWhiteSpace(rawValue) && !target.SupportsDeletion)
@@ -354,7 +365,7 @@ public sealed class PolicyChangeService
         if (!string.IsNullOrWhiteSpace(rawValue) &&
             !target.SupportedRawValues.Contains(rawValue, StringComparer.OrdinalIgnoreCase))
         {
-            error = "The proposed value is outside the setting allowlist.";
+            error = "The selected value is outside the setting allowlist.";
             return false;
         }
         if (!TryParseHive(target.Hive, out var hive))

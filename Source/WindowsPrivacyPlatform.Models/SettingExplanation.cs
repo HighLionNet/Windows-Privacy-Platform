@@ -52,19 +52,9 @@ public static class SettingExplanationFactory
 
         var impactLabel = mo.RiskLevel switch
         {
-            RiskLevel.High => "High privacy or security impact",
-            RiskLevel.Medium => "Medium configuration impact",
-            _ => "Lower configuration impact"
-        };
-
-        var riskSummary = mo.RiskLevel switch
-        {
-            RiskLevel.High =>
-                "This setting sits on a high-impact surface: sensor access, identity data, diagnostic volume, or host protection. Understanding it matters more than treating the label as a score.",
-            RiskLevel.Medium =>
-                "This setting has moderate effect on privacy, management, or day-to-day behavior. Context from related layers is often useful.",
-            _ =>
-                "This setting has a narrower effect. It is still part of the wider configuration map."
+            RiskLevel.High => "High impact",
+            RiskLevel.Medium => "Medium impact",
+            _ => "Lower impact"
         };
 
         var controlHint = mo.ControlLevel switch
@@ -85,9 +75,9 @@ public static class SettingExplanationFactory
             DisplayName = mo.ObjectName,
             DomainPath = domainPath,
             ImpactLabel = impactLabel,
-            RiskSummary = riskSummary,
+            RiskSummary = mo.Narrative.WhyItMatters,
             WhatIsIt = mo.Narrative.Summary,
-            WhyItMatters = mo.Narrative.Mechanics + " " + mo.Narrative.WhyItMatters,
+            WhyItMatters = mo.Narrative.WhyItMatters,
             UserImpact = mo.Narrative.ConsumerImpact,
             EnterpriseImpact = controlHint,
             TypicalUseCases = string.IsNullOrWhiteSpace(mo.TypicalEnterpriseUse) ? BuildUseCases(mo) : mo.TypicalEnterpriseUse.Trim(),
