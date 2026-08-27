@@ -29,6 +29,28 @@ public sealed class V250AcceptanceTests
         Assert.False(elevation.IsAdminAuthorized);
     }
 
+    [Theory]
+    [InlineData("c-137", "", "c-137", ".", "local")]
+    [InlineData("CORP\\c-137", "", "c-137", "CORP", "domain")]
+    [InlineData("person@example.com", "ignored", "person@example.com", null, "upn")]
+    public void Credential_account_forms_are_normalized_for_LogonUser(string inputUser, string inputDomain,
+        string expectedUser, string? expectedDomain, string expectedForm)
+    {
+        var account = CredentialPromptService.NormalizeAccount(inputUser, inputDomain);
+        Assert.Equal(expectedUser, account.UserName);
+        Assert.Equal(expectedDomain, account.Domain);
+        Assert.Equal(expectedForm, account.Form);
+    }
+
+    [Fact]
+    public void Machine_qualified_credential_uses_the_local_account_database()
+    {
+        var account = CredentialPromptService.NormalizeAccount($"{Environment.MachineName}\\c-137", string.Empty);
+        Assert.Equal("c-137", account.UserName);
+        Assert.Equal(".", account.Domain);
+        Assert.Equal("local", account.Form);
+    }
+
     [Fact]
     public void Authorization_hash_detects_runtime_table_changes()
     {
@@ -60,6 +82,39 @@ public sealed class V250AcceptanceTests
         Assert.DoesNotContain("password", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("secret", json, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("authorized", json, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Every_theme_has_a_complete_distinct_surface_palette()
+    {
+        foreach (var theme in Enum.GetValues<AppTheme>())
+        {
+            var palette = ThemeManager.PaletteForTesting(theme);
+            Assert.True(palette.Count >= 39, theme.ToString());
+            Assert.NotEqual(palette["BgWindow"], palette["BgContent"]);
+            Assert.NotEqual(palette["BgContent"], palette["BgCard"]);
+            Assert.NotEqual(palette["BgCard"], palette["BgHeader"]);
+            Assert.DoesNotContain("#FFFFFF", new[] { palette["BgWindow"], palette["BgContent"], palette["BgCard"] });
+        }
+    }
+
+    [Fact]
+    public void Current_Copilot_app_policy_set_and_high_risk_AI_observations_are_covered()
+    {
+        var expected = new[]
+        {
+            "policy.copilot.app.browsing", "policy.copilot.app.componentupdates",
+            "policy.copilot.app.coworkactions", "policy.copilot.settingsagent",
+            "policy.copilot.paint.cocreator", "policy.copilot.paint.generativefill",
+            "policy.copilot.paint.imagecreator", "policy.recall.allowenablement",
+            "policy.recall.allowexport", "policy.recall.denyapplist", "policy.recall.denyurilist",
+            "policy.recall.maxduration", "policy.recall.maxstorage"
+        };
+        Assert.All(expected, id => Assert.Contains(ManagedObjectCatalog.All, item => item.ObjectId == id));
+        Assert.All(ManagedObjectCatalog.All.Where(item => item.ObjectId.StartsWith("policy.copilot.app.")),
+            item => Assert.True(item.IsWritable, item.ObjectId));
+        Assert.All(ManagedObjectCatalog.All.Where(item => CatalogPolicy.IsMonitoredReadOnlySetting(item.ObjectId)),
+            item => Assert.False(item.IsWritable, item.ObjectId));
     }
 
     private static ManagedObject Clone(ManagedObject item) => new()

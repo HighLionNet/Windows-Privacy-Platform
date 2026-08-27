@@ -73,19 +73,52 @@ public partial class CategoryView : UserControl
     private Border BuildCard(ManagedObject item)
     {
         var highlighted = item.ObjectId.Equals(_highlightObjectId, StringComparison.OrdinalIgnoreCase);
+        var evidence = EvidenceStateSemantics.Classify(item);
+        var accentKey = evidence switch
+        {
+            EvidenceState.Configured => "BrushSuccess",
+            EvidenceState.AccessDenied or EvidenceState.Error => "BrushConflict",
+            EvidenceState.Unknown or EvidenceState.NotObserved or EvidenceState.Stale => "BrushWarning",
+            _ => "BrushAccent"
+        };
+        var accent = (Brush)FindResource(accentKey);
         var card = new Border
         {
-            Margin = new Thickness(0, 0, 0, 10), Padding = new Thickness(16, 13, 16, 14),
+            Margin = new Thickness(0, 0, 0, 10), Padding = new Thickness(0),
             Background = highlighted ? (Brush)FindResource("BrushBgSelected") : (Brush)FindResource("BrushBgCard"),
             BorderBrush = highlighted ? (Brush)FindResource("BrushAccent") : (Brush)FindResource("BrushBorderStrong"),
-            BorderThickness = new Thickness(highlighted ? 2 : 1), CornerRadius = new CornerRadius(4)
+            BorderThickness = new Thickness(highlighted ? 2 : 1), CornerRadius = new CornerRadius(8)
         };
-        var root = new StackPanel();
-        root.Children.Add(Text(item.ObjectName, 15, "BrushTextPrimary", 0, FontWeights.SemiBold));
-        root.Children.Add(Text(Introduction(item), 12, "BrushTextSecondary", 4));
+        var layout = new Grid();
+        layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(4) });
+        layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        layout.Children.Add(new Border { Background = accent, CornerRadius = new CornerRadius(7, 0, 0, 7) });
+        var root = new StackPanel { Margin = new Thickness(14, 11, 15, 13) };
+        Grid.SetColumn(root, 1);
+
+        var header = new Grid();
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        header.Children.Add(Text(item.ObjectName, 14.5, "BrushTextPrimary", 0, FontWeights.SemiBold));
+        var stateBadge = new Border
+        {
+            Style = (Style)FindResource(evidence is EvidenceState.AccessDenied or EvidenceState.Error ? "BadgeConflict" :
+                evidence is EvidenceState.Unknown or EvidenceState.NotObserved or EvidenceState.Stale ? "BadgeWarning" :
+                evidence == EvidenceState.Configured ? "BadgeSuccess" : "BadgeUnknown"),
+            Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Top
+        };
+        stateBadge.Child = new TextBlock
+        {
+            Text = item.IsWritable ? EvidenceStateSemantics.Label(evidence).ToUpperInvariant() : "MONITORED · VIEW ONLY",
+            FontSize = 9, FontWeight = FontWeights.Bold
+        };
+        Grid.SetColumn(stateBadge, 1);
+        header.Children.Add(stateBadge);
+        root.Children.Add(header);
+        root.Children.Add(Text(Introduction(item), 12.5, "BrushTextSecondary", 4));
         var current = CurrentChoice(item);
-        root.Children.Add(Text("Observed: " + ObservedText(item, current), 12, "BrushTextPrimary", 9, FontWeights.SemiBold));
-        root.Children.Add(Text("Effective: " + EffectiveText(item, current), 12, "BrushTextSecondary", 3));
+        root.Children.Add(Text("Observed  ·  " + ObservedText(item, current), 12, "BrushTextPrimary", 9, FontWeights.SemiBold));
+        root.Children.Add(Text("Effective  ·  " + EffectiveText(item, current), 12, "BrushTextSecondary", 3));
 
         var options = BuildOptions(item);
         if (options.Count > 0)
@@ -101,7 +134,7 @@ public partial class CategoryView : UserControl
                 {
                     Content = option.Label + (observed && !selected ? "  ·  Current" : string.Empty),
                     Style = (Style)FindResource(ChoiceStyle(option.Label, selected)),
-                    MinWidth = 108,
+                    MinWidth = 124,
                     Margin = new Thickness(0, 0, 8, 7),
                     IsEnabled = item.IsWritable && item.IsApplicableHere && option.IsApplicable &&
                                 _elevation.IsAdminAuthorized && !_applyInProgress,
@@ -124,7 +157,10 @@ public partial class CategoryView : UserControl
             }
         }
         else
-            root.Children.Add(Text(item.IsWritable ? "No supported choice is available on this device." : CatalogPolicy.ExclusionReasonText(item.ExclusionReason),
+            root.Children.Add(Text(item.IsWritable ? "No supported choice is available on this device." :
+                    item.ExclusionReason == ExclusionReason.ReadOnlyByDesign
+                        ? "Monitored only. This policy has no write route in WPP."
+                        : CatalogPolicy.ExclusionReasonText(item.ExclusionReason),
                 11, "BrushTextMuted", 10));
 
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 10, 0, 0) };
@@ -138,7 +174,8 @@ public partial class CategoryView : UserControl
             actions.Children.Add(clear);
         }
         root.Children.Add(actions);
-        card.Child = root;
+        layout.Children.Add(root);
+        card.Child = layout;
         AutomationProperties.SetName(card, $"{item.ObjectName}. {ObservedText(item, current)}.");
         return card;
     }
@@ -168,7 +205,7 @@ public partial class CategoryView : UserControl
     private void AddSummary(string label, int count, string style)
     {
         var badge = new Border { Style = (Style)FindResource(style), Margin = new Thickness(0, 0, 6, 5) };
-        badge.Child = new TextBlock { Text = $"{label}: {count}", FontSize = 9, FontWeight = FontWeights.SemiBold };
+        badge.Child = new TextBlock { Text = $"{label}: {count}", FontSize = 10.5, FontWeight = FontWeights.SemiBold };
         SummaryPanel.Children.Add(badge);
     }
 

@@ -51,10 +51,17 @@ public static class SettingOptionLanguage
             return raw == "0" ? new("Allow connections", "Accept Remote Desktop connections") : new("Block connections", "Reject Remote Desktop connections");
         if (id == "policy.copilot.turnoff")
             return raw == "1" ? new("Hide legacy integration", "Legacy Copilot entry is hidden") : new("Show legacy integration", "Legacy Copilot entry is available");
+        if (id == "policy.copilot.app.browsing")
+            return raw == "0" ? new("Block browsing", "Copilot cannot browse the web") : new("Allow browsing", "Copilot can browse the web");
+        if (id == "policy.copilot.app.componentupdates")
+            return raw == "0" ? new("Block component updates", "Noncritical component updates are blocked") : new("Allow component updates", "Component updates are allowed");
+        if (id == "policy.copilot.app.coworkactions")
+            return raw == "0" ? new("Block tool actions", "Cowork cannot take actions for the user") : new("Allow tool actions", "Cowork can take actions for the user");
         if (id == "policy.network.llmnr")
             return raw == "0" ? new("Turn off", "Block multicast name resolution") : new("Leave on", "Allow multicast name resolution");
 
-        if (id.Contains("disable") || item.ObjectName.StartsWith("Disable", StringComparison.OrdinalIgnoreCase) ||
+        if (id.Contains("disable") || id.Contains("settingsagent") || id.Contains("paint.") ||
+            item.ObjectName.StartsWith("Disable", StringComparison.OrdinalIgnoreCase) ||
             item.ObjectName.StartsWith("Turn Off", StringComparison.OrdinalIgnoreCase))
             return raw switch
             {

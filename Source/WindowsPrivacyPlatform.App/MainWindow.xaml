@@ -36,7 +36,7 @@
           <Image Width="36" Height="36" Source="Assets/WindowsPrivacyPlatform.png" Stretch="Uniform" Margin="0,0,10,0" RenderOptions.BitmapScalingMode="HighQuality"/>
           <StackPanel VerticalAlignment="Center">
             <StackPanel Orientation="Horizontal">
-              <TextBlock x:Name="ProductNameText" FontSize="16" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource BrushTextPrimary}"/>
+              <TextBlock x:Name="ProductNameText" FontSize="17" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource BrushTextPrimary}"/>
               <TextBlock x:Name="HeaderVersionText" Margin="10,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource BrushTextMuted}" FontWeight="SemiBold"/>
             </StackPanel>
             <TextBlock x:Name="ScanTimeLabel" FontSize="10.5" Foreground="{DynamicResource BrushTextMuted}"/>
@@ -62,7 +62,9 @@
         </StackPanel>
 
         <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
-          <Button Content="⚙" Style="{StaticResource ActionNeutral}" Width="40" Padding="0" Margin="0,0,6,0" ToolTip="App Settings" Click="SettingsButton_Click"/>
+          <Button Style="{StaticResource ActionNeutral}" Width="40" Padding="0" Margin="0,0,6,0" ToolTip="App Settings" Click="SettingsButton_Click">
+            <Viewbox Width="18" Height="18"><TextBlock Text="&#xE713;" FontFamily="Segoe MDL2 Assets" Foreground="{DynamicResource BrushTextPrimary}"/></Viewbox>
+          </Button>
           <Button x:Name="CancelScanButton" Content="Cancel" Style="{StaticResource ActionNeutral}" Click="CancelScanButton_Click" MinWidth="72" Margin="0,0,6,0" Visibility="Collapsed"/>
           <Button x:Name="ScanButton" Content="Scan" Style="{StaticResource ActionPrimary}" Click="ScanButton_Click" MinWidth="76"/>
         </StackPanel>
@@ -82,7 +84,7 @@
     </Border>
 
     <Grid>
-      <Grid.ColumnDefinitions><ColumnDefinition x:Name="SidebarColumn" Width="240" MinWidth="0"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+      <Grid.ColumnDefinitions><ColumnDefinition x:Name="SidebarColumn" Width="252" MinWidth="0"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
       <Border Grid.Column="0" Background="{DynamicResource BrushSidebarChrome}" BorderBrush="{DynamicResource BrushBorderStrong}" BorderThickness="0,0,1,0">
         <ScrollViewer VerticalScrollBarVisibility="Auto" CanContentScroll="False" x:Name="NavScroll">
           <StackPanel Margin="0,6,0,10" x:Name="NavPanel">

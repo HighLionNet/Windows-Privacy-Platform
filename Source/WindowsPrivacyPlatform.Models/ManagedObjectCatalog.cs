@@ -8,13 +8,14 @@ namespace WindowsPrivacyPlatform.Models;
 
 public static class ManagedObjectCatalog
 {
-    public const string CatalogVersion = "2.4";
+    public const string CatalogVersion = "2.5";
     public static IReadOnlyList<ManagedObject> PrivacySettings { get; } = Finalize(CreatePrivacyBatch());
     public static IReadOnlyList<ManagedObject> PolicySettings { get; } = Finalize(
         CreatePolicyBatch()
             .Concat(CreateExtendedPolicyBatch())
             .Concat(CatalogExpansion.CreateCoverageBatch())
             .Concat(CatalogV22Expansion.CreateCoverageBatch())
+            .Concat(CatalogV25Expansion.CreateCoverageBatch())
             .ToList());
     public static IReadOnlyList<ManagedObject> FirewallSettings { get; } = Finalize(CreateFirewallBatch());
     public static IReadOnlyList<ManagedObject> All { get; } =
@@ -111,6 +112,12 @@ public static class ManagedObjectCatalog
         if (mo.IsWritable)
         {
             mo.ExclusionReason = ExclusionReason.None;
+            return;
+        }
+
+        if (CatalogPolicy.IsMonitoredReadOnlySetting(mo.ObjectId))
+        {
+            mo.ExclusionReason = ExclusionReason.ReadOnlyByDesign;
             return;
         }
 
@@ -248,8 +255,17 @@ public static class ManagedObjectCatalog
             "policy.clipboard.allowhistory" or
             "policy.clipboard.allowcrossdevice" or
             "policy.copilot.turnoff" or
+            "policy.copilot.app.browsing" or
+            "policy.copilot.app.componentupdates" or
+            "policy.copilot.app.coworkactions" or
+            "policy.copilot.settingsagent" or
+            "policy.copilot.paint.cocreator" or
+            "policy.copilot.paint.generativefill" or
+            "policy.copilot.paint.imagecreator" or
             "policy.recall.disableaidataanalysis" or
             "policy.recall.disableclicktodo" or
+            "policy.recall.maxduration" or
+            "policy.recall.maxstorage" or
             "policy.widgets.allow" or
             "policy.widgets.disableboard" or
             "policy.onedrive.disablefilesync" or

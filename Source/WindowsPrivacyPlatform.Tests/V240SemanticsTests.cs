@@ -29,7 +29,9 @@ public sealed class V240SemanticsTests
 
     [Theory]
     [InlineData("Not configured", EvidenceState.NotConfigured)]
+    [InlineData("Not configured (HKLM)", EvidenceState.NotConfigured)]
     [InlineData("Not observed", EvidenceState.NotObserved)]
+    [InlineData("Not observed (HKCU)", EvidenceState.NotObserved)]
     [InlineData("Access denied", EvidenceState.AccessDenied)]
     [InlineData("Unknown", EvidenceState.Unknown)]
     [InlineData("Error reading source", EvidenceState.Error)]

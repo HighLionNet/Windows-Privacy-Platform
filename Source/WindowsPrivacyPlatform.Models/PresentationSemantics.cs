@@ -44,10 +44,9 @@ public static class EvidenceStateSemantics
         if (value.StartsWith("error", StringComparison.OrdinalIgnoreCase) ||
             value.Contains("read failure", StringComparison.OrdinalIgnoreCase))
             return EvidenceState.Error;
-        if (value.Equals("Not configured", StringComparison.OrdinalIgnoreCase))
+        if (value.StartsWith("Not configured", StringComparison.OrdinalIgnoreCase))
             return EvidenceState.NotConfigured;
-        if (value.Equals("Not observed", StringComparison.OrdinalIgnoreCase) ||
-            value.Equals("Not observed in this scan", StringComparison.OrdinalIgnoreCase) ||
+        if (value.StartsWith("Not observed", StringComparison.OrdinalIgnoreCase) ||
             string.IsNullOrWhiteSpace(value))
             return EvidenceState.NotObserved;
         if (value.Equals("Unknown", StringComparison.OrdinalIgnoreCase) ||
@@ -157,7 +156,7 @@ public sealed record SettingsListTarget(
     {
         ArgumentNullException.ThrowIfNull(item);
         if (item.Bucket != CatalogBucket.Settings)
-            throw new InvalidOperationException("Only editable Settings entries have a settings-list destination.");
+            throw new InvalidOperationException("Only curated Settings entries have a settings-list destination.");
 
         return new SettingsListTarget(
             item.ProductDomain,

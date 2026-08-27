@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              HorizontalContentAlignment="Stretch">
   <StackPanel MaxWidth="1180" HorizontalAlignment="Stretch">
+    <TextBlock Text="CONSOLE CONFIGURATION / LOCAL ONLY" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushAccentCyan}" />
     <TextBlock Text="App Settings" Style="{StaticResource SectionTitle}" />
     <TextBlock Text="Session, appearance, scanning, and local integrity." Style="{StaticResource SectionSubtitle}" />
     <Border Style="{StaticResource HeaderRule}" />

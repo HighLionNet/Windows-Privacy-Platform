@@ -81,14 +81,19 @@ public class CatalogIntegrityTests
     }
 
     [Fact]
-    public void Public_settings_are_all_editable_registry_policies()
+    public void Public_settings_are_exact_write_contracts_or_explicitly_monitored_read_only_policies()
     {
         var settings = ManagedObjectCatalog.All.Where(m => m.Bucket == CatalogBucket.Settings).ToList();
         Assert.NotEmpty(settings);
         Assert.All(settings, item =>
         {
-            Assert.True(item.IsWritable, item.ObjectId);
-            Assert.Equal(WritableTargetKind.Registry, item.WritableTarget!.Kind);
+            if (item.IsWritable)
+                Assert.Equal(WritableTargetKind.Registry, item.WritableTarget!.Kind);
+            else
+            {
+                Assert.True(CatalogPolicy.IsMonitoredReadOnlySetting(item.ObjectId), item.ObjectId);
+                Assert.Equal(ExclusionReason.ReadOnlyByDesign, item.ExclusionReason);
+            }
             Assert.DoesNotContain(item.ProductDomain, new[] { ProductDomain.WindowsUpdate, ProductDomain.Storage });
         });
     }

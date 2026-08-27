@@ -2,11 +2,12 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" HorizontalContentAlignment="Stretch">
   <StackPanel>
+    <TextBlock Text="POLICY CONTROL / CHANGE-GATED" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushAccentCyan}"/>
     <TextBlock x:Name="TitleText" Style="{StaticResource SectionTitle}"/>
     <TextBlock x:Name="SubtitleText" Style="{StaticResource SectionSubtitle}"/>
     <TextBlock x:Name="DescriptionText" Margin="0,7,0,0" TextWrapping="Wrap" Foreground="{DynamicResource BrushTextSecondary}"/>
     <Border Style="{StaticResource HeaderRule}"/>
-    <Border Style="{StaticResource ListContainer}" Padding="12" Margin="0,0,0,10">
+    <Border Style="{StaticResource ListContainer}" Padding="14,12" Margin="0,0,0,10" BorderThickness="4,1,1,1" BorderBrush="{DynamicResource BrushAccent}">
       <Grid>
         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <StackPanel>

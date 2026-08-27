@@ -43,6 +43,8 @@ public static class ThemeManager
         _ => "Windows Light"
     };
 
+    internal static IReadOnlyDictionary<string, string> PaletteForTesting(AppTheme theme) => Palette(theme);
+
     private static readonly IReadOnlyDictionary<string, string> BrushKeys = new Dictionary<string, string>
     {
         ["BrushBgWindow"] = "BgWindow", ["BrushBgSidebar"] = "BgSidebar", ["BrushBgContent"] = "BgContent",
@@ -77,21 +79,21 @@ public static class ThemeManager
     private static IReadOnlyDictionary<string, string> Palette(AppTheme theme) => theme switch
     {
         AppTheme.SlateLight => Values(
-            "#EEF2F8", "#111827", "#F9FBFF", "#FFFFFF", "#E8EEFF", "#E3E8FF", "#F0F3FB", "#F5F7FC", "#F7F9FD",
-            "#D8DEED", "#BDC8DF", "#33445D", "#101827", "#3D4A60", "#6B7890", "#5A55E7", "#4C46CE", "#12B8D4", "#E7E8FF",
-            "#F0F5FF", "#93A4C1", "#17263D", "#263B63", "#A96300", "#FFF2D6", "#D13B4B", "#B52C3C", "#0A8F83", "#07756B", "#DDF7F1", "#5A6570", "#EEF0F2", "#E0523D", "#FDE9E5"),
+            "#D9E3E5", "#102227", "#E7EEF0", "#F3F7F7", "#D6E6E8", "#C8DDE1", "#DDE8EA", "#E9F0F1", "#E1EAEC",
+            "#BCCDD0", "#91AAB0", "#48666C", "#12282D", "#365158", "#657C82", "#286E7A", "#1F5963", "#248FA2", "#D0E8EC",
+            "#F0FAFA", "#A8C1C4", "#18343A", "#24515A", "#9A5E00", "#F7E9C8", "#B43C47", "#98313B", "#16806F", "#106657", "#D1EBE6", "#64747A", "#E1E7E8", "#CC4C3F", "#F4DCD7"),
         AppTheme.NavyDark => Values(
-            "#101827", "#09111F", "#162236", "#1B2A41", "#253B59", "#27496D", "#182941", "#1D3049", "#111D2E",
-            "#334A68", "#4B6587", "#263A54", "#F4F7FB", "#C5D0DF", "#91A3BB", "#4CA6FF", "#72B8FF", "#29C6E2", "#153F68",
-            "#F4F7FB", "#91A3BB", "#172A43", "#23496E", "#FFD166", "#4A3B18", "#FF6B6B", "#FF8585", "#2EC4A6", "#4DD7BC", "#153F39", "#AAB5C3", "#29384A", "#FF6B6B", "#4B242A"),
+            "#142033", "#0C1727", "#19283B", "#1F3046", "#294058", "#31516B", "#1B2C42", "#22354C", "#111E30",
+            "#314A64", "#4D6A86", "#34516B", "#F7FAFF", "#D7E2F0", "#ABC0D6", "#6F9FCB", "#84B2DA", "#5FC5C9", "#233F5C",
+            "#F7FAFF", "#B4C7D9", "#172B43", "#254561", "#F5C66B", "#463A22", "#FF7A7A", "#FF9797", "#52D2AD", "#75E0C2", "#1C473F", "#C3CFDD", "#2A3A4B", "#FF836F", "#4A2C32"),
         AppTheme.EmberDark => Values(
-            "#1C1518", "#120D10", "#261B20", "#2D2026", "#3A292F", "#4A2B36", "#2A1D23", "#312329", "#21171B",
-            "#513842", "#6A4856", "#402C35", "#FFF7F5", "#E6CFCB", "#B89D99", "#F04E3E", "#FF6B5B", "#FF967D", "#522622",
-            "#FFF7F5", "#B89D99", "#2B1A20", "#51252D", "#F6C85F", "#4D3B18", "#F04E3E", "#FF6B5B", "#37B88B", "#55C9A1", "#173C31", "#B8A4A7", "#382A2E", "#FF645A", "#4C2426"),
+            "#211619", "#120D0F", "#281B20", "#322128", "#432B34", "#542D39", "#2D1E24", "#352329", "#1C1317",
+            "#51363F", "#75515D", "#5B3944", "#FFF9F7", "#FFE1DA", "#D8B6B0", "#F36A4D", "#FF8165", "#F0A06F", "#552C27",
+            "#FFF8F5", "#D9B9B4", "#2C1B21", "#552733", "#FFD477", "#4F3C1D", "#FF7063", "#FF9086", "#5BD4A6", "#7AE3BD", "#1E493A", "#D8C1BE", "#3B2A2F", "#FF7467", "#55292A"),
         _ => Values(
-            "#F3F6FA", "#0B1424", "#FCFDFF", "#FFFFFF", "#E7F2FC", "#DCEEFF", "#EFF5FB", "#F7F9FC", "#FAFCFE",
-            "#D6E0EA", "#AEBECD", "#33445D", "#101827", "#3D4A60", "#67758A", "#0067C0", "#005A9E", "#00A4EF", "#E1F0FF",
-            "#F0F5FF", "#93A4C1", "#17263D", "#23436B", "#9A6700", "#FFF4CE", "#C42B1C", "#A4262C", "#0F7B0F", "#0B5A0B", "#DFF6DD", "#5A6570", "#EEF0F2", "#C42B1C", "#FDE7E9")
+            "#D9E7F0", "#071A2C", "#EAF2F8", "#F8FBFD", "#DCECF5", "#CBE6F2", "#DFEBF3", "#EEF5F8", "#E4EEF5",
+            "#C1D3DE", "#91ABB9", "#3C6275", "#102630", "#345461", "#647C88", "#147A93", "#0F6378", "#00A6B6", "#CFEAF0",
+            "#F1FBFC", "#9FC1C9", "#0E3044", "#13475E", "#9C6200", "#F7E8C1", "#B93D42", "#9F2E33", "#127D68", "#0C6555", "#CFEAE3", "#5D737B", "#DEE8EA", "#C64F42", "#F3DDD8")
     };
 
     private static IReadOnlyDictionary<string, string> HighContrast() => new Dictionary<string, string>

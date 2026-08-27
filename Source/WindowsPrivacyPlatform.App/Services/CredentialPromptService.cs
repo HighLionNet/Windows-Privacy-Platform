@@ -22,8 +22,7 @@ public sealed class CredentialPromptService : ICredentialPromptService
     private const int ErrorCancelled = 1223;
     private const int Logon32LogonInteractive = 2;
     private const int Logon32ProviderDefault = 0;
-    private const uint CredUiWinEnumerateAdmins = 0x100;
-    private const uint CredUiWinSecurePrompt = 0x1000;
+    private const uint CredUiWinGeneric = 0x1;
     private readonly IAuditLogger _log;
     private int _failedAttempts;
 
@@ -56,7 +55,7 @@ public sealed class CredentialPromptService : ICredentialPromptService
         try
         {
             var prompt = CredUIPromptForWindowsCredentials(ref info, 0, ref authPackage, IntPtr.Zero, 0,
-                out packed, out packedSize, ref save, CredUiWinEnumerateAdmins | CredUiWinSecurePrompt);
+                out packed, out packedSize, ref save, CredUiWinGeneric);
             if (prompt == ErrorCancelled)
             {
                 _log.Auth("CredentialPromptService", "Windows credential prompt cancelled.");
@@ -65,7 +64,7 @@ public sealed class CredentialPromptService : ICredentialPromptService
             if (prompt != 0)
             {
                 _failedAttempts++;
-                _log.Auth("CredentialPromptService", "Windows credential prompt failed with a Windows error code.");
+                _log.Auth("CredentialPromptService", $"Windows credential prompt failed: win32={prompt}.");
                 return new CredentialAuthorizationResult(false, false, "Windows could not open the credential prompt.");
             }
 
@@ -75,16 +74,21 @@ public sealed class CredentialPromptService : ICredentialPromptService
             if (!CredUnPackAuthenticationBuffer(0, packed, packedSize, user, ref userLength,
                     domain, ref domainLength, password, ref passwordLength))
             {
+                var error = Marshal.GetLastWin32Error();
                 _failedAttempts++;
-                _log.Auth("CredentialPromptService", "Credential buffer could not be unpacked.");
+                _log.Auth("CredentialPromptService", $"Credential buffer could not be unpacked: win32={error}.");
                 return new CredentialAuthorizationResult(false, false, "Windows could not verify those credentials.");
             }
 
-            if (!LogonUser(user.ToString(), domain.Length == 0 ? null : domain.ToString(), password,
+            var account = NormalizeAccount(user.ToString(), domain.ToString());
+            using var passwordBuffer = UnmanagedPasswordBuffer.From(password);
+            if (!LogonUser(account.UserName, account.Domain, passwordBuffer.Pointer,
                     Logon32LogonInteractive, Logon32ProviderDefault, out var token))
             {
+                var error = Marshal.GetLastWin32Error();
                 _failedAttempts++;
-                _log.Auth("CredentialPromptService", "LogonUser rejected the supplied credential.");
+                _log.Auth("CredentialPromptService",
+                    $"LogonUser rejected the supplied credential: win32={error}; account-form={account.Form}.");
                 return new CredentialAuthorizationResult(false, false, "The password was not accepted.");
             }
 
@@ -128,6 +132,56 @@ public sealed class CredentialPromptService : ICredentialPromptService
         value.Clear();
     }
 
+    internal static (string UserName, string? Domain, string Form) NormalizeAccount(string userName, string? domain)
+    {
+        var user = (userName ?? string.Empty).Trim();
+        var accountDomain = (domain ?? string.Empty).Trim();
+
+        // Generic CredUI can return either separate fields or a qualified account name.
+        // LogonUser requires those forms to be split explicitly.
+        var separator = user.IndexOf('\\');
+        if (separator > 0 && separator < user.Length - 1)
+        {
+            accountDomain = user[..separator];
+            user = user[(separator + 1)..];
+        }
+
+        if (user.Contains('@', StringComparison.Ordinal))
+            return (user, null, "upn");
+
+        if (string.IsNullOrWhiteSpace(accountDomain) ||
+            accountDomain.Equals(Environment.MachineName, StringComparison.OrdinalIgnoreCase) ||
+            accountDomain.Equals(".", StringComparison.Ordinal))
+            return (user, ".", "local");
+
+        return (user, accountDomain, "domain");
+    }
+
+    private sealed class UnmanagedPasswordBuffer : IDisposable
+    {
+        private readonly int _byteCount;
+        public IntPtr Pointer { get; private set; }
+
+        private UnmanagedPasswordBuffer(StringBuilder password)
+        {
+            _byteCount = checked((password.Length + 1) * sizeof(char));
+            Pointer = Marshal.AllocHGlobal(_byteCount);
+            for (var index = 0; index < password.Length; index++)
+                Marshal.WriteInt16(Pointer, index * sizeof(char), password[index]);
+            Marshal.WriteInt16(Pointer, password.Length * sizeof(char), 0);
+        }
+
+        public static UnmanagedPasswordBuffer From(StringBuilder password) => new(password);
+
+        public void Dispose()
+        {
+            if (Pointer == IntPtr.Zero) return;
+            for (var index = 0; index < _byteCount; index++) Marshal.WriteByte(Pointer, index, 0);
+            Marshal.FreeHGlobal(Pointer);
+            Pointer = IntPtr.Zero;
+        }
+    }
+
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct CredUiInfo
     {
@@ -151,6 +205,6 @@ public sealed class CredentialPromptService : ICredentialPromptService
 
     [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool LogonUser(string userName, string? domain, [In] StringBuilder password, int logonType,
+    private static extern bool LogonUser(string userName, string? domain, IntPtr password, int logonType,
         int logonProvider, out SafeAccessTokenHandle token);
 }

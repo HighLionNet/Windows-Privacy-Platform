@@ -6,6 +6,17 @@ public static class CatalogPolicy
 
     public static bool RequiresDrillDown(int entryCount) => entryCount >= CategoryDrillDownThreshold;
 
+    private static readonly HashSet<string> MonitoredReadOnlySettings = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "policy.recall.allowenablement",
+        "policy.recall.allowexport",
+        "policy.recall.denyapplist",
+        "policy.recall.denyurilist"
+    };
+
+    public static bool IsMonitoredReadOnlySetting(string objectId) =>
+        MonitoredReadOnlySettings.Contains(objectId);
+
     public static CatalogBucket ResolveBucket(ManagedObject mo)
     {
         if (mo.IsDynamicInventory)
@@ -26,7 +37,8 @@ public static class CatalogPolicy
         // The public Settings surface is a curated policy editor, not a catalog browser.
         // Definitions without a verified write contract remain available to validation and
         // relationships, but are deliberately absent from navigation.
-        if (!mo.IsWritable || mo.ProductDomain is ProductDomain.WindowsUpdate or ProductDomain.Storage)
+        if ((!mo.IsWritable && !IsMonitoredReadOnlySetting(mo.ObjectId)) ||
+            mo.ProductDomain is ProductDomain.WindowsUpdate or ProductDomain.Storage)
             return CatalogBucket.InternalReference;
 
         return CatalogBucket.Settings;
