@@ -13,8 +13,9 @@
           BorderBrush="{DynamicResource BrushBorderStrong}" BorderThickness="0,0,0,1">
       <MenuItem Header="_File"><MenuItem Header="_Scan" InputGestureText="F5" Click="MenuScan_Click"/><Separator/><MenuItem Header="E_xit" Click="MenuExit_Click"/></MenuItem>
       <MenuItem Header="_View">
-        <MenuItem Header="_Overview" Click="MenuHome_Click"/><MenuItem Header="_System Explorer" Click="MenuInventory_Click"/>
-        <MenuItem Header="_Services (read-only)" Click="MenuServices_Click"/><Separator/>
+        <MenuItem Header="_Dashboard" Click="MenuHome_Click"/><MenuItem Header="_System Explorer" Click="MenuInventory_Click"/>
+        <MenuItem Header="_Services" Click="MenuServices_Click"/><MenuItem Header="_Conflicts" Click="MenuConflicts_Click"/>
+        <MenuItem Header="_Knowledge Explorer" Click="MenuKnowledge_Click"/><Separator/>
         <MenuItem Header="_Back" InputGestureText="Alt+Left" Click="BackButton_Click"/>
         <MenuItem Header="_Forward" InputGestureText="Alt+Right" Click="ForwardButton_Click"/>
         <Separator/><MenuItem Header="Toggle _Navigation Pane" Click="ToggleSidebar_Click"/>
@@ -92,9 +93,11 @@
         <ScrollViewer VerticalScrollBarVisibility="Auto" CanContentScroll="False" x:Name="NavScroll">
           <StackPanel Margin="0,6,0,10" x:Name="NavPanel">
             <TextBlock Text="HUB" Style="{StaticResource SidebarGroupLabel}" Margin="12,8,8,4"/>
-            <Button x:Name="NavHome" Content="Overview" Style="{StaticResource SidebarButtonSelected}" Click="Nav_Click" Tag="home"/>
+            <Button x:Name="NavHome" Content="Dashboard" Style="{StaticResource SidebarButtonSelected}" Click="Nav_Click" Tag="home"/>
+            <Button Content="Conflicts" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="conflicts"/>
             <Button x:Name="NavInventory" Content="System Explorer" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="inventory"/>
             <Button x:Name="NavServices" Content="Services" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="services"/>
+            <Button Content="Knowledge Explorer" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="knowledge"/>
             <Border Style="{StaticResource SectionRule}" Margin="10,8,10,2"/>
             <TextBlock Text="PRIVACY" Style="{StaticResource SidebarGroupLabel}" Foreground="{DynamicResource BrushDomainPrivacy}"/>
             <Button Content="App permissions" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:ConsentStore"/>
@@ -106,7 +109,7 @@
             <Button Content="Activity" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:ActivityHistory"/>
             <Button Content="Device privacy" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Device"/>
             <Button Content="Speech" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Speech"/>
-            <Button Content="Clipboard" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Other"/>
+            <Button Content="Clipboard" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Clipboard"/>
             <Border Style="{StaticResource SectionRule}" Margin="10,8,10,2"/>
             <TextBlock Text="SECURITY" Style="{StaticResource SidebarGroupLabel}" Foreground="{DynamicResource BrushDomainSecurity}"/>
             <Button Content="Microsoft Defender" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Defender"/>
@@ -115,6 +118,17 @@
             <Button Content="Local security" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:LocalSecurity"/>
             <Button Content="Network security" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Network"/>
             <Button Content="Remote access" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:RemoteAccess"/>
+            <Button Content="Attack surface reduction" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:ExploitProtection"/>
+            <Border Style="{StaticResource SectionRule}" Margin="10,8,10,2"/>
+            <TextBlock Text="WINDOWS" Style="{StaticResource SidebarGroupLabel}" Foreground="{DynamicResource BrushAccent}"/>
+            <Button Content="BitLocker" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:BitLocker"/>
+            <Button Content="User Account Control" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Uac"/>
+            <Button Content="Windows Update" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:WindowsUpdate"/>
+            <Button Content="Storage Sense" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Storage"/>
+            <Button Content="Find My Device" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:FindMyDevice"/>
+            <Button Content="Windows Hello" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:WindowsHello"/>
+            <Button Content="Accessibility" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Accessibility"/>
+            <Button Content="Family Safety" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:FamilySafety"/>
             <Border Style="{StaticResource SectionRule}" Margin="10,8,10,2"/>
             <TextBlock Text="WINDOWS APPS" Style="{StaticResource SidebarGroupLabel}" Foreground="{DynamicResource BrushDomainApps}"/>
             <Button Content="Copilot" Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Copilot"/>

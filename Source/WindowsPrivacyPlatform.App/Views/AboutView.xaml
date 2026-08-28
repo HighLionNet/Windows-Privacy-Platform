@@ -77,7 +77,5 @@
         </StackPanel>
       </Border>
     </Grid>
-    <TextBlock Margin="2,3,2,12" Foreground="{DynamicResource BrushTextMuted}" TextWrapping="Wrap"
-               Text="[Owner voice placeholder — product story and acknowledgements will be added by the repository owner.]" />
   </StackPanel>
 </UserControl>

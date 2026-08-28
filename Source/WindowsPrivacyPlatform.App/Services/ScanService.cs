@@ -32,6 +32,7 @@ public sealed class ScanService
     public ScanResult? LastScanResult { get; private set; }
     public bool HasScan => Overview is not null;
     public IReadOnlyList<ManagedObject> SettingsCatalog => Catalog.Where(m => m.Bucket == CatalogBucket.Settings).ToList();
+    public IReadOnlyList<ManagedObject> DefaultSettingsCatalog => CatalogFilter.DefaultSettings(Catalog);
     public IReadOnlyList<ManagedObject> InventoryCatalog => Catalog.Where(m => m.Bucket == CatalogBucket.SystemInventory).ToList();
 
     // Last known-good completed scan (not replaced by canceled/failed runs).
@@ -105,7 +106,7 @@ public sealed class ScanService
             // Live collectors own component inventory. Static component anchors are omitted to
             // prevent duplicates and to keep native component control outside the product surface.
             var catalog = ManagedObjectCatalog.All
-                .Where(item => item.FeatureCategory is not (
+                .Where(item => item.IsWritable || item.FeatureCategory is not (
                     FeatureCategory.WindowsService or FeatureCategory.ScheduledTask or
                     FeatureCategory.AppxPackage or FeatureCategory.ProvisionedPackage or
                     FeatureCategory.OptionalFeature or FeatureCategory.WindowsCapability or
@@ -140,6 +141,11 @@ public sealed class ScanService
                         item.Applicability = ApplicabilityState.NotPresentOnDevice;
                         item.ApplicabilityReason = "This curated component is not installed on the scanned device.";
                     }
+
+                    // Completed probes include configured values, definite absence, and applicability.
+                    item.LastVerified = snapshot.CaptureTimestamp == default ? DateTime.UtcNow : snapshot.CaptureTimestamp;
+                    item.Observation ??= new SettingObservation();
+                    item.Observation.ObservedAt = item.LastVerified;
                 }
             }
 
@@ -259,6 +265,7 @@ public sealed class ScanService
         {
             ObjectId = src.ObjectId,
             ObjectName = src.ObjectName,
+            SearchAliases = src.SearchAliases.ToList(),
             ObjectType = src.ObjectType,
             CanonicalPath = src.CanonicalPath,
             TechnicalLocation = src.TechnicalLocation,
@@ -332,6 +339,7 @@ public sealed class ScanService
             NativeTool = src.NativeTool,
             Applicability = src.Applicability,
             ApplicabilityReason = src.ApplicabilityReason,
+            HighImpact = src.HighImpact,
             Requires = src.Requires,
             Recommended = src.Recommended,
             ConflictsWith = src.ConflictsWith,

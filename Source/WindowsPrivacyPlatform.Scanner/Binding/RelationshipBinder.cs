@@ -122,6 +122,20 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
                 RelationshipKind.Affects,
                 "Legacy DisableAntiSpyware can neutralize the Defender engine including real-time protection."),
 
+            // Windows AI families remain related controls, not automatic conflicts.
+            ("policy.copilot.turnoffwindowscopilot", "policy.copilot.removemicrosoftcopilotapp",
+                RelationshipKind.Related,
+                "The legacy shell policy and app-removal policy affect different Copilot surfaces."),
+            ("policy.copilot.removemicrosoftcopilotapp", "policy.copilot.app.browsing",
+                RelationshipKind.Affects,
+                "Removing the Copilot app makes its browsing policy irrelevant for affected users."),
+            ("policy.copilot.disablesettingsagent", "policy.copilot.settingsagent",
+                RelationshipKind.Related,
+                "The Windows AI Settings Agent policy and current Copilot app Settings-agent policy govern distinct integrations."),
+            ("policy.recall.disableaidataanalysis", "policy.recall.allowenablement",
+                RelationshipKind.Affects,
+                "Snapshot saving and Recall enablement are separate controls in the same feature family."),
+
             // Update group
             ("policy.update.noautoupdate", "policy.update.auoptions",
                 RelationshipKind.Overrides,
@@ -168,6 +182,7 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
             WireAlternatePathPairs(byId);
             WireUserVsGpoPairs(byId);
             WireRelatedPairs(byId);
+            OutcomeConflictEngine.ApplyToCatalog(catalog);
         }
 
         private static void WireConsentPolicyPairs(Dictionary<string, ManagedObject> byId)
@@ -247,10 +262,7 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
 
                 var userLayer = user.Observation?.Layers?.FirstOrDefault();
                 var policyLayer = policy.Observation?.Layers?.FirstOrDefault();
-                var resolution = PolicyPrecedenceResolver.ResolveByLayerRank(
-                    new[] { userLayer, policyLayer }.Where(l => l is not null).Cast<ConfigurationObservation>().ToList(),
-                    policy,
-                    feature);
+                var resolution = PolicyPrecedenceResolver.ResolveAdvertisingId(userLayer, policyLayer, feature);
 
                 ApplyResolution(user, resolution);
                 ApplyResolution(policy, resolution);

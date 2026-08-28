@@ -1,15 +1,34 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using WindowsPrivacyPlatform.App.Services;
 using WindowsPrivacyPlatform.Models;
 
 namespace WindowsPrivacyPlatform.App.Views;
 
 public partial class SettingDetailPage : UserControl
 {
-    public SettingDetailPage(SettingDetailView detail, Action<string> openSetting)
+    private readonly ManagedObject _item;
+    private readonly ElevationService _elevation;
+    private readonly PolicyChangeService _changes;
+    private readonly Func<Task> _refresh;
+    private readonly Window? _owner;
+    private readonly SettingsQuery? _query;
+    private readonly string _windowsVersion;
+    private readonly string _edition;
+    private readonly Action<string> _openConflict;
+    private string? _pending;
+    private bool _hasPending;
+    private bool _busy;
+
+    public SettingDetailPage(SettingDetailView detail, ManagedObject item, SettingsQuery? query,
+        ElevationService elevation, PolicyChangeService changes, Func<Task> refresh, Window? owner,
+        string windowsVersion, string edition, Action<string> openConflict)
     {
         InitializeComponent();
+        _item = item; _query = query; _elevation = elevation; _changes = changes; _refresh = refresh;
+        _owner = owner; _windowsVersion = windowsVersion; _edition = edition;
+        _openConflict = openConflict;
         TitleText.Text = detail.Title;
         DomainPathText.Text = detail.Bucket == CatalogBucket.SystemInventory
             ? "System Explorer · observed component"
@@ -56,5 +75,33 @@ public partial class SettingDetailPage : UserControl
             ApplicabilityPanel.Visibility = Visibility.Visible;
             ApplicabilityText.Text = detail.ApplicabilityReason;
         }
+        RenderBar();
+    }
+
+    private void RenderBar()
+    {
+        var conflict = _query?.GetConflictGroup(_item.ObjectId);
+        var otherId = conflict?.ObjectIds.FirstOrDefault(id => !id.Equals(_item.ObjectId, StringComparison.OrdinalIgnoreCase));
+        var otherName = string.IsNullOrWhiteSpace(otherId) ? null : _query?.GetById(otherId)?.ObjectName;
+        SettingBarHost.Content = new SettingBar(_item, _elevation.IsAdminAuthorized, _busy,
+            _windowsVersion, _edition, _hasPending, _pending,
+            raw => { _pending = raw; _hasPending = true; RenderBar(); }, null,
+            conflict, otherName, _openConflict);
+        ApplyDetailButton.IsEnabled = _hasPending && _elevation.IsAdminAuthorized && !_busy;
+    }
+
+    private async void ApplyDetail_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_hasPending || _busy) return;
+        _busy = true; RenderBar();
+        try
+        {
+            var success = _changes.TryApply(_item, _pending, _owner, out var message);
+            if (success) _hasPending = false;
+            MessageBox.Show(_owner, message, success ? "Change verified" : "Change not verified",
+                MessageBoxButton.OK, success ? MessageBoxImage.Information : MessageBoxImage.Warning);
+            await _refresh();
+        }
+        finally { _busy = false; RenderBar(); }
     }
 }

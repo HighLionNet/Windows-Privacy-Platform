@@ -109,12 +109,17 @@ public class ServiceInfo
     public string State { get; set; } = string.Empty;
     public string Account { get; set; } = string.Empty;
     public string ExecutablePath { get; set; } = string.Empty;
+    public string CommandLine { get; set; } = string.Empty;
+    public string FileVersion { get; set; } = string.Empty;
     public string Publisher { get; set; } = string.Empty;
     public string SignatureStatus { get; set; } = "Not verified";
     public bool DelayedAutoStart { get; set; }
     public string TriggerStart { get; set; } = "Unknown";
     public List<string> Dependencies { get; set; } = new();
     public List<string> Dependents { get; set; } = new();
+    public List<string> DependencyStates { get; set; } = new();
+    public List<string> DependentStates { get; set; } = new();
+    public List<string> RecentEvents { get; set; } = new();
     public bool? IsMicrosoft { get; set; }
     public bool IsUserService { get; set; }
     public bool MissingExecutable { get; set; }

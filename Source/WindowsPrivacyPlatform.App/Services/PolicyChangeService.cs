@@ -22,11 +22,13 @@ public sealed class PolicyChangeService
 {
     private readonly ElevationService _elevation;
     private readonly IAuditLogger _log;
+    private readonly HighImpactStepUpService _stepUp;
 
     public PolicyChangeService(ElevationService elevation, IAuditLogger log)
     {
         _elevation = elevation ?? throw new ArgumentNullException(nameof(elevation));
         _log = log ?? throw new ArgumentNullException(nameof(log));
+        _stepUp = new HighImpactStepUpService(_log);
     }
 
     /// <summary>
@@ -60,6 +62,24 @@ public sealed class PolicyChangeService
             return false;
         }
 
+        var highImpact = changes.Where(change => CatalogImpact.RequiresStepUp(change.Setting, change.RawValue)).ToList();
+        if (highImpact.Count > 0)
+        {
+            if (!BinaryIntegrityGuard.HighImpactAllowed)
+            {
+                results.Add(new PolicyChangeOutcome(string.Empty, false,
+                    "The running binary does not match the last verified startup hash. High-impact changes are blocked."));
+                _log.Change("PolicyChangeService", "result=Denied reason=BinaryIntegrity highImpact=true");
+                return false;
+            }
+            if (!_stepUp.TryAuthorize(highImpact, owner))
+            {
+                foreach (var change in changes)
+                    results.Add(new PolicyChangeOutcome(change.Setting.ObjectId, false, "High-impact verification was cancelled or denied."));
+                return false;
+            }
+        }
+
         var preview = new List<ChangeConfirmationItem>();
         foreach (var change in changes)
         {
@@ -68,7 +88,7 @@ public sealed class PolicyChangeService
                 results.Add(new PolicyChangeOutcome(change.Setting.ObjectId, false, error));
                 return false;
             }
-            var intended = string.IsNullOrWhiteSpace(change.RawValue) ? "Use Windows default" : OptionLabel(change.Setting, change.RawValue!);
+            var intended = string.IsNullOrWhiteSpace(change.RawValue) ? "Not configured" : OptionLabel(change.Setting, change.RawValue!);
             preview.Add(new ChangeConfirmationItem(change.Setting.ObjectName, before, intended));
         }
 
@@ -104,6 +124,20 @@ public sealed class PolicyChangeService
             message = "Administrator mode is not authorized for this session.";
             _log.Change("PolicyChangeService", $"DENIED {mo.ObjectId}: Administrator mode not authorized.");
             return false;
+        }
+
+        if (!skipConfirmation && CatalogImpact.RequiresStepUp(mo, rawValue))
+        {
+            if (!BinaryIntegrityGuard.HighImpactAllowed)
+            {
+                message = "The running binary failed the startup integrity check. High-impact changes are blocked.";
+                return false;
+            }
+            if (!_stepUp.TryAuthorize([new PendingPolicyChange(mo, rawValue)], owner))
+            {
+                message = "High-impact verification was cancelled or denied.";
+                return false;
+            }
         }
 
         if (!ManagedObjectCatalog.HasValidAuthorizationHash())
@@ -208,8 +242,8 @@ public sealed class PolicyChangeService
             return false;
         }
 
-        _log.Change("PolicyChangeService",
-            $"BEFORE {mo.ObjectId} | {targetPath} | status={before.Status} kind={before.Kind} value={before.Normalized ?? "(absent)"}");
+        _log.Change("PolicyChangeService", AuditContext.Change(
+            mo.ObjectId, mo.ObjectName, FormatRead(before), intendedDisplay, "Prepared", targetPath));
 
         if (!skipConfirmation)
         {
@@ -237,7 +271,8 @@ public sealed class PolicyChangeService
         if (StateMatches(before, rawValue, target.ValueKind))
         {
             message = $"Already at intended state (verified): {intendedDisplay}";
-            _log.Change("PolicyChangeService", $"NOOP_VERIFIED {mo.ObjectId} | {targetPath} = {intendedDisplay}");
+            _log.Change("PolicyChangeService", AuditContext.Change(
+                mo.ObjectId, mo.ObjectName, FormatRead(before), intendedDisplay, "Verified", "Already matched"));
             return true;
         }
 
@@ -284,8 +319,9 @@ public sealed class PolicyChangeService
                 System.Threading.Thread.Sleep(40 * attempt);
             }
 
-            _log.Change("PolicyChangeService",
-                $"AFTER {mo.ObjectId} | {targetPath} | status={after.Status} kind={after.Kind} value={after.Normalized ?? "(absent)"} | verified={verified}");
+            _log.Change("PolicyChangeService", AuditContext.Change(
+                mo.ObjectId, mo.ObjectName, FormatRead(before), FormatRead(after),
+                verified ? "ReadBackMatched" : "ReadBackMismatch", targetPath));
 
             if (!verified)
             {
@@ -302,8 +338,8 @@ public sealed class PolicyChangeService
             message = intendedDelete
                 ? "Verified: value is absent (Not configured)."
                 : $"Verified: system value is {after.Normalized} ({after.Kind}).";
-            _log.Change("PolicyChangeService",
-                $"VERIFIED {mo.ObjectId} | {targetPath} = {after.Normalized ?? "(absent)"} | kind={after.Kind}");
+            _log.Change("PolicyChangeService", AuditContext.Change(
+                mo.ObjectId, mo.ObjectName, FormatRead(before), FormatRead(after), "Verified", targetPath));
             return true;
         }
         catch (UnauthorizedAccessException)
@@ -359,7 +395,7 @@ public sealed class PolicyChangeService
         }
         if (string.IsNullOrWhiteSpace(rawValue) && !target.SupportsDeletion)
         {
-            error = "Use Windows default is not supported for this setting.";
+            error = "Not configured is not supported for this setting.";
             return false;
         }
         if (!string.IsNullOrWhiteSpace(rawValue) &&
@@ -386,7 +422,7 @@ public sealed class PolicyChangeService
     private static string OptionLabel(ManagedObject item, string? rawValue)
     {
         if (string.IsNullOrWhiteSpace(rawValue))
-            return "Use Windows default";
+            return "Not configured";
         var meaning = item.ValueSemantics.FirstOrDefault(v =>
             string.Equals(v.RawValue, rawValue, StringComparison.OrdinalIgnoreCase));
         return meaning is null ? "Selected supported value" : SettingOptionLanguage.For(item, meaning).Action;

@@ -9,11 +9,14 @@ namespace WindowsPrivacyPlatform.App.Views;
 public partial class HomeView : UserControl
 {
     private readonly Action<string> _openPosture;
+    private readonly Action _openConflicts;
 
-    public HomeView(ScanService scan, Action<SettingsListTarget> openSettingsList, Action<string> openPosture)
+    public HomeView(ScanService scan, Action<SettingsListTarget> openSettingsList, Action<string> openPosture,
+        Action openConflicts)
     {
         InitializeComponent();
         _openPosture = openPosture;
+        _openConflicts = openConflicts;
         var overview = scan.Overview;
         if (overview is null) return;
 
@@ -21,6 +24,7 @@ public partial class HomeView : UserControl
         HighCountText.Text = posture.HighCount.ToString();
         ReviewCountText.Text = posture.ReviewCount.ToString();
         ProtectedCountText.Text = posture.ProtectedCount.ToString();
+        ConflictCountText.Text = (scan.Query?.GetConflictGroups().Count ?? 0).ToString();
 
         ComputerText.Text = Display(overview.ComputerName);
         UserText.Text = Display(overview.SignedInUser);
@@ -56,7 +60,7 @@ public partial class HomeView : UserControl
         if (highFindings.Count == 0)
             FindingsList.Children.Add(new TextBlock
             {
-                Text = "No high-risk configured finding was observed. Unknown values are not counted as safe.",
+                Text = "No high-attention findings.",
                 Margin = new Thickness(12, 10, 12, 10), TextWrapping = TextWrapping.Wrap,
                 Foreground = (Brush)FindResource("BrushTextSecondary")
             });
@@ -65,5 +69,6 @@ public partial class HomeView : UserControl
     private void HighTile_Click(object sender, RoutedEventArgs e) => _openPosture("high");
     private void ReviewTile_Click(object sender, RoutedEventArgs e) => _openPosture("review");
     private void ProtectionsTile_Click(object sender, RoutedEventArgs e) => _openPosture("protections");
+    private void ConflictsTile_Click(object sender, RoutedEventArgs e) => _openConflicts();
     private static string Display(string? value) => string.IsNullOrWhiteSpace(value) ? "Unknown" : value;
 }

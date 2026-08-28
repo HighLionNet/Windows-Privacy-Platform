@@ -2,7 +2,6 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" HorizontalContentAlignment="Stretch">
   <StackPanel>
-    <TextBlock Text="CONTROL FAMILIES / POLICY POSTURE" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushAccentCyan}" />
     <TextBlock x:Name="TitleText" Style="{StaticResource SectionTitle}" />
     <TextBlock x:Name="SubtitleText" Style="{StaticResource SectionSubtitle}" />
     <Border Style="{StaticResource HeaderRule}" />

@@ -28,6 +28,15 @@ public static class SettingOptionLanguage
                 _ => FromMeaning(value)
             };
 
+        if (id == "privacy.advertisingid.enabled")
+            return raw == "0"
+                ? new("Don't give apps an ID", "Apps do not get an Advertising ID")
+                : new("Give apps an ID", "Apps may get an Advertising ID");
+        if (id == "policy.advertising.disabledbygpo")
+            return raw == "1"
+                ? new("Force advertising ID off", "Windows blocks the Advertising ID for everyone")
+                : new("Do not force it off", "This GPO is not forcing the Advertising ID off");
+
         if (id.Contains("asr."))
             return raw switch
             {
@@ -39,7 +48,7 @@ public static class SettingOptionLanguage
             };
 
         if (id.Contains("firewall.profile") && id.EndsWith(".enabled"))
-            return raw == "1" ? new("Set to On", "Firewall protects this profile") : new("Set to Off", "Firewall stops protecting this profile");
+            return raw == "1" ? new("Protect this profile", "Firewall protects this profile") : new("Stop profile protection", "Firewall stops protecting this profile");
         if (id.Contains("firewall.profile") && id.EndsWith(".inbound"))
             return raw == "0" ? new("Block", "Block unmatched inbound traffic") : new("Allow", "Allow unmatched inbound traffic");
         if (id.Contains("firewall.profile") && id.EndsWith(".outbound"))
@@ -60,13 +69,15 @@ public static class SettingOptionLanguage
         if (id == "policy.network.llmnr")
             return raw == "0" ? new("Turn off", "Block multicast name resolution") : new("Leave on", "Allow multicast name resolution");
 
-        if (id.Contains("disable") || id.Contains("settingsagent") || id.Contains("paint.") ||
+        if (id.Contains("disable") || id.Contains("prevent") || id.Contains("turnoff") ||
+            id.Contains("settingsagent") || id.Contains("paint.") ||
             item.ObjectName.StartsWith("Disable", StringComparison.OrdinalIgnoreCase) ||
+            item.ObjectName.StartsWith("Prevent", StringComparison.OrdinalIgnoreCase) ||
             item.ObjectName.StartsWith("Turn Off", StringComparison.OrdinalIgnoreCase))
             return raw switch
             {
-                "0" => new("Leave on", "Feature remains available"),
-                "1" => new("Turn off", "Feature is blocked"),
+                "0" => new("Do not block the feature", "The feature remains available"),
+                "1" => new("Block the feature", "The feature is unavailable"),
                 _ => FromMeaning(value)
             };
 
@@ -74,14 +85,16 @@ public static class SettingOptionLanguage
         {
             var allow = id.Contains("allow") || item.ObjectName.StartsWith("Allow", StringComparison.OrdinalIgnoreCase);
             if (allow)
-                return raw == "1" ? new("Allow", "Feature is available") : new("Block", "Feature is blocked");
-            return raw == "1" ? new("Set to On", "Policy is enabled") : new("Set to Off", "Policy is disabled");
+                return raw == "1" ? new("Allow the feature", "The feature is available") : new("Block the feature", "The feature is unavailable");
+            return raw == "1"
+                ? new("Windows uses this behavior", Clean(item.ObjectName + " applies"))
+                : new("Windows doesn't use it", Clean(item.ObjectName + " does not apply"));
         }
 
         return FromMeaning(value);
     }
 
-    public static SettingOptionCopy Clear() => new("Use Windows default", "Removes the local policy value");
+    public static SettingOptionCopy Clear() => new("Not configured", "Windows default applies");
 
     private static SettingOptionCopy FromMeaning(ValueMeaning value)
     {

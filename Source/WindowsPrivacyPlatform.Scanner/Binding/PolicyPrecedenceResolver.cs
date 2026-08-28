@@ -117,7 +117,7 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
                     ConfidenceReason = "Raw policy value present but no ValueSemantics entry for this ObjectId/raw pair.",
                     SemanticValue = null,
                     SemanticDisplay = null,
-                    HasConflict = true
+                    HasConflict = false
                 };
             }
 
@@ -196,7 +196,7 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
                 ConfidenceReason = "Catalog map present but canonical form is not one of the three AppPrivacy force modes used by Windows.",
                 SemanticValue = canonical,
                 SemanticDisplay = display,
-                HasConflict = true
+                HasConflict = false
             };
         }
 
@@ -292,6 +292,38 @@ namespace WindowsPrivacyPlatform.Scanner.Binding
                     "Reported as Not configured (value absent), not as an unknown runtime state.",
                 ConfidenceReason = "Absence at both probed paths is a definite observation.",
                 HasConflict = false
+            };
+        }
+
+        public static ConfigurationResolution ResolveAdvertisingId(
+            ConfigurationObservation? userLayer,
+            ConfigurationObservation? policyLayer,
+            string featureName)
+        {
+            var observations = new[] { userLayer, policyLayer }.Where(layer => layer is not null)
+                .Cast<ConfigurationObservation>().ToList();
+            var user = ExtractRawPolicyValue(userLayer?.RawValue);
+            var gpo = ExtractRawPolicyValue(policyLayer?.RawValue);
+            var gpoForcesOff = gpo == "1";
+            var userAvailable = user == "1";
+            var conflict = OutcomeConflictEngine.AdvertisingConflicts(user, gpo);
+            var available = gpoForcesOff ? false : userAvailable;
+
+            return new ConfigurationResolution
+            {
+                RawObservations = observations,
+                EffectiveValue = available ? "1" : "0",
+                EffectiveSource = gpoForcesOff ? ConfigurationLayer.MachinePolicy : ConfigurationLayer.UserPreference,
+                Confidence = IsConfiguredValue(user) || IsConfiguredValue(gpo) ? EffectiveConfidence.High : EffectiveConfidence.Medium,
+                ResolutionReason = conflict
+                    ? "GPO is forcing Advertising ID off; the user toggle cannot turn it on."
+                    : available
+                        ? $"{featureName} is available to apps because no GPO force-off is active and the user toggle allows it."
+                        : $"{featureName} is unavailable to apps; the configured controls agree on that outcome.",
+                ConfidenceReason = "Outcome is mapped separately for the user toggle and the inverted GPO force-off bit.",
+                SemanticValue = available ? "AdvertisingIdAvailable" : "AdvertisingIdUnavailable",
+                SemanticDisplay = available ? "Apps may get an Advertising ID" : "Apps do not get an Advertising ID",
+                HasConflict = conflict
             };
         }
 

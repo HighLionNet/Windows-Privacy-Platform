@@ -18,6 +18,10 @@
       <TextBlock x:Name="ApplicabilityText" TextWrapping="Wrap" />
     </Border>
 
+    <ContentControl x:Name="SettingBarHost"/>
+    <Button x:Name="ApplyDetailButton" Content="Apply" Style="{StaticResource ActionPrimary}" HorizontalAlignment="Right"
+            MinWidth="128" Margin="0,0,0,14" IsEnabled="False" Click="ApplyDetail_Click"/>
+
     <Border Style="{StaticResource PropertySheet}" Margin="0,0,0,14">
       <StackPanel>
         <Border Style="{StaticResource PropertySheetHeader}"><TextBlock Text="Current policy" FontWeight="SemiBold" /></Border>
@@ -61,7 +65,7 @@
       </Border>
     </Expander>
 
-    <StackPanel x:Name="OptionsPanel">
+    <StackPanel x:Name="OptionsPanel" Visibility="Collapsed">
       <TextBlock Text="Available choices" Style="{StaticResource GroupHeader}" Margin="0,0,0,7" />
       <ItemsControl x:Name="OptionsList">
         <ItemsControl.ItemTemplate>

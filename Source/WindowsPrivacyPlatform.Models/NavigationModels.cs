@@ -20,6 +20,33 @@ public class NavigationNode
     public List<NavigationNode> Children { get; set; } = new();
 }
 
+public sealed class CategoryFilterState
+{
+    public string Search { get; set; } = string.Empty;
+    public string State { get; set; } = "All";
+}
+
+public sealed class ConflictFilterState
+{
+    public string Search { get; set; } = string.Empty;
+    public string Impact { get; set; } = "All";
+    public string State { get; set; } = "Open";
+}
+
+public sealed class KnowledgeFilterState
+{
+    public string Search { get; set; } = string.Empty;
+}
+
+public sealed class ServiceFilterState
+{
+    public string Search { get; set; } = string.Empty;
+    public string State { get; set; } = "All";
+    public string Startup { get; set; } = "All";
+    public string Publisher { get; set; } = "All";
+    public string Issue { get; set; } = "All";
+}
+
 public class SettingDetailView
 {
     public string ObjectId { get; set; } = string.Empty;
@@ -301,6 +328,14 @@ public static class NavigationBuilder
         ProductDomain.Widgets => "Widgets",
         ProductDomain.OneDrive => "OneDrive",
         ProductDomain.Storage => "Storage Sense",
+        ProductDomain.BitLocker => "BitLocker",
+        ProductDomain.Uac => "User Account Control",
+        ProductDomain.FindMyDevice => "Find My Device",
+        ProductDomain.WindowsHello => "Windows Hello",
+        ProductDomain.Accessibility => "Accessibility",
+        ProductDomain.FamilySafety => "Family Safety",
+        ProductDomain.ExploitProtection => "Attack surface reduction",
+        ProductDomain.Clipboard => "Clipboard",
         ProductDomain.Other => "Clipboard",
         _ => domain.ToString()
     };

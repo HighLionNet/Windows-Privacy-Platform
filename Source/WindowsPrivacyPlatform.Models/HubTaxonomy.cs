@@ -31,6 +31,15 @@ public static class HubTaxonomy
             ProductDomain.Recall => "Recall & Click to Do",
             ProductDomain.Widgets => "Widgets",
             ProductDomain.OneDrive => "OneDrive sync",
+            ProductDomain.Storage => "Storage Sense",
+            ProductDomain.BitLocker => "BitLocker & device encryption",
+            ProductDomain.Uac => "User Account Control",
+            ProductDomain.FindMyDevice => "Find My Device",
+            ProductDomain.WindowsHello => "Windows Hello",
+            ProductDomain.Accessibility => "Accessibility",
+            ProductDomain.FamilySafety => "Family Safety",
+            ProductDomain.ExploitProtection => "Attack surface reduction",
+            ProductDomain.Clipboard => "Clipboard",
             ProductDomain.Other when item.ObjectId.Contains("clipboard", StringComparison.OrdinalIgnoreCase) => "Clipboard",
             _ => item.SubCategory ?? "Settings"
         };

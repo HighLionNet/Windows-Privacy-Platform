@@ -12,6 +12,7 @@ namespace WindowsPrivacyPlatform.App;
 public partial class App : Application
 {
     private Mutex? _singleInstance;
+    private IAuditLogger? _log;
 
     public static StartupArguments StartupOptions { get; private set; } =
         new(false, null, false, false);
@@ -53,7 +54,10 @@ public partial class App : Application
         Directory.CreateDirectory(appData);
         LocalDataSecurity.EnsurePrivateAcl(appData);
         var log = new AuditLogger();
+        _log = log;
+        log.Auth("Session", "result=Started");
         ProcessHardening.Apply(log);
+        BinaryIntegrityGuard.Initialize(appData, log);
 
         var preferencesStore = new ApplicationPreferencesStore(appData);
         var preferences = preferencesStore.Load();
@@ -68,6 +72,7 @@ public partial class App : Application
 
     protected override void OnExit(ExitEventArgs e)
     {
+        _log?.Auth("Session", "result=Ended");
         try { _singleInstance?.ReleaseMutex(); } catch { }
         _singleInstance?.Dispose();
         base.OnExit(e);

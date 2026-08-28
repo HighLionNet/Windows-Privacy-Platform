@@ -14,6 +14,9 @@ public partial class CategoryView : UserControl
     private readonly Func<Task> _refreshScan;
     private readonly Window? _owner;
     private readonly Action<string> _openSetting;
+    private readonly Action<string> _openConflict;
+    private readonly SettingsQuery? _query;
+    private readonly CategoryFilterState _filterState;
     private readonly IReadOnlyList<ManagedObject> _allItems;
     private readonly Dictionary<string, string?> _pending = new(StringComparer.OrdinalIgnoreCase);
     private readonly string _windowsVersion;
@@ -23,12 +26,15 @@ public partial class CategoryView : UserControl
     private bool _applyInProgress;
 
     public CategoryView(ScanService scan, ProductDomain domain, string category, Action<string> openSetting,
+        Action<string> openConflict,
         ElevationService elevation, PolicyChangeService changes, Func<Task> refreshScan, Window? owner = null,
-        string? initialFilter = null, string? highlightObjectId = null, Action? completeModifyOperation = null)
+        string? initialFilter = null, string? highlightObjectId = null, Action? completeModifyOperation = null,
+        CategoryFilterState? filterState = null)
     {
-        InitializeComponent();
         _elevation = elevation; _changes = changes; _refreshScan = refreshScan; _owner = owner;
-        _openSetting = openSetting; _highlightObjectId = highlightObjectId; _completeModifyOperation = completeModifyOperation;
+        _openSetting = openSetting; _openConflict = openConflict; _query = scan.Query;
+        _highlightObjectId = highlightObjectId; _completeModifyOperation = completeModifyOperation;
+        _filterState = filterState ?? new CategoryFilterState();
         _windowsVersion = scan.Overview?.WindowsVersion ?? string.Empty;
         _edition = scan.Overview?.WindowsEdition ?? string.Empty;
         _allItems = scan.SettingsCatalog.Where(item => item.ProductDomain == domain && string.Equals(
@@ -36,11 +42,19 @@ public partial class CategoryView : UserControl
                 category, StringComparison.OrdinalIgnoreCase))
             .OrderBy(item => item.ObjectName, StringComparer.OrdinalIgnoreCase).ToList();
 
+        InitializeComponent();
+
         TitleText.Text = category;
         DescriptionText.Text = CategoryContent.For(domain, category).Description;
         SubtitleText.Text = $"{_allItems.Count} settings in {NavigationBuilder.HumanizeDomain(domain)}. " +
                             (_elevation.IsAdminAuthorized ? "Administrator mode is active." : "View-only mode is active.");
-        FilterBox.Text = initialFilter ?? string.Empty;
+        FilterBox.Text = initialFilter ?? _filterState.Search;
+        _filterState.Search = FilterBox.Text;
+        StateBox.SelectedItem = StateBox.Items.OfType<ComboBoxItem>().FirstOrDefault(item =>
+            string.Equals(item.Content?.ToString(), _filterState.State, StringComparison.OrdinalIgnoreCase)) ?? StateBox.Items[0];
+        ModeStatusText.Text = _elevation.IsAdminAuthorized
+            ? "Administrator mode — Apply writes the confirmed batch."
+            : "View-only mode — choices are unavailable.";
         Render();
     }
 
@@ -53,131 +67,46 @@ public partial class CategoryView : UserControl
         var filter = FilterBox.Text.Trim();
         if (filter.Length > 200) filter = filter[..200];
         var selectedState = (StateBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "All";
+        _filterState.Search = filter;
+        _filterState.State = selectedState;
+        FilterBox.Background = (Brush)FindResource(filter.Length == 0 ? "BrushBgCard" : "BrushAccentSoft");
+        StateBox.Background = (Brush)FindResource(selectedState == "All" ? "BrushBgCard" : "BrushAccentSoft");
         var items = _allItems.Where(item => filter.Length == 0 || SearchText(item).Contains(filter, StringComparison.OrdinalIgnoreCase))
-            .Where(item => selectedState == "All" || EvidenceStateSemantics.Label(EvidenceStateSemantics.Classify(item))
-                .Equals(selectedState, StringComparison.OrdinalIgnoreCase)).ToList();
+            .Where(item => selectedState == "Not on this PC"
+                ? item.IsWritable && !item.IsApplicableHere
+                : item.IsWritable && item.IsApplicableHere && (selectedState == "All" ||
+                    EvidenceStateSemantics.Label(EvidenceStateSemantics.Classify(item))
+                        .Equals(selectedState, StringComparison.OrdinalIgnoreCase))).ToList();
 
         SettingsList.Children.Clear();
-        foreach (var item in items) SettingsList.Children.Add(BuildCard(item));
+        foreach (var item in items)
+        {
+            var conflict = _query?.GetConflictGroup(item.ObjectId);
+            var otherId = conflict?.ObjectIds.FirstOrDefault(id => !id.Equals(item.ObjectId, StringComparison.OrdinalIgnoreCase));
+            var otherName = string.IsNullOrWhiteSpace(otherId) ? null : _query?.GetById(otherId)?.ObjectName;
+            SettingsList.Children.Add(new SettingBar(
+                item,
+                _elevation.IsAdminAuthorized,
+                _applyInProgress,
+                _windowsVersion,
+                _edition,
+                _pending.TryGetValue(item.ObjectId, out var pendingRaw),
+                pendingRaw,
+                raw => { _pending[item.ObjectId] = raw; Render(); },
+                () => _openSetting(item.ObjectId),
+                conflict,
+                otherName,
+                _openConflict));
+        }
         EmptyText.Visibility = items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         SummaryPanel.Children.Clear();
         var summary = CategoryStateSummary.From(items);
         AddSummary("Visible", summary.Visible, "BadgeUnknown"); AddSummary("Configured", summary.Configured, "BadgeSuccess");
         AddSummary("Not configured", summary.NotConfigured, "BadgeUnknown"); AddSummary("Unknown", summary.Unknown, "BadgeWarning");
-        AddSummary("Unsupported", summary.Unsupported, "BadgeUnknown"); AddSummary("Access denied", summary.AccessDenied, "BadgeWarning");
+        AddSummary("Not on this PC", summary.Unsupported, "BadgeUnknown"); AddSummary("Access denied", summary.AccessDenied, "BadgeWarning");
         AddSummary("Stale", summary.Stale, "BadgeWarning"); AddSummary("Errors", summary.Error, "BadgeConflict");
         ApplyPendingButton.Content = $"Apply ({_pending.Count})";
         ApplyPendingButton.IsEnabled = _pending.Count > 0 && _elevation.IsAdminAuthorized && !_applyInProgress;
-    }
-
-    private Border BuildCard(ManagedObject item)
-    {
-        var highlighted = item.ObjectId.Equals(_highlightObjectId, StringComparison.OrdinalIgnoreCase);
-        var evidence = EvidenceStateSemantics.Classify(item);
-        var accentKey = evidence switch
-        {
-            EvidenceState.Configured => "BrushSuccess",
-            EvidenceState.AccessDenied or EvidenceState.Error => "BrushConflict",
-            EvidenceState.Unknown or EvidenceState.NotObserved or EvidenceState.Stale => "BrushWarning",
-            _ => "BrushAccent"
-        };
-        var accent = (Brush)FindResource(accentKey);
-        var card = new Border
-        {
-            Margin = new Thickness(0, 0, 0, 10), Padding = new Thickness(0),
-            Background = highlighted ? (Brush)FindResource("BrushBgSelected") : (Brush)FindResource("BrushBgCard"),
-            BorderBrush = highlighted ? (Brush)FindResource("BrushAccent") : (Brush)FindResource("BrushBorderStrong"),
-            BorderThickness = new Thickness(highlighted ? 2 : 1), CornerRadius = new CornerRadius(8)
-        };
-        var layout = new Grid();
-        layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(4) });
-        layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        layout.Children.Add(new Border { Background = accent, CornerRadius = new CornerRadius(7, 0, 0, 7) });
-        var root = new StackPanel { Margin = new Thickness(14, 11, 15, 13) };
-        Grid.SetColumn(root, 1);
-
-        var header = new Grid();
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        header.Children.Add(Text(item.ObjectName, 14.5, "BrushTextPrimary", 0, FontWeights.SemiBold));
-        var stateBadge = new Border
-        {
-            Style = (Style)FindResource(evidence is EvidenceState.AccessDenied or EvidenceState.Error ? "BadgeConflict" :
-                evidence is EvidenceState.Unknown or EvidenceState.NotObserved or EvidenceState.Stale ? "BadgeWarning" :
-                evidence == EvidenceState.Configured ? "BadgeSuccess" : "BadgeUnknown"),
-            Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Top
-        };
-        stateBadge.Child = new TextBlock
-        {
-            Text = item.IsWritable ? EvidenceStateSemantics.Label(evidence).ToUpperInvariant() : "MONITORED · VIEW ONLY",
-            FontSize = 9, FontWeight = FontWeights.Bold
-        };
-        Grid.SetColumn(stateBadge, 1);
-        header.Children.Add(stateBadge);
-        root.Children.Add(header);
-        root.Children.Add(Text(Introduction(item), 12.5, "BrushTextSecondary", 4));
-        var current = CurrentChoice(item);
-        root.Children.Add(Text("Observed  ·  " + ObservedText(item, current), 12, "BrushTextPrimary", 9, FontWeights.SemiBold));
-        root.Children.Add(Text("Effective  ·  " + EffectiveText(item, current), 12, "BrushTextSecondary", 3));
-
-        var options = BuildOptions(item);
-        if (options.Count > 0)
-        {
-            var choices = new WrapPanel { Margin = new Thickness(0, 12, 0, 1) };
-            foreach (var option in options)
-            {
-                var raw = option.Raw;
-                var selected = _pending.TryGetValue(item.ObjectId, out var pendingRaw) &&
-                               string.Equals(pendingRaw, raw, StringComparison.OrdinalIgnoreCase);
-                var observed = string.Equals(current?.Raw, raw, StringComparison.OrdinalIgnoreCase);
-                var button = new Button
-                {
-                    Content = option.Label + (observed && !selected ? "  ·  Current" : string.Empty),
-                    Style = (Style)FindResource(ChoiceStyle(option.Label, selected)),
-                    MinWidth = 124,
-                    Margin = new Thickness(0, 0, 8, 7),
-                    IsEnabled = item.IsWritable && item.IsApplicableHere && option.IsApplicable &&
-                                _elevation.IsAdminAuthorized && !_applyInProgress,
-                    ToolTip = option.Effect + " Nothing is written until Apply is confirmed."
-                };
-                if (observed && !selected)
-                {
-                    button.BorderBrush = (Brush)FindResource("BrushTextPrimary");
-                    button.BorderThickness = new Thickness(2);
-                }
-                button.Click += (_, _) => { _pending[item.ObjectId] = raw; Render(); };
-                AutomationProperties.SetName(button, $"{option.Label} for {item.ObjectName}");
-                choices.Children.Add(button);
-            }
-            root.Children.Add(choices);
-            if (_pending.TryGetValue(item.ObjectId, out var staged))
-            {
-                var selected = options.FirstOrDefault(option => string.Equals(option.Raw, staged, StringComparison.OrdinalIgnoreCase));
-                root.Children.Add(Text("Ready to apply: " + (selected?.Label ?? "Use Windows default"), 11, "BrushAccent", 2, FontWeights.SemiBold));
-            }
-        }
-        else
-            root.Children.Add(Text(item.IsWritable ? "No supported choice is available on this device." :
-                    item.ExclusionReason == ExclusionReason.ReadOnlyByDesign
-                        ? "Monitored only. This policy has no write route in WPP."
-                        : CatalogPolicy.ExclusionReasonText(item.ExclusionReason),
-                11, "BrushTextMuted", 10));
-
-        var actions = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 10, 0, 0) };
-        var detail = new Button { Content = "Details", Style = (Style)FindResource("ActionNeutral"), MinWidth = 105 };
-        detail.Click += (_, _) => _openSetting(item.ObjectId);
-        actions.Children.Add(detail);
-        if (_pending.ContainsKey(item.ObjectId))
-        {
-            var clear = new Button { Content = "Clear choice", Style = (Style)FindResource("ActionNeutral"), Margin = new Thickness(8, 0, 0, 0) };
-            clear.Click += (_, _) => { _pending.Remove(item.ObjectId); Render(); };
-            actions.Children.Add(clear);
-        }
-        root.Children.Add(actions);
-        layout.Children.Add(root);
-        card.Child = layout;
-        AutomationProperties.SetName(card, $"{item.ObjectName}. {ObservedText(item, current)}.");
-        return card;
     }
 
     private async void ApplyPending_Click(object sender, RoutedEventArgs e)
@@ -209,80 +138,7 @@ public partial class CategoryView : UserControl
         SummaryPanel.Children.Add(badge);
     }
 
-    private static TextBlock Text(string? value, double size, string brush, double top, FontWeight? weight = null) => new()
-    {
-        Text = string.IsNullOrWhiteSpace(value) ? "Not documented." : value, FontSize = size,
-        FontWeight = weight ?? FontWeights.Normal, Foreground = (Brush)Application.Current.FindResource(brush),
-        TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, top, 0, 0)
-    };
-
-    private static string Introduction(ManagedObject item)
-    {
-        var text = string.IsNullOrWhiteSpace(item.Description) ? item.Narrative.Summary : item.Description;
-        if (string.Equals(text?.TrimEnd('.'), item.ObjectName.TrimEnd('.'), StringComparison.OrdinalIgnoreCase))
-            text = item.Narrative.Summary;
-        return string.IsNullOrWhiteSpace(text) ? "Windows policy setting." : text;
-    }
-
-    private static string ObservedText(ManagedObject item, Choice? current)
-    {
-        var observed = NavigationBuilder.DisplayValue(item.CurrentState);
-        if (current is not null) return $"{observed} — {current.Effect}";
-        return $"{observed} — {EvidenceStateSemantics.Detail(EvidenceStateSemantics.Classify(item))}";
-    }
-
-    private static string EffectiveText(ManagedObject item, Choice? current)
-    {
-        var semantic = item.Observation?.Resolution?.SemanticDisplay ?? item.Observation?.Effective?.SemanticDisplay;
-        if (!string.IsNullOrWhiteSpace(semantic)) return semantic;
-        if (current is not null) return current.Effect;
-        var value = item.Observation?.Resolution?.EffectiveValue ?? item.Observation?.Effective?.EffectiveValue ?? item.CurrentState;
-        return NavigationBuilder.DisplayValue(value);
-    }
-
-    private static string ChoiceStyle(string label, bool selected)
-    {
-        if (selected) return "ActionChoiceSelected";
-        if (label.Contains("Disable", StringComparison.OrdinalIgnoreCase) || label.Contains("Block", StringComparison.OrdinalIgnoreCase) ||
-            label.Contains("Deny", StringComparison.OrdinalIgnoreCase) || label.Contains("Turn off", StringComparison.OrdinalIgnoreCase)) return "ActionDanger";
-        if (label.Contains("Enable", StringComparison.OrdinalIgnoreCase) || label.Contains("Allow", StringComparison.OrdinalIgnoreCase) ||
-            label.Contains("Turn on", StringComparison.OrdinalIgnoreCase)) return "ActionSuccess";
-        return "ActionChoice";
-    }
-
     private static string SearchText(ManagedObject item) => string.Join(' ', new[]
     { item.ObjectName, item.Description, item.Narrative.Summary, item.CurrentState }.Where(value => !string.IsNullOrWhiteSpace(value)));
 
-    private sealed record Choice(string? Raw, string Label, string Effect, bool IsApplicable);
-
-    private Choice? CurrentChoice(ManagedObject item)
-    {
-        var raw = RawToken(item.CurrentState);
-        return BuildOptions(item).FirstOrDefault(choice => string.Equals(choice.Raw, raw, StringComparison.OrdinalIgnoreCase));
-    }
-
-    private static string? RawToken(string? state)
-    {
-        if (string.IsNullOrWhiteSpace(state)) return null;
-        var value = state.Trim();
-        if (value.Equals("Not configured", StringComparison.OrdinalIgnoreCase)) return null;
-        return value.Split(' ', '(', ')', ';')[0];
-    }
-
-    private List<Choice> BuildOptions(ManagedObject item)
-    {
-        var result = item.ValueSemantics.Where(value => !string.IsNullOrWhiteSpace(value.RawValue))
-            .DistinctBy(value => value.RawValue, StringComparer.OrdinalIgnoreCase).Select(value =>
-            {
-                var copy = SettingOptionLanguage.For(item, value);
-                return new Choice(value.RawValue, copy.Action, copy.Effect,
-                    ApplicabilityEvaluator.IsValueApplicable(value, _windowsVersion, _edition));
-            }).ToList();
-        if (result.Count > 0 && item.WritableTarget is { Kind: WritableTargetKind.Registry, SupportsDeletion: true })
-        {
-            var clear = SettingOptionLanguage.Clear();
-            result.Add(new Choice(null, clear.Action, clear.Effect, true));
-        }
-        return result;
-    }
 }

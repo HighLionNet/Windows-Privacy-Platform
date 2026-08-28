@@ -14,7 +14,7 @@ using WindowsPrivacyPlatform.Models;
 
 namespace WindowsPrivacyPlatform.App;
 
-/// <summary>Application shell. System Explorer and Services remain permanently read-only.</summary>
+/// <summary>Application shell for catalog-backed inspection and controlled changes.</summary>
 public partial class MainWindow : Window
 {
     private readonly ScanService _scan = new();
@@ -28,6 +28,12 @@ public partial class MainWindow : Window
     private readonly List<Button> _navButtons = [];
     private readonly Stack<string> _backHistory = [];
     private readonly Stack<string> _forwardHistory = [];
+    private readonly Dictionary<string, CategoryFilterState> _categoryFilters = new(StringComparer.OrdinalIgnoreCase);
+    private readonly ConflictFilterState _conflictFilter = new();
+    private readonly KnowledgeFilterState _knowledgeFilter = new();
+    private readonly ServiceFilterState _serviceFilter = new();
+    private readonly Dictionary<string, ConflictGroup> _knownConflicts = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, ConflictGroup> _resolvedConflicts = new(StringComparer.OrdinalIgnoreCase);
     private readonly DispatcherTimer _sessionTimer;
     private CancellationTokenSource? _cts;
     private string _currentNav = "home";
@@ -200,6 +206,7 @@ public partial class MainWindow : Window
         try
         {
             await _scan.RunScanAsync(_cts.Token);
+            TrackConflicts();
             UpdateChrome();
             Navigate(_currentNav);
         }
@@ -212,6 +219,18 @@ public partial class MainWindow : Window
         }
     }
 
+    private void TrackConflicts()
+    {
+        var current = (_scan.Query?.GetConflictGroups() ?? []).ToDictionary(group => group.GroupId, StringComparer.OrdinalIgnoreCase);
+        foreach (var previous in _knownConflicts.Values.Where(group => !current.ContainsKey(group.GroupId)))
+            _resolvedConflicts[previous.GroupId] = previous;
+        foreach (var active in current.Keys)
+            _resolvedConflicts.Remove(active);
+        _knownConflicts.Clear();
+        foreach (var group in current.Values)
+            _knownConflicts[group.GroupId] = group;
+    }
+
     private void UpdateChrome()
     {
         if (_scan.Overview is null) return;
@@ -222,7 +241,7 @@ public partial class MainWindow : Window
             age > TimeSpan.FromMinutes(30) ? " · stale" : string.Empty;
         ScanTimeLabel.Text = $"Scanned {_scan.Overview.LastScanUtc:yyyy-MM-dd HH:mm} UTC{qualifier}";
         CatalogCountLabel.Text = $"Settings: {_scan.SettingsCatalog.Count}";
-        ConflictCountLabel.Text = $"Explorer: {_scan.InventoryCatalog.Count}";
+        ConflictCountLabel.Text = $"Conflicts: {_scan.Query?.GetConflictGroups().Count ?? 0}";
 
         var visibleDomains = _scan.SettingsCatalog.Select(item => item.ProductDomain).ToHashSet();
         foreach (var button in _navButtons)
@@ -257,8 +276,8 @@ public partial class MainWindow : Window
 
         if (tag == "home")
         {
-            SetContent(new HomeView(_scan, OpenSettingsList, destination => GoTo("posture:" + destination)));
-            UpdateBreadcrumbs("Overview");
+            SetContent(new HomeView(_scan, OpenSettingsList, destination => GoTo("posture:" + destination), () => GoTo("conflicts")));
+            UpdateBreadcrumbs("Dashboard");
         }
         else if (tag == "inventory")
         {
@@ -267,12 +286,24 @@ public partial class MainWindow : Window
         }
         else if (tag == "services")
         {
-            SetContent(new ServicesView(_scan));
+            SetContent(new ServicesView(_scan, _elevation, RunScanAsync, this, _serviceFilter));
             UpdateBreadcrumbs("Services");
+        }
+        else if (tag.StartsWith("conflicts", StringComparison.OrdinalIgnoreCase))
+        {
+            var focus = tag.StartsWith("conflicts:", StringComparison.OrdinalIgnoreCase) ? tag[10..] : null;
+            SetContent(new ConflictsView(_scan, _resolvedConflicts.Values.ToList(), _elevation, _changes,
+                RunScanAsync, this, OpenSetting, _conflictFilter, focus));
+            UpdateBreadcrumbs("Conflicts");
+        }
+        else if (tag == "knowledge")
+        {
+            SetContent(new KnowledgeExplorerView(_scan, OpenSettingsList, OpenSetting, _knowledgeFilter));
+            UpdateBreadcrumbs("Knowledge Explorer");
         }
         else if (tag == "settings")
         {
-            SetContent(new ApplicationSettingsView(_preferences, _preferencesStore, _appDataRoot, PreferencesChanged));
+            SetContent(new ApplicationSettingsView(_preferences, _preferencesStore, _appDataRoot, PreferencesChanged, _log));
             UpdateBreadcrumbs("App Settings");
         }
         else if (tag == "about")
@@ -301,8 +332,10 @@ public partial class MainWindow : Window
         }
         else if (TryParseCategory(tag, out var categoryDomain, out var category))
         {
-            SetContent(new CategoryView(_scan, categoryDomain, category, OpenSetting, _elevation, _changes,
-                RunScanAsync, this, completeModifyOperation: CompleteModifyOperation));
+            var filterState = CategoryState(categoryDomain, category);
+            SetContent(new CategoryView(_scan, categoryDomain, category, OpenSetting,
+                groupId => GoTo("conflicts:" + groupId), _elevation, _changes,
+                RunScanAsync, this, completeModifyOperation: CompleteModifyOperation, filterState: filterState));
             UpdateBreadcrumbs(category, group: DomainGroup(categoryDomain),
                 domainName: NavigationBuilder.HumanizeDomain(categoryDomain), domainTag: $"domain:{categoryDomain}",
                 categoryName: category, categoryTag: tag);
@@ -327,8 +360,10 @@ public partial class MainWindow : Window
         UpdateHistoryButtons();
         HighlightForTag(tag);
         ConfigureScrollFor(tag);
-        SetContent(new CategoryView(_scan, target.Domain, target.Category, OpenSetting, _elevation,
-            _changes, RunScanAsync, this, target.Filter, target.HighlightObjectId, CompleteModifyOperation));
+        SetContent(new CategoryView(_scan, target.Domain, target.Category, OpenSetting,
+            groupId => GoTo("conflicts:" + groupId), _elevation,
+            _changes, RunScanAsync, this, target.Filter, target.HighlightObjectId, CompleteModifyOperation,
+            CategoryState(target.Domain, target.Category)));
         UpdateBreadcrumbs(target.Category, group: DomainGroup(target.Domain),
             domainName: NavigationBuilder.HumanizeDomain(target.Domain), domainTag: $"domain:{target.Domain}",
             categoryName: target.Category, categoryTag: tag);
@@ -336,16 +371,26 @@ public partial class MainWindow : Window
 
     private void OpenSetting(string objectId) => GoTo("setting:" + objectId);
 
+    private CategoryFilterState CategoryState(ProductDomain domain, string category)
+    {
+        var key = domain + ":" + category;
+        if (!_categoryFilters.TryGetValue(key, out var state))
+            _categoryFilters[key] = state = new CategoryFilterState();
+        return state;
+    }
+
     private void RenderSetting(string objectId)
     {
         var item = _scan.Catalog.FirstOrDefault(candidate => candidate.ObjectId.Equals(objectId, StringComparison.OrdinalIgnoreCase));
         var detail = item is null ? null : NavigationBuilder.BuildDetail(item, _scan.Query);
         if (item is null || detail is null) return;
-        SetContent(new SettingDetailPage(detail, OpenSetting));
+        SetContent(new SettingDetailPage(detail, item, _scan.Query, _elevation, _changes, RunScanAsync, this,
+            _scan.Overview?.WindowsVersion ?? string.Empty, _scan.Overview?.WindowsEdition ?? string.Empty,
+            groupId => GoTo("conflicts:" + groupId)));
         if (item.Bucket == CatalogBucket.SystemInventory)
         {
             BreadcrumbPanel.Children.Clear();
-            AddBreadcrumbLink("Home", "home"); AddBreadcrumbSep(); AddBreadcrumbLink("System Explorer", "inventory");
+            AddBreadcrumbLink("Dashboard", "home"); AddBreadcrumbSep(); AddBreadcrumbLink("System Explorer", "inventory");
             AddBreadcrumbSep(); AddBreadcrumbText(detail.Title);
             return;
         }
@@ -368,7 +413,7 @@ public partial class MainWindow : Window
 
     private void ConfigureScrollFor(string tag)
     {
-        var listOwnsScroll = tag is "services" or "inventory";
+        var listOwnsScroll = tag is "services" or "inventory" or "knowledge";
         ContentScroll.VerticalScrollBarVisibility = listOwnsScroll ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Auto;
         BackToTopButton.Visibility = Visibility.Collapsed;
     }
@@ -380,13 +425,14 @@ public partial class MainWindow : Window
         ContentHost.Opacity = 0;
         ContentHost.RenderTransform = new TranslateTransform(0, 4);
         var ease = new QuadraticEase { EasingMode = EasingMode.EaseOut };
-        ContentHost.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(150)) { EasingFunction = ease });
+        ContentHost.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(142)) { EasingFunction = ease });
         ((TranslateTransform)ContentHost.RenderTransform).BeginAnimation(TranslateTransform.YProperty,
-            new DoubleAnimation(4, 0, TimeSpan.FromMilliseconds(170)) { EasingFunction = ease });
+            new DoubleAnimation(4, 0, TimeSpan.FromMilliseconds(162)) { EasingFunction = ease });
     }
 
     private void SetModeChrome(bool admin)
     {
+        AuditContext.Mode = admin ? SessionPresentation.Admin : SessionPresentation.ViewOnly;
         _modeChangeInProgress = true;
         ModeCombo.SelectedIndex = admin ? 1 : 0;
         _modeChangeInProgress = false;
@@ -508,10 +554,12 @@ public partial class MainWindow : Window
         var highlight = tag;
         if (TryParseCategory(tag, out var domain, out _)) highlight = "domain:" + domain;
         else if (tag.StartsWith("setting:", StringComparison.OrdinalIgnoreCase)) return;
+        else if (tag.StartsWith("conflicts:", StringComparison.OrdinalIgnoreCase)) highlight = "conflicts";
         else if (tag.StartsWith("search:", StringComparison.OrdinalIgnoreCase) || tag.StartsWith("posture:", StringComparison.OrdinalIgnoreCase)) highlight = "home";
         var selected = _navButtons.FirstOrDefault(button => string.Equals(button.Tag as string, highlight, StringComparison.OrdinalIgnoreCase));
         foreach (var button in _navButtons)
             button.Style = (Style)FindResource(ReferenceEquals(button, selected) ? "SidebarButtonSelected" : "SidebarButton");
+        selected?.BringIntoView();
     }
 
     private void RunSearch()
@@ -548,7 +596,10 @@ public partial class MainWindow : Window
             or ProductDomain.Location or ProductDomain.ActivityHistory or ProductDomain.CloudContent or ProductDomain.Device
             or ProductDomain.Speech or ProductDomain.Other => "Privacy",
         ProductDomain.Defender or ProductDomain.Firewall or ProductDomain.Biometrics or ProductDomain.LocalSecurity
-            or ProductDomain.Network or ProductDomain.RemoteAccess => "Security",
+            or ProductDomain.Network or ProductDomain.RemoteAccess or ProductDomain.ExploitProtection => "Security",
+        ProductDomain.BitLocker or ProductDomain.Uac or ProductDomain.WindowsUpdate or ProductDomain.Storage
+            or ProductDomain.FindMyDevice or ProductDomain.WindowsHello or ProductDomain.Accessibility
+            or ProductDomain.FamilySafety => "Windows",
         ProductDomain.Search or ProductDomain.Widgets or ProductDomain.Copilot or ProductDomain.Recall
             or ProductDomain.Edge or ProductDomain.OneDrive => "Windows Apps",
         _ => "Domains"
@@ -558,7 +609,7 @@ public partial class MainWindow : Window
         string? domainTag = null, string? categoryName = null, string? categoryTag = null)
     {
         BreadcrumbPanel.Children.Clear();
-        AddBreadcrumbLink("Home", "home");
+        AddBreadcrumbLink("Dashboard", "home");
         if (!string.IsNullOrEmpty(group)) { AddBreadcrumbSep(); AddBreadcrumbText(group); }
         if (!string.IsNullOrEmpty(domainName) && !string.IsNullOrEmpty(domainTag))
         { AddBreadcrumbSep(); AddBreadcrumbLink(domainName, domainTag); }
@@ -567,7 +618,7 @@ public partial class MainWindow : Window
             AddBreadcrumbSep();
             if (current == categoryName) AddBreadcrumbText(categoryName); else AddBreadcrumbLink(categoryName, categoryTag);
         }
-        var root = current is "Overview" or "Ready";
+        var root = current is "Dashboard" or "Ready";
         if (!root && current != domainName && current != categoryName) { AddBreadcrumbSep(); AddBreadcrumbText(current); }
     }
 
@@ -642,6 +693,8 @@ public partial class MainWindow : Window
     private void MenuHome_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("home");
     private void MenuInventory_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("inventory");
     private void MenuServices_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("services");
+    private void MenuConflicts_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("conflicts");
+    private void MenuKnowledge_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("knowledge");
     private void MenuSettings_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("settings");
     private void SettingsButton_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("settings");
     private void MenuAbout_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("about");

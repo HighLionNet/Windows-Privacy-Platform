@@ -105,6 +105,11 @@ public sealed class SettingsQuery
 
     public IEnumerable<ManagedObject> Conflicts() => GetConflicts();
 
+    public IReadOnlyList<ConflictGroup> GetConflictGroups() => OutcomeConflictEngine.Evaluate(_catalog);
+
+    public ConflictGroup? GetConflictGroup(string objectId) => GetConflictGroups().FirstOrDefault(group =>
+        group.ObjectIds.Contains(objectId, StringComparer.OrdinalIgnoreCase));
+
     public IEnumerable<ManagedObject> GetMachineControlledSettings() =>
         _catalog.Where(m =>
             m.Observation?.Effective?.EffectiveSource is ConfigurationLayer.MachinePolicy
@@ -143,6 +148,7 @@ public sealed class SettingsQuery
 
         return _catalog.Where(m =>
             (m.ObjectName?.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (m.SearchAliases?.Any(alias => alias.Contains(t, StringComparison.OrdinalIgnoreCase)) ?? false) ||
             (m.ObjectId?.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false) ||
             (m.Description?.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false) ||
             (m.TechnicalLocation?.Contains(t, StringComparison.OrdinalIgnoreCase) ?? false) ||

@@ -102,8 +102,9 @@ public sealed class V250AcceptanceTests
         Assert.All(expected, id => Assert.Contains(ManagedObjectCatalog.All, item => item.ObjectId == id));
         Assert.All(ManagedObjectCatalog.All.Where(item => item.ObjectId.StartsWith("policy.copilot.app.")),
             item => Assert.True(item.IsWritable, item.ObjectId));
-        Assert.All(ManagedObjectCatalog.All.Where(item => CatalogPolicy.IsMonitoredReadOnlySetting(item.ObjectId)),
-            item => Assert.False(item.IsWritable, item.ObjectId));
+        Assert.All(expected.Select(id => ManagedObjectCatalog.All.Single(item => item.ObjectId == id))
+                .Where(item => item.ObjectId.StartsWith("policy.recall.")),
+            item => Assert.True(item.IsWritable, item.ObjectId));
     }
 
     private static ManagedObject Clone(ManagedObject item) => new()

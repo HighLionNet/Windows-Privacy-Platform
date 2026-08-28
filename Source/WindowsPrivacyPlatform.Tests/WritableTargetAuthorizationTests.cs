@@ -75,7 +75,7 @@ public class WritableTargetAuthorizationTests
     }
 
     [Fact]
-    public void BitLocker_and_Uac_remain_high_risk_native_handoffs()
+    public void BitLocker_and_Uac_are_typed_high_impact_settings()
     {
         var entries = ManagedObjectCatalog.All.Where(m =>
             m.ObjectId.StartsWith("policy.bitlocker.", StringComparison.OrdinalIgnoreCase) ||
@@ -83,10 +83,11 @@ public class WritableTargetAuthorizationTests
         Assert.NotEmpty(entries);
         Assert.All(entries, item =>
         {
-            Assert.False(item.IsWritable, item.ObjectId);
-            Assert.Equal(ExclusionReason.HighRiskIrreversible, item.ExclusionReason);
-            Assert.True(item.NativeTool is { IsComplete: true }, item.ObjectId);
-            Assert.Equal(CatalogBucket.InternalReference, item.Bucket);
+            Assert.True(item.IsWritable, item.ObjectId);
+            Assert.Equal(WritableTargetKind.Registry, item.WritableTarget?.Kind);
+            Assert.True(item.WritableTarget is { IsComplete: true }, item.ObjectId);
+            Assert.True(item.HighImpact, item.ObjectId);
+            Assert.Equal(CatalogBucket.Settings, item.Bucket);
         });
     }
 

@@ -31,10 +31,12 @@ Registry verification includes value kind. Firewall-profile verification checks 
 
 ## Permanent exclusions
 
-- **BitLocker and Device Encryption:** observation-only because a generic state change can be lengthy and can lock a user out without a verified recovery key. The detail page opens Windows' native encryption management.
-- **User Account Control:** observation-only because master-level changes alter a broad security boundary and may require coordinated values/restart behavior. The detail page opens the native management surface.
+- **Destructive storage and identity operations:** disk wipe/format, recovery-key deletion, recursive profile deletion, disabling the signed-in user's only administrator account, and generic command execution are not product controls.
 - **Arbitrary firewall rules:** inventory-only because broad rule mutation is unsafe and semantically complex. The app changes only the twelve fixed enabled/inbound/outbound/notification profile properties and can open Windows Defender Firewall with Advanced Security.
-- **All services, tasks, packages, features, and capabilities:** System Explorer only. Enumeration can never expand authority.
+- **Critical and uncertain services:** permanent critical names, Boot/System starts, shared svchost groups, Microsoft or unknown publishers, and incomplete evidence are diagnosis-only. Only verified non-Microsoft optional services can receive a confirmed runtime start/stop/restart action; startup configuration is never changed.
+- **Tasks, packages, features, and capabilities:** System Explorer only. Enumeration can never expand authority.
+
+BitLocker, Device Encryption, and User Account Control are exact typed registry controls. They are catalog-tagged high-impact and require a themed warning plus a fresh Windows credential step-up before the normal verified-change contract.
 
 ## Evidence integrity
 
@@ -44,4 +46,4 @@ Unknown, not observed, not configured, unsupported, error, and access denied are
 
 External collection commands use fixed absolute executables, structured fixed arguments, bounded output, timeouts, and cancellation without a generic runner exposed to the UI. Discovered text is display-only. Local preferences and shortcut state are atomically replaced beneath LocalAppData; logs are sanitized, rotated, and previous-hash chained there. The local-data ACL is limited to the current user, SYSTEM, and Administrators. The application has no telemetry or cloud backend. Local audit records are not claimed to be immutable or cryptographically tamper-proof.
 
-The v2.5.0 elevation boundary is not a separate authenticated IPC broker. CredUI verifies an administrator password before Admin mode; UAC supplies an elevated token when required. The in-process Admin session remains open after Apply, and leaving Admin relaunches View-only through the Windows shell so the elevated token is dropped. A future broker must preserve the same default-deny checks and add authenticated, bounded IPC rather than accepting arbitrary serialized objects.
+The v2.5.1 elevation boundary is not a separate authenticated IPC broker. CredUI verifies an administrator password before Admin mode; UAC supplies an elevated token when required. High-impact changes require a fresh Windows credential step-up. The in-process Admin session remains open after Apply, and leaving Admin relaunches View-only through the Windows shell so the elevated token is dropped. A future broker must preserve the same default-deny checks and add authenticated, bounded IPC rather than accepting arbitrary serialized objects.

@@ -55,6 +55,14 @@ public enum ProductDomain
     Widgets,
     OneDrive,
     Storage,
+    BitLocker,
+    Uac,
+    FindMyDevice,
+    WindowsHello,
+    Accessibility,
+    FamilySafety,
+    ExploitProtection,
+    Clipboard,
     Other
 }
 

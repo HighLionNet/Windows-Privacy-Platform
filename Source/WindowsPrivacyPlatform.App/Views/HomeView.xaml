@@ -2,24 +2,13 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" HorizontalContentAlignment="Stretch">
   <StackPanel>
-    <TextBlock Text="DEVICE POSTURE / LOCAL XDR" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushAccentCyan}"/>
-    <TextBlock Text="Overview" Style="{StaticResource SectionTitle}" Margin="0,3,0,0"/>
+    <TextBlock Text="Dashboard" Style="{StaticResource SectionTitle}"/>
     <TextBlock Text="Review this endpoint’s identity alongside its protection posture and actionable signals." Style="{StaticResource SectionSubtitle}"/>
     <Border Style="{StaticResource HeaderRule}"/>
 
     <Border Style="{StaticResource PropertySheet}" Margin="0,0,0,14" BorderThickness="4,1,1,1" BorderBrush="{DynamicResource BrushAccent}">
       <StackPanel>
-        <Border Style="{StaticResource PropertySheetHeader}">
-          <Grid>
-            <StackPanel Orientation="Horizontal">
-              <Ellipse Width="8" Height="8" Fill="{DynamicResource BrushSuccess}" VerticalAlignment="Center" Margin="0,0,8,0"/>
-              <TextBlock Text="DEVICE CONTEXT" FontWeight="Bold" FontSize="11"/>
-            </StackPanel>
-            <Border HorizontalAlignment="Right" Style="{StaticResource BadgeSuccess}" Padding="8,2">
-              <TextBlock Text="LOCAL EVIDENCE" FontSize="9" FontWeight="Bold"/>
-            </Border>
-          </Grid>
-        </Border>
+        <Border Style="{StaticResource PropertySheetHeader}"><TextBlock Text="This PC" FontWeight="SemiBold"/></Border>
         <Grid Margin="16,9,16,12">
           <Grid.ColumnDefinitions><ColumnDefinition Width="130"/><ColumnDefinition Width="*"/><ColumnDefinition Width="130"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
           <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
@@ -42,36 +31,41 @@
     </Border>
 
     <TextBlock Text="POSTURE SIGNALS" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="2,0,0,7"/>
-    <Grid Margin="0,0,0,14">
-      <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-      <Button Style="{StaticResource ActionNeutral}" Height="78" Padding="14,9" Background="{DynamicResource BrushConflictSoft}" BorderBrush="{DynamicResource BrushConflict}" BorderThickness="1" Click="HighTile_Click">
+    <UniformGrid Columns="2" Margin="-5,0,-5,14">
+      <Button Margin="5,0,5,10" Style="{StaticResource ActionNeutral}" MinHeight="82" Padding="12,9" Background="{DynamicResource BrushConflictSoft}" BorderBrush="{DynamicResource BrushConflict}" BorderThickness="1" Click="HighTile_Click">
         <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
           <StackPanel VerticalAlignment="Center"><TextBlock Text="HIGH ATTENTION" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushConflict}"/>
             <TextBlock Text="Immediate policy risk" FontSize="11.5" Margin="0,4,0,0" Foreground="{DynamicResource BrushTextSecondary}"/></StackPanel>
           <TextBlock x:Name="HighCountText" Grid.Column="1" FontSize="28" FontWeight="Bold" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource BrushConflict}"/>
         </Grid>
       </Button>
-      <Button Grid.Column="2" Style="{StaticResource ActionNeutral}" Height="78" Padding="14,9" Background="{DynamicResource BrushWarningSoft}" BorderBrush="{DynamicResource BrushWarning}" BorderThickness="1" Click="ReviewTile_Click">
+      <Button Margin="5,0,5,10" Style="{StaticResource ActionNeutral}" MinHeight="82" Padding="12,9" Background="{DynamicResource BrushWarningSoft}" BorderBrush="{DynamicResource BrushWarning}" BorderThickness="1" Click="ReviewTile_Click">
         <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
           <StackPanel VerticalAlignment="Center"><TextBlock Text="REVIEW" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushWarning}"/>
-            <TextBlock Text="Needs analyst review" FontSize="11.5" Margin="0,4,0,0" Foreground="{DynamicResource BrushTextSecondary}"/></StackPanel>
+            <TextBlock Text="Incomplete evidence" FontSize="11.5" Margin="0,4,0,0" Foreground="{DynamicResource BrushTextSecondary}"/></StackPanel>
           <TextBlock x:Name="ReviewCountText" Grid.Column="1" FontSize="28" FontWeight="Bold" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource BrushWarning}"/>
         </Grid>
       </Button>
-      <Button Grid.Column="4" Style="{StaticResource ActionNeutral}" Height="78" Padding="14,9" Background="{DynamicResource BrushSuccessSoft}" BorderBrush="{DynamicResource BrushSuccess}" BorderThickness="1" Click="ProtectionsTile_Click">
+      <Button Margin="5,0" Style="{StaticResource ActionNeutral}" MinHeight="82" Padding="12,9" Background="{DynamicResource BrushSuccessSoft}" BorderBrush="{DynamicResource BrushSuccess}" BorderThickness="1" Click="ProtectionsTile_Click">
         <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
           <StackPanel VerticalAlignment="Center"><TextBlock Text="PROTECTIONS" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushSuccess}"/>
             <TextBlock Text="Verified safeguards" FontSize="11.5" Margin="0,4,0,0" Foreground="{DynamicResource BrushTextSecondary}"/></StackPanel>
           <TextBlock x:Name="ProtectedCountText" Grid.Column="1" FontSize="28" FontWeight="Bold" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource BrushSuccess}"/>
         </Grid>
       </Button>
-    </Grid>
+      <Button Margin="5,0" Style="{StaticResource ActionNeutral}" MinHeight="82" Padding="12,9" Background="{DynamicResource BrushWarningSoft}" BorderBrush="{DynamicResource BrushWarning}" BorderThickness="1" Click="ConflictsTile_Click">
+        <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+          <StackPanel VerticalAlignment="Center"><TextBlock Text="CONFLICTS" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushWarning}"/>
+            <TextBlock Text="Outcome disagreements" FontSize="11.5" Margin="0,4,0,0" Foreground="{DynamicResource BrushTextSecondary}" TextWrapping="Wrap"/></StackPanel>
+          <TextBlock x:Name="ConflictCountText" Grid.Column="1" FontSize="28" FontWeight="Bold" Margin="10,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource BrushWarning}"/>
+        </Grid>
+      </Button>
+    </UniformGrid>
 
     <Border Style="{StaticResource PropertySheet}">
       <StackPanel>
         <Border Style="{StaticResource PropertySheetHeader}">
-          <Grid><TextBlock Text="PRIORITY FINDINGS" FontWeight="Bold" FontSize="11"/>
-            <TextBlock Text="Select a row to investigate" HorizontalAlignment="Right" FontSize="10.5" Foreground="{DynamicResource BrushTextMuted}"/></Grid>
+          <TextBlock Text="PRIORITY FINDINGS" FontWeight="Bold" FontSize="11"/>
         </Border>
         <StackPanel x:Name="FindingsList" Margin="0,2,0,2"/>
       </StackPanel>

@@ -11,7 +11,6 @@
     </Grid.RowDefinitions>
 
     <StackPanel>
-      <TextBlock Text="ASSET INTELLIGENCE / READ ONLY" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushAccentCyan}" />
       <TextBlock Text="System Explorer" Style="{StaticResource SectionTitle}" />
       <TextBlock Text="Read-only Windows components, grouped by purpose." Style="{StaticResource SectionSubtitle}" />
       <Border Style="{StaticResource HeaderRule}" />

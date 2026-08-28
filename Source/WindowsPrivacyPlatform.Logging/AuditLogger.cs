@@ -20,7 +20,7 @@ namespace WindowsPrivacyPlatform.Logging
         private readonly string _changeLogPath;
         private readonly bool _fileLoggingEnabled;
         private readonly Dictionary<string, string> _previousHashes = new(StringComparer.OrdinalIgnoreCase);
-        private const long MaxLogBytes = 2 * 1024 * 1024;
+        private const long MaxLogBytes = 32 * 1024 * 1024;
 
         public AuditLogger()
         {
@@ -72,7 +72,7 @@ namespace WindowsPrivacyPlatform.Logging
             {
                 var timestamp = DateTime.UtcNow;
                 var severity = eventType.ToString().ToUpperInvariant();
-                var line = $"[{timestamp:yyyy-MM-dd HH:mm:ss.fff}] [{severity}] [{SanitizeField(component, 128)}] {SanitizeField(message, 8192)}";
+                var line = $"[{timestamp:O}] [{severity}] [{SanitizeField(component, 128)}] {AuditContext.Fields} {SanitizeField(message, 8192)}";
 
                 Console.WriteLine(line);
 

@@ -82,6 +82,52 @@ public static class ServiceInspection
     private static string SearchText(ServiceInfo s) => string.Join(' ', new[]
     {
         s.Name, s.DisplayName, s.Description, s.State, s.StartMode, s.Account,
-        s.ExecutablePath, s.Publisher, s.SignatureStatus, string.Join(' ', s.Tags)
+        s.ExecutablePath, s.CommandLine, s.FileVersion, s.Publisher, s.SignatureStatus,
+        string.Join(' ', s.Dependencies), string.Join(' ', s.Dependents), string.Join(' ', s.RecentEvents), string.Join(' ', s.Tags)
     });
+
+    public static string Diagnosis(ServiceInfo service) => Classify(service) switch
+    {
+        ServiceEvidenceState.StoppedAutomatic => "Automatic startup is configured, but the service is stopped. Check recent Service Control Manager events and dependencies.",
+        ServiceEvidenceState.MissingExecutable => "The configured executable is missing or inaccessible. Verify the installed product before changing startup state.",
+        ServiceEvidenceState.DependencyIssue => "A required dependency is missing or stopped. Diagnose that dependency first.",
+        ServiceEvidenceState.InvalidConfiguration => "Windows returned incomplete service configuration. Review the configuration evidence and recent events.",
+        ServiceEvidenceState.AccessDenied => "Windows denied part of the diagnosis. Re-scan in Administrator mode for additional evidence.",
+        ServiceEvidenceState.Unknown => "The service state could not be verified.",
+        _ => "No evidence pattern requiring action was observed."
+    };
+}
+
+public static class ServiceMutationPolicy
+{
+    private static readonly HashSet<string> DeniedNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "RpcSs", "DcomLaunch", "Lsa", "SamSs", "EventLog", "PlugPlay", "Power",
+        "WinDefend", "Sense", "wdfilter", "BFE", "mpssvc", "CryptSvc", "Schedule",
+        "ProfSvc", "UserManager", "Dhcp", "Dnscache", "NlaSvc", "nsi", "Winmgmt",
+        "CSM", "CoreMessaging"
+    };
+
+    public static bool IsDeniedName(string? name) => !string.IsNullOrWhiteSpace(name) && DeniedNames.Contains(name);
+
+    public static bool CanMutate(ServiceInfo service, out string reason)
+    {
+        reason = string.Empty;
+        if (service is null || string.IsNullOrWhiteSpace(service.Name) || service.Name.Length > 256 ||
+            service.Name.Contains('\\') || service.Name.Contains('/'))
+        { reason = "The service identity is invalid."; return false; }
+        if (IsDeniedName(service.Name))
+        { reason = "This service is on the permanent critical deny-list."; return false; }
+        if (service.StartMode.Equals("Boot", StringComparison.OrdinalIgnoreCase) ||
+            service.StartMode.Equals("System", StringComparison.OrdinalIgnoreCase))
+        { reason = "Boot and system-start services are never mutated."; return false; }
+        if (service.CommandLine.Contains("svchost.exe", StringComparison.OrdinalIgnoreCase) &&
+            service.CommandLine.Contains(" -k ", StringComparison.OrdinalIgnoreCase))
+        { reason = "Shared svchost groups are diagnose-only."; return false; }
+        if (service.IsMicrosoft != false)
+        { reason = "Microsoft and unknown-publisher services are diagnose-only."; return false; }
+        if (service.AccessDenied || service.MissingExecutable || !string.IsNullOrWhiteSpace(service.ConfigurationError))
+        { reason = "The service does not have enough verified configuration evidence for mutation."; return false; }
+        return true;
+    }
 }

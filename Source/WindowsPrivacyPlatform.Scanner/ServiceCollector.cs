@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.Eventing.Reader;
 using System.Security.Cryptography.X509Certificates;
 using System.ServiceProcess;
 using Microsoft.Win32;
@@ -111,6 +112,7 @@ public sealed class ServiceCollector : IInventoryCollector
             info.TriggerStart = triggerKey is { SubKeyCount: > 0 } ? "Configured" : "Not observed";
 
             var image = Safe(key.GetValue("ImagePath", null, RegistryValueOptions.DoNotExpandEnvironmentNames)?.ToString());
+            info.CommandLine = image;
             info.ExecutablePath = ResolveExecutablePath(image);
             if (!string.IsNullOrWhiteSpace(info.ExecutablePath) && Path.IsPathRooted(info.ExecutablePath))
             {
@@ -133,6 +135,7 @@ public sealed class ServiceCollector : IInventoryCollector
         }
 
         AddTags(info);
+        ReadRecentEvents(info);
         return info;
     }
 
@@ -144,6 +147,8 @@ public sealed class ServiceCollector : IInventoryCollector
             dependencies = service.ServicesDependedOn;
             info.Dependencies = dependencies.Take(128)
                 .Select(s => Safe(s.ServiceName)).Where(s => s.Length > 0).ToList();
+            info.DependencyStates = dependencies.Take(128)
+                .Select(s => Safe(s.ServiceName) + ": " + SafeStatus(s)).ToList();
         }
         catch (Exception ex)
         {
@@ -161,6 +166,8 @@ public sealed class ServiceCollector : IInventoryCollector
             dependents = service.DependentServices;
             info.Dependents = dependents.Take(128)
                 .Select(s => Safe(s.ServiceName)).Where(s => s.Length > 0).ToList();
+            info.DependentStates = dependents.Take(128)
+                .Select(s => Safe(s.ServiceName) + ": " + SafeStatus(s)).ToList();
         }
         catch
         {
@@ -178,6 +185,7 @@ public sealed class ServiceCollector : IInventoryCollector
         try
         {
             var version = FileVersionInfo.GetVersionInfo(info.ExecutablePath);
+            info.FileVersion = Safe(version.FileVersion);
             info.Publisher = Safe(version.CompanyName);
             info.IsMicrosoft = info.Publisher.Contains("Microsoft", StringComparison.OrdinalIgnoreCase)
                 ? true
@@ -202,6 +210,46 @@ public sealed class ServiceCollector : IInventoryCollector
         {
             info.SignatureStatus = "No embedded signature observed";
         }
+    }
+
+    private static void ReadRecentEvents(ServiceInfo info)
+    {
+        try
+        {
+            const string queryText = "*[System[Provider[@Name='Service Control Manager'] and TimeCreated[timediff(@SystemTime) <= 604800000]]]";
+            var query = new EventLogQuery("System", PathType.LogName, queryText)
+            {
+                ReverseDirection = true,
+                TolerateQueryErrors = true
+            };
+            using var reader = new EventLogReader(query);
+            for (var read = 0; read < 80 && info.RecentEvents.Count < 12; read++)
+            {
+                using var record = reader.ReadEvent();
+                if (record is null) break;
+                string message;
+                try { message = Safe(record.FormatDescription()); }
+                catch { message = "Service Control Manager event " + record.Id; }
+                if (!message.Contains(info.Name, StringComparison.OrdinalIgnoreCase) &&
+                    !message.Contains(info.DisplayName, StringComparison.OrdinalIgnoreCase)) continue;
+                if (message.Length > 512) message = message[..509] + "…";
+                info.RecentEvents.Add($"{record.TimeCreated?.ToUniversalTime():yyyy-MM-dd HH:mm} UTC · {message}");
+            }
+        }
+        catch (UnauthorizedAccessException)
+        {
+            info.RecentEvents.Add("Access denied while reading recent service events.");
+        }
+        catch
+        {
+            // Event evidence is optional and bounded; configuration evidence remains useful.
+        }
+    }
+
+    private static string SafeStatus(ServiceController controller)
+    {
+        try { return controller.Status.ToString(); }
+        catch { return "Unable to verify"; }
     }
 
     private static string ResolveExecutablePath(string imagePath)

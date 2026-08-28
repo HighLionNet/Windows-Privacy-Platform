@@ -2,7 +2,6 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" HorizontalContentAlignment="Stretch">
   <StackPanel>
-    <TextBlock Text="POLICY CONTROL / CHANGE-GATED" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushAccentCyan}"/>
     <TextBlock x:Name="TitleText" Style="{StaticResource SectionTitle}"/>
     <TextBlock x:Name="SubtitleText" Style="{StaticResource SectionSubtitle}"/>
     <TextBlock x:Name="DescriptionText" Margin="0,7,0,0" TextWrapping="Wrap" Foreground="{DynamicResource BrushTextSecondary}"/>
@@ -17,13 +16,12 @@
             <TextBlock Text="State:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,8"/>
             <ComboBox x:Name="StateBox" Width="170" Height="34" Margin="0,0,8,8" SelectionChanged="FilterChanged">
               <ComboBoxItem Content="All" IsSelected="True"/><ComboBoxItem Content="Configured"/><ComboBoxItem Content="Not configured"/>
-              <ComboBoxItem Content="Not observed"/><ComboBoxItem Content="Unknown"/><ComboBoxItem Content="Unsupported"/>
+              <ComboBoxItem Content="Not observed"/><ComboBoxItem Content="Unknown"/><ComboBoxItem Content="Not on this PC"/>
               <ComboBoxItem Content="Access denied"/><ComboBoxItem Content="Stale"/><ComboBoxItem Content="Error"/>
             </ComboBox>
           </WrapPanel>
           <WrapPanel x:Name="SummaryPanel"/>
-          <TextBlock Margin="0,5,0,0" Text="Only Administrator mode can make changes. Choices remain staged until Apply is confirmed."
-                     Foreground="{DynamicResource BrushTextMuted}" FontSize="11"/>
+          <TextBlock x:Name="ModeStatusText" Margin="0,5,0,0" Foreground="{DynamicResource BrushTextMuted}" FontSize="11"/>
         </StackPanel>
         <Button x:Name="ApplyPendingButton" Grid.Column="1" Content="Apply (0)" Style="{StaticResource ActionPrimary}"
                 Margin="16,0,0,0" MinWidth="128" VerticalAlignment="Top" Click="ApplyPending_Click" IsEnabled="False"/>

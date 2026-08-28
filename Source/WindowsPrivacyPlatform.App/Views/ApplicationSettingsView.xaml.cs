@@ -6,6 +6,7 @@ using System.Windows;
 using System.Windows.Controls;
 using WindowsPrivacyPlatform.App.Services;
 using WindowsPrivacyPlatform.Core;
+using WindowsPrivacyPlatform.Logging;
 using WindowsPrivacyPlatform.Models;
 
 namespace WindowsPrivacyPlatform.App.Views;
@@ -16,16 +17,18 @@ public partial class ApplicationSettingsView : UserControl
     private readonly ApplicationPreferencesStore _store;
     private readonly string _dataRoot;
     private readonly Action _preferencesChanged;
+    private readonly IAuditLogger _log;
     private bool _loading = true;
 
     public ApplicationSettingsView(ApplicationPreferences preferences, ApplicationPreferencesStore store,
-        string dataRoot, Action preferencesChanged)
+        string dataRoot, Action preferencesChanged, IAuditLogger log)
     {
         InitializeComponent();
         _preferences = preferences;
         _store = store;
         _dataRoot = dataRoot;
         _preferencesChanged = preferencesChanged;
+        _log = log;
 
         foreach (var theme in Enum.GetValues<AppTheme>())
             ThemeBox.Items.Add(new ComboBoxItem { Content = ThemeManager.DisplayName(theme), Tag = theme });
@@ -36,6 +39,7 @@ public partial class ApplicationSettingsView : UserControl
         RememberPositionBox.IsChecked = preferences.RememberWindowPosition;
         ScanOnLaunchBox.IsChecked = preferences.ScanOnLaunch;
         PopulateIntegrity();
+        PopulateSessions();
         _loading = false;
     }
 
@@ -92,6 +96,31 @@ public partial class ApplicationSettingsView : UserControl
         CatalogHashText.Text = ManagedObjectCatalog.AuthorizationHash;
         HashText.Text = ComputeHash(path);
         SigningText.Text = SigningState(path);
+        IntegrityStatusText.Text = BinaryIntegrityGuard.Status;
+    }
+
+    private void VerifyBinary_Click(object sender, RoutedEventArgs e)
+    {
+        var owner = Window.GetWindow(this);
+        var stepUp = new HighImpactStepUpService(_log);
+        if (!stepUp.TryAuthorizeBinaryVerification(owner)) return;
+        var accepted = BinaryIntegrityGuard.AcceptCurrent(_dataRoot, _log);
+        IntegrityStatusText.Text = BinaryIntegrityGuard.Status;
+        MessageBox.Show(owner, accepted ? "The current executable hash is now verified." : "The executable hash could not be recorded.",
+            accepted ? "Binary verified" : "Verification failed", MessageBoxButton.OK,
+            accepted ? MessageBoxImage.Information : MessageBoxImage.Warning);
+    }
+
+    private void PopulateSessions()
+    {
+        var logRoot = Path.Combine(_dataRoot, "Logs");
+        SessionList.ItemsSource = AuditSessionHistory.ReadRecent(logRoot).Select(session => new
+        {
+            session.User,
+            session.Mode,
+            Time = $"{session.StartUtc:yyyy-MM-dd HH:mm}–{session.EndUtc:HH:mm} UTC",
+            Changes = $"{session.ChangesApplied} changes"
+        }).ToList();
     }
 
     private static string ComputeHash(string path)

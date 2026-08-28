@@ -8,15 +8,17 @@ namespace WindowsPrivacyPlatform.Models;
 
 public static class ManagedObjectCatalog
 {
-    public const string CatalogVersion = "2.5";
+    public const string CatalogVersion = "2.5.1";
     public static IReadOnlyList<ManagedObject> PrivacySettings { get; } = Finalize(CreatePrivacyBatch());
-    public static IReadOnlyList<ManagedObject> PolicySettings { get; } = Finalize(
+    public static IReadOnlyList<ManagedObject> PolicySettings { get; } = Finalize(MergeCoverage(
         CreatePolicyBatch()
             .Concat(CreateExtendedPolicyBatch())
             .Concat(CatalogExpansion.CreateCoverageBatch())
             .Concat(CatalogV22Expansion.CreateCoverageBatch())
             .Concat(CatalogV25Expansion.CreateCoverageBatch())
-            .ToList());
+            .Concat(CatalogV251Expansion.CreateCoverageBatch())
+            .Concat(CatalogV21Expansion.CreateBatch())
+            .ToList()));
     public static IReadOnlyList<ManagedObject> FirewallSettings { get; } = Finalize(CreateFirewallBatch());
     public static IReadOnlyList<ManagedObject> All { get; } =
         PrivacySettings.Concat(PolicySettings).Concat(FirewallSettings).ToList().AsReadOnly();
@@ -46,6 +48,28 @@ public static class ManagedObjectCatalog
                        StringComparer.OrdinalIgnoreCase);
     }
 
+    private static IReadOnlyList<ManagedObject> MergeCoverage(IEnumerable<ManagedObject> source)
+    {
+        var merged = new List<ManagedObject>();
+        var byId = new Dictionary<string, ManagedObject>(StringComparer.OrdinalIgnoreCase);
+        foreach (var item in source.Where(item => item is not null && !string.IsNullOrWhiteSpace(item.ObjectId)))
+        {
+            if (!byId.TryGetValue(item.ObjectId, out var retained))
+            {
+                byId[item.ObjectId] = item;
+                merged.Add(item);
+                continue;
+            }
+
+            if (!string.Equals(retained.ObjectName, item.ObjectName, StringComparison.OrdinalIgnoreCase))
+                retained.SearchAliases.Add(item.ObjectName);
+            if (!string.IsNullOrWhiteSpace(item.DiscoveryMethod) &&
+                !string.Equals(retained.DiscoveryMethod, item.DiscoveryMethod, StringComparison.OrdinalIgnoreCase))
+                retained.SearchAliases.Add(item.DiscoveryMethod);
+        }
+        return merged.AsReadOnly();
+    }
+
     private static IReadOnlyList<ManagedObject> Finalize(IReadOnlyList<ManagedObject> batch)
     {
         foreach (var mo in batch)
@@ -55,17 +79,48 @@ public static class ManagedObjectCatalog
             mo.ConfidenceSource = "Curated catalog";
             mo.MinimumBuild = mo.MinimumBuild <= 0 ? 10240 : mo.MinimumBuild;
             mo.SupportedWindowsVersions ??= ["Windows 10", "Windows 11"];
+            NormalizeDomain(mo);
             ApplyKnownSemantics(mo);
             AttachWritableTarget(mo);
             mo.TechnicalLocation = TechnicalLocationFormatter.FromDefinition(mo);
             ApplyExclusionDecision(mo);
             ApplyNativeToolLink(mo);
             mo.Bucket = CatalogPolicy.ResolveBucket(mo);
+            mo.HighImpact = CatalogImpact.IsHighImpact(mo.ObjectId);
+        }
+        DemoteDuplicateWritableTargets(batch);
+        foreach (var mo in batch)
+        {
             HubTaxonomy.Apply(mo);
             CatalogNarrativeAuthoring.Apply(mo);
         }
         return batch;
     }
+
+    private static void DemoteDuplicateWritableTargets(IReadOnlyList<ManagedObject> batch)
+    {
+        foreach (var group in batch.Where(item => item.WritableTarget is { IsComplete: true })
+                     .GroupBy(item => TargetKey(item.WritableTarget!), StringComparer.OrdinalIgnoreCase)
+                     .Where(group => group.Count() > 1))
+        {
+            var canonical = group.FirstOrDefault(item =>
+                item.ObjectId.Equals("policy.copilot.disablesettingsagent", StringComparison.OrdinalIgnoreCase)) ?? group.First();
+            foreach (var alias in group.Where(item => !ReferenceEquals(item, canonical)))
+            {
+                canonical.SearchAliases.Add(alias.ObjectId);
+                canonical.SearchAliases.Add(alias.ObjectName);
+                canonical.SearchAliases.Add(alias.DiscoveryMethod);
+                alias.SearchAliases.Add(canonical.ObjectId);
+                alias.SearchAliases.Add(canonical.ObjectName);
+                alias.WritableTarget = null;
+                alias.ExclusionReason = ExclusionReason.ReadOnlyByDesign;
+                alias.Bucket = CatalogBucket.InternalReference;
+            }
+        }
+    }
+
+    private static string TargetKey(WritableTarget target) => string.Join('|', target.Kind, target.Hive,
+        target.View, target.SubKey.TrimEnd('\\'), target.ValueName);
 
     private static void AttachWritableTarget(ManagedObject mo)
     {
@@ -112,25 +167,6 @@ public static class ManagedObjectCatalog
         if (mo.IsWritable)
         {
             mo.ExclusionReason = ExclusionReason.None;
-            return;
-        }
-
-        if (CatalogPolicy.IsMonitoredReadOnlySetting(mo.ObjectId))
-        {
-            mo.ExclusionReason = ExclusionReason.ReadOnlyByDesign;
-            return;
-        }
-
-        if (mo.ObjectId.StartsWith("policy.bitlocker.", StringComparison.OrdinalIgnoreCase) ||
-            mo.ObjectId.StartsWith("policy.uac.", StringComparison.OrdinalIgnoreCase))
-        {
-            // BitLocker can require recovery material; UAC master behavior affects every later elevation.
-            mo.ExclusionReason = ExclusionReason.HighRiskIrreversible;
-            if (mo.ObjectId.StartsWith("policy.bitlocker.", StringComparison.OrdinalIgnoreCase) &&
-                !mo.ObjectId.Equals("policy.bitlocker.requiredeviceencryption", StringComparison.OrdinalIgnoreCase))
-            {
-                mo.SupportedEditions = ["Pro", "Enterprise", "Education", "Pro for Workstations"];
-            }
             return;
         }
 
@@ -202,8 +238,12 @@ public static class ManagedObjectCatalog
             "privacy.speech.onlinespeech")
             return true;
 
-        // Core + expanded policy settings with known kinds and semantics.
-        // BitLocker, UAC master switches, and service objects are intentionally NOT listed.
+        // Every exact registry-backed policy definition is an allowlist row. Target parsing,
+        // supported values, runtime catalog revalidation, and typed read-back remain mandatory.
+        if (objectId.StartsWith("policy.", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        // Core + expanded policy settings retained for explicit source readability.
         if (objectId is
             "policy.telemetry.allowtelemetry" or
             "policy.telemetry.allowtelemetry.currentversion" or
@@ -305,6 +345,12 @@ public static class ManagedObjectCatalog
         if (objectId.Equals("policy.update.targetreleaseversioninfo", StringComparison.OrdinalIgnoreCase))
             return RegistryValueKindExpected.String;
 
+        if (objectId is "policy.update.wuserver" or "policy.update.wustatusserver")
+            return RegistryValueKindExpected.String;
+
+        if (objectId.Equals("policy.feedback.periodinsiuf", StringComparison.OrdinalIgnoreCase))
+            return RegistryValueKindExpected.QWord;
+
         return RegistryValueKindExpected.DWord;
     }
 
@@ -368,7 +414,9 @@ public static class ManagedObjectCatalog
             return;
         }
         if (mo.ObjectId.Equals("privacy.advertisingid.enabled", StringComparison.OrdinalIgnoreCase))
-        { mo.ValueSemantics = [V("0", "Disabled", "Disabled", "Windows does not provide an Advertising ID to applications for this user."), V("1", "Enabled", "Enabled", "Windows may provide an Advertising ID to applications for cross-app advertising correlation.")]; return; }
+        { mo.ValueSemantics = [V("0", "AdvertisingIdUnavailable", "Apps do not get an Advertising ID", "Apps do not get an Advertising ID for this user."), V("1", "AdvertisingIdAvailable", "Apps may get an Advertising ID", "Apps may get an Advertising ID for this user.")]; return; }
+        if (mo.ObjectId.Equals("policy.advertising.disabledbygpo", StringComparison.OrdinalIgnoreCase))
+        { mo.ValueSemantics = [V("0", "AdvertisingIdNotForcedOff", "Not forced off", "This GPO is not forcing the Advertising ID off."), V("1", "AdvertisingIdUnavailable", "Blocked for everyone", "Windows blocks the Advertising ID for everyone on this PC.")]; return; }
         if (mo.ObjectId is "privacy.tailoredexperiences" or
             "privacy.contentdelivery.systempanesuggestions" or
             "privacy.speech.onlinespeech")
@@ -419,6 +467,20 @@ public static class ManagedObjectCatalog
             ];
             return;
         }
+        if (mo.ObjectId.Equals("policy.bitlocker.encryptionmethod", StringComparison.OrdinalIgnoreCase))
+        { mo.ValueSemantics = [V("3", "AesCbc128", "AES-CBC 128-bit", "Encrypt OS volumes with AES-CBC 128-bit."), V("4", "AesCbc256", "AES-CBC 256-bit", "Encrypt OS volumes with AES-CBC 256-bit."), V("6", "XtsAes128", "XTS-AES 128-bit", "Encrypt OS volumes with XTS-AES 128-bit."), V("7", "XtsAes256", "XTS-AES 256-bit", "Encrypt OS volumes with XTS-AES 256-bit.")]; return; }
+        if (mo.ObjectId.Equals("policy.update.targetreleaseversioninfo", StringComparison.OrdinalIgnoreCase))
+        { mo.ValueSemantics = [V("22H2", "Release22H2", "Windows 22H2", "Keep feature updates on the 22H2 release."), V("23H2", "Release23H2", "Windows 23H2", "Keep feature updates on the 23H2 release."), V("24H2", "Release24H2", "Windows 24H2", "Keep feature updates on the 24H2 release."), V("25H2", "Release25H2", "Windows 25H2", "Keep feature updates on the 25H2 release."), V("26H2", "Release26H2", "Windows 26H2", "Keep feature updates on the 26H2 release.")]; return; }
+        if (mo.ObjectId is "policy.update.deferfeatureupdates" or "policy.update.deferqualityupdates")
+        { mo.ValueSemantics = [V("0", "NoDeferral", "Do not defer", "Offer updates without an added deferral period."), V("7", "SevenDays", "Defer 7 days", "Delay update offers by 7 days."), V("14", "FourteenDays", "Defer 14 days", "Delay update offers by 14 days."), V("30", "ThirtyDays", "Defer 30 days", "Delay update offers by 30 days."), V("60", "SixtyDays", "Defer 60 days", "Delay update offers by 60 days."), V("90", "NinetyDays", "Defer 90 days", "Delay update offers by 90 days."), V("180", "OneEightyDays", "Defer 180 days", "Delay update offers by 180 days."), V("365", "OneYear", "Defer 365 days", "Delay update offers by 365 days.")]; return; }
+        if (mo.ObjectId.Equals("policy.update.scheduledinstallday", StringComparison.OrdinalIgnoreCase))
+        { mo.ValueSemantics = [V("0", "EveryDay", "Every day", "Use every day for scheduled installation."), V("1", "Sunday", "Sunday", "Use Sunday for scheduled installation."), V("2", "Monday", "Monday", "Use Monday for scheduled installation."), V("3", "Tuesday", "Tuesday", "Use Tuesday for scheduled installation."), V("4", "Wednesday", "Wednesday", "Use Wednesday for scheduled installation."), V("5", "Thursday", "Thursday", "Use Thursday for scheduled installation."), V("6", "Friday", "Friday", "Use Friday for scheduled installation."), V("7", "Saturday", "Saturday", "Use Saturday for scheduled installation.")]; return; }
+        if (mo.ObjectId.Equals("policy.update.scheduledinstalltime", StringComparison.OrdinalIgnoreCase))
+        { mo.ValueSemantics = Enumerable.Range(0, 24).Select(hour => V(hour.ToString(), $"Hour{hour}", $"{hour:00}:00", $"Schedule installation for {hour:00}:00.")).ToList(); return; }
+        if (mo.ObjectId.Equals("policy.update.detectionfrequency", StringComparison.OrdinalIgnoreCase))
+        { mo.ValueSemantics = Enumerable.Range(1, 22).Select(hour => V(hour.ToString(), $"Every{hour}Hours", $"Every {hour} hour{(hour == 1 ? string.Empty : "s")}", $"Check for updates every {hour} hour{(hour == 1 ? string.Empty : "s")}.")).ToList(); return; }
+        if (mo.ObjectId.Contains("threshold", StringComparison.OrdinalIgnoreCase) && mo.ProductDomain == ProductDomain.Storage)
+        { mo.ValueSemantics = new[] { 0, 1, 7, 14, 30, 60, 90, 180, 365 }.Select(day => V(day.ToString(), $"Days{day}", day == 0 ? "Never automatically" : $"After {day} days", day == 0 ? "Do not remove this content automatically." : $"Make this content eligible after {day} days.")).ToList(); return; }
         // Binary 0/1 policies
         if (mo.ObjectId.StartsWith("policy.", StringComparison.OrdinalIgnoreCase)
             && mo.ValueSemantics.Count == 0
@@ -434,8 +496,38 @@ public static class ManagedObjectCatalog
             && !mo.ObjectId.Contains("encryptionmethod", StringComparison.OrdinalIgnoreCase)
             && !mo.ObjectId.StartsWith("service.", StringComparison.OrdinalIgnoreCase))
         {
-            mo.ValueSemantics = [V("0", "Disabled", "Off / Not forced", "Policy value 0."), V("1", "Enabled", "On / Forced", "Policy value 1.")];
+            ApplyBinarySemantics(mo);
         }
+    }
+
+    private static void NormalizeDomain(ManagedObject mo)
+    {
+        if (mo.ObjectId.StartsWith("policy.bitlocker.", StringComparison.OrdinalIgnoreCase))
+        {
+            mo.ProductDomain = ProductDomain.BitLocker;
+            mo.SupportedEditions ??= ["Pro", "Enterprise", "Education", "Pro for Workstations"];
+        }
+        else if (mo.ObjectId.StartsWith("policy.uac.", StringComparison.OrdinalIgnoreCase)) mo.ProductDomain = ProductDomain.Uac;
+        else if (mo.ObjectId.StartsWith("policy.findmydevice.", StringComparison.OrdinalIgnoreCase)) mo.ProductDomain = ProductDomain.FindMyDevice;
+        else if (mo.ObjectId.StartsWith("policy.hello.", StringComparison.OrdinalIgnoreCase)) mo.ProductDomain = ProductDomain.WindowsHello;
+        else if (mo.ObjectId.StartsWith("policy.accessibility.", StringComparison.OrdinalIgnoreCase) || mo.ObjectId.StartsWith("capability.math", StringComparison.OrdinalIgnoreCase) || mo.ObjectId.StartsWith("capability.handwriting", StringComparison.OrdinalIgnoreCase) || mo.ObjectId.StartsWith("capability.texttospeech", StringComparison.OrdinalIgnoreCase)) mo.ProductDomain = ProductDomain.Accessibility;
+        else if (mo.ObjectId.Contains("family", StringComparison.OrdinalIgnoreCase)) mo.ProductDomain = ProductDomain.FamilySafety;
+        else if (mo.ObjectId.StartsWith("policy.asr.", StringComparison.OrdinalIgnoreCase)) mo.ProductDomain = ProductDomain.ExploitProtection;
+        else if (mo.ObjectId.Contains("clipboard", StringComparison.OrdinalIgnoreCase)) mo.ProductDomain = ProductDomain.Clipboard;
+    }
+
+    private static void ApplyBinarySemantics(ManagedObject mo)
+    {
+        var id = mo.ObjectId.ToLowerInvariant();
+        var name = mo.ObjectName.ToLowerInvariant();
+        var inverted = id.Contains("disable") || id.Contains("prevent") || id.Contains("turnoff") ||
+                       name.StartsWith("disable") || name.StartsWith("prevent") || name.StartsWith("turn off");
+        var allow = id.Contains("allow") || name.StartsWith("allow") || name.StartsWith("enable");
+        mo.ValueSemantics = inverted
+            ? [V("0", "FeatureAvailable", "Feature not blocked", "This policy is not blocking the feature."), V("1", "FeatureUnavailable", "Feature blocked", "This policy blocks the feature.")]
+            : allow
+                ? [V("0", "FeatureUnavailable", "Feature unavailable", "The feature is not available through this policy."), V("1", "FeatureAvailable", "Feature available", "The feature is available through this policy.")]
+                : [V("0", "BehaviorNotApplied", "Not applied", $"{mo.ObjectName} does not apply."), V("1", "BehaviorApplied", "Applied", $"{mo.ObjectName} applies.")];
     }
 
     private static ValueMeaning V(string raw, string canonical, string label, string description) => new()
@@ -501,7 +593,7 @@ public static class ManagedObjectCatalog
             Pol("policy.activity.enableactivityfeed", "Enable Activity Feed", "Timeline / activity feed.", "Stores recent activity.", RiskLevel.Medium, FeatureCategory.RegistryPolicy, ComponentOwner.Telemetry, ControlLevel.AdministratorControlled, ProductDomain.ActivityHistory, "ActivityHistory", @"HKLM\SOFTWARE\Policies\Microsoft\Windows\System\EnableActivityFeed"),
             Pol("policy.activity.uploaduseractivities", "Upload User Activities", "Upload activities to cloud.", "Higher privacy impact.", RiskLevel.High, FeatureCategory.RegistryPolicy, ComponentOwner.Telemetry, ControlLevel.AdministratorControlled, ProductDomain.ActivityHistory, "ActivityHistory", @"HKLM\SOFTWARE\Policies\Microsoft\Windows\System\UploadUserActivities"),
             Pol("policy.cloud.disableconsumerfeatures", "Disable Windows Consumer Features", "Turns off consumer experiences.", "Reduces upsell.", RiskLevel.Low, FeatureCategory.CloudComponent, ComponentOwner.Store, ControlLevel.AdministratorControlled, ProductDomain.CloudContent, "CloudContent", @"HKLM\SOFTWARE\Policies\Microsoft\Windows\CloudContent\DisableWindowsConsumerFeatures"),
-            Pol("policy.advertising.disabledbygpo", "Advertising ID Disabled by GPO", "Forces advertising ID off.", "Stronger than user toggle.", RiskLevel.Medium, FeatureCategory.RegistryPolicy, ComponentOwner.Other, ControlLevel.AdministratorControlled, ProductDomain.Advertising, "Advertising", @"HKLM\SOFTWARE\Policies\Microsoft\Windows\AdvertisingInfo\DisabledByGroupPolicy"),
+            Pol("policy.advertising.disabledbygpo", "Advertising ID (GPO)", "Forces the Advertising ID off for everyone on this PC.", "Stronger than user toggle.", RiskLevel.Medium, FeatureCategory.RegistryPolicy, ComponentOwner.Other, ControlLevel.AdministratorControlled, ProductDomain.Advertising, "Advertising", @"HKLM\SOFTWARE\Policies\Microsoft\Windows\AdvertisingInfo\DisabledByGroupPolicy"),
             Pol("policy.location.disablelocation", "Disable Location", "Disables Windows location.", "Machine-wide kill switch.", RiskLevel.High, FeatureCategory.RegistryPolicy, ComponentOwner.Other, ControlLevel.AdministratorControlled, ProductDomain.Location, "Location", @"HKLM\SOFTWARE\Policies\Microsoft\Windows\LocationAndSensors\DisableLocation"),
             Pol("policy.appprivacy.location", "Let Apps Access Location (GPO)", "Force location access policy.", "Overrides ConsentStore.", RiskLevel.High, FeatureCategory.RegistryPolicy, ComponentOwner.Other, ControlLevel.AdministratorControlled, ProductDomain.AppPrivacy, "AppPrivacy", @"HKLM\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy\LetAppsAccessLocation"),
             Pol("policy.appprivacy.camera", "Let Apps Access Camera (GPO)", "Force camera access policy.", "Overrides ConsentStore.", RiskLevel.High, FeatureCategory.RegistryPolicy, ComponentOwner.Other, ControlLevel.AdministratorControlled, ProductDomain.AppPrivacy, "AppPrivacy", @"HKLM\SOFTWARE\Policies\Microsoft\Windows\AppPrivacy\LetAppsAccessCamera"),

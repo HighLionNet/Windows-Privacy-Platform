@@ -30,7 +30,7 @@ public static class ThemeManager
         }
 
         dictionary["BrushSidebarChrome"] = Gradient(colors["BgSidebar"], colors["SidebarHover"], horizontal: false);
-        dictionary["BrushHeaderChrome"] = Gradient(colors["BgContent"], colors["BgHeader"], horizontal: true);
+        dictionary["BrushHeaderChrome"] = Gradient(colors["BgHeader"], colors["BgSelected"], horizontal: true);
         dictionary["BrushActionGradient"] = ActionGradient(colors["Accent"], colors["AccentCyan"]);
     }
 

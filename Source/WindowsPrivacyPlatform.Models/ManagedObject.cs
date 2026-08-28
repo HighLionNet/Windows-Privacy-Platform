@@ -15,6 +15,8 @@ public class ManagedObject
 
     public string ObjectId { get; set; } = string.Empty;
     public string ObjectName { get; set; } = string.Empty;
+    /// <summary>Legacy names and paths retained for catalog search after coverage unions.</summary>
+    public List<string> SearchAliases { get; set; } = new();
     public string ObjectType { get; set; } = string.Empty;
     public string CanonicalPath { get; set; } = string.Empty;
     /// <summary>Technical source shown separately from all explanatory prose.</summary>
@@ -129,6 +131,9 @@ public class ManagedObject
     public bool IsWritable => WritableTarget is { IsComplete: true };
 
     public bool IsApplicableHere => Applicability == ApplicabilityState.Applicable;
+
+    /// <summary>Catalog-owned flag requiring the high-impact Apply step-up.</summary>
+    public bool HighImpact { get; set; }
 
     // ========== RELATIONSHIPS ==========
 

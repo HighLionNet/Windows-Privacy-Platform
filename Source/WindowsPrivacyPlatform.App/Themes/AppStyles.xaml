@@ -90,8 +90,8 @@
     <GradientStop Color="{DynamicResource SidebarHover}" Offset="1" />
   </LinearGradientBrush>
   <LinearGradientBrush x:Key="BrushHeaderChrome" StartPoint="0,0" EndPoint="1,0">
-    <GradientStop Color="{DynamicResource BgContent}" Offset="0" />
-    <GradientStop Color="{DynamicResource BgHeader}" Offset="1" />
+    <GradientStop Color="{DynamicResource BgHeader}" Offset="0" />
+    <GradientStop Color="{DynamicResource BgSelected}" Offset="1" />
   </LinearGradientBrush>
   <LinearGradientBrush x:Key="BrushActionGradient" StartPoint="0,0" EndPoint="1,1">
     <GradientStop Color="{DynamicResource Accent}" Offset="0" />
