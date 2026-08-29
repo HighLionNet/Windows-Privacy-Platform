@@ -201,7 +201,7 @@ public partial class MainWindow : FluentWindow
         _cts?.Cancel();
         _cts = new CancellationTokenSource();
         ScanButton.IsEnabled = false;
-        ScanButton.Content = "Scanning…";
+        ScanButtonLabel.Text = "Scanning…";
         ScanProgress.Visibility = Visibility.Visible;
         CancelScanButton.Visibility = Visibility.Visible;
         try
@@ -214,7 +214,7 @@ public partial class MainWindow : FluentWindow
         finally
         {
             ScanButton.IsEnabled = true;
-            ScanButton.Content = "Scan";
+            ScanButtonLabel.Text = "Scan";
             ScanProgress.Visibility = Visibility.Collapsed;
             CancelScanButton.Visibility = Visibility.Collapsed;
         }
@@ -768,4 +768,14 @@ public partial class MainWindow : FluentWindow
     private async void ScanButton_Click(object sender, RoutedEventArgs e) => await RunScanAsync();
     private void CancelScanButton_Click(object sender, RoutedEventArgs e) => _cts?.Cancel();
     private void MenuExit_Click(object sender, RoutedEventArgs e) => Close();
+    private void MenuCopySearch_Click(object sender, RoutedEventArgs e)
+    {
+        var text = SearchBox.Text ?? string.Empty;
+        if (text.Length == 0)
+            text = Title ?? string.Empty;
+        if (text.Length == 0)
+            return;
+        try { Clipboard.SetText(text); StatusText.Text = "Copied."; }
+        catch { StatusText.Text = "Clipboard was not available."; }
+    }
 }

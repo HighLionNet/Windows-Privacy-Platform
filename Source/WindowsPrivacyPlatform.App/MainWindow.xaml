@@ -179,7 +179,7 @@
                   <StackPanel Margin="-10,4,-8,2">
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:ConsentStore"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="AppsListDetail24" Width="17" Margin="0,0,8,0"/><TextBlock Text="App permissions"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:AppPrivacy"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="WindowSettings20" Width="17" Margin="0,0,8,0"/><TextBlock Text="App policy controls"/></StackPanel></Button>
-                <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Telemetry"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="DataUsage24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Diagnostics & feedback"/></StackPanel></Button>
+                <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Telemetry"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="DataUsage24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Diagnostics &amp; feedback"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Location"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Location24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Location"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:CloudContent"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="PersonSettings20" Width="17" Margin="0,0,8,0"/><TextBlock Text="Personalization"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Advertising"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Megaphone24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Advertising"/></StackPanel></Button>
@@ -192,14 +192,14 @@
                 <Expander Header="WINDOWS APPS" Style="{StaticResource RailExpander}" IsExpanded="True">
                   <StackPanel Margin="-10,4,-8,2">
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Copilot"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Sparkle24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Copilot"/></StackPanel></Button>
-                <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Recall"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="History24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Recall & Click to Do"/></StackPanel></Button>
+                <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Recall"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="History24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Recall &amp; Click to Do"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Search"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Search24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Search"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Edge"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Globe24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Microsoft Edge"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Widgets"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="WindowApps24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Widgets"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:OneDrive"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Cloud24" Width="17" Margin="0,0,8,0"/><TextBlock Text="OneDrive"/></StackPanel></Button>
                   </StackPanel>
                 </Expander>
-                <Expander Header="DEVICE & ACCOUNT" Style="{StaticResource RailExpander}" IsExpanded="True">
+                <Expander Header="DEVICE &amp; ACCOUNT" Style="{StaticResource RailExpander}" IsExpanded="True">
                   <StackPanel Margin="-10,4,-8,2">
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:FamilySafety"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="People24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Family Safety"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Storage"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Database24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Storage"/></StackPanel></Button>
@@ -221,7 +221,7 @@
               </StackPanel>
 
               <StackPanel x:Name="NetworkNavPanel" Visibility="Collapsed">
-                <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Network"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="WifiLock24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Adapters, LAN & DNS"/></StackPanel></Button>
+                <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Network"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="WifiLock24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Adapters, LAN &amp; DNS"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Firewall"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="GlobeShield24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Firewall"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:RemoteAccess"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Remote20" Width="17" Margin="0,0,8,0"/><TextBlock Text="Remote access"/></StackPanel></Button>
               </StackPanel>
