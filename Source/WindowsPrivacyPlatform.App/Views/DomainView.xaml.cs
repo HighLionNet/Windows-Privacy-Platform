@@ -25,6 +25,18 @@ public partial class DomainView : UserControl
         InitializeComponent();
         TitleText.Text = NavigationBuilder.HumanizeDomain(domain);
 
+        if (domain == ProductDomain.Defender && scan.Overview is not null)
+        {
+            ProtectionProductPanel.Visibility = Visibility.Visible;
+            ProtectionProductText.Text = scan.Overview.ProtectionProductSummary;
+            ProtectionProductText.Foreground = (Brush)FindResource(scan.Overview.ProtectionProductStatus switch
+            {
+                ProtectionProductObservationStatus.Observed => "BrushSuccess",
+                ProtectionProductObservationStatus.AccessDenied or ProtectionProductObservationStatus.Error => "BrushWarning",
+                _ => "BrushTextMuted"
+            });
+        }
+
         var items = scan.SettingsCatalog.Where(m => m.ProductDomain == domain).ToList();
         if (items.Count == 0)
         {

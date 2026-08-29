@@ -22,7 +22,8 @@ public sealed class HostInventorySmokeTests
             new ScheduledTaskCollector(),
             new PrivacyCollector(),
             new PolicyCollector(),
-            new FirewallCollector()
+            new FirewallCollector(),
+            new SecurityCenterCollector()
         ];
 
         var result = new InventoryScanner(logger, collectors).Scan();

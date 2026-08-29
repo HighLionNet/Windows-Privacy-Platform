@@ -5,6 +5,15 @@
     <TextBlock x:Name="TitleText" Style="{StaticResource SectionTitle}" />
     <TextBlock x:Name="SubtitleText" Style="{StaticResource SectionSubtitle}" />
     <Border Style="{StaticResource HeaderRule}" />
+    <Border x:Name="ProtectionProductPanel" Style="{StaticResource Card}" Visibility="Collapsed"
+            BorderThickness="4,1,1,1" BorderBrush="{DynamicResource BrushDomainSecurity}" Margin="0,0,0,12">
+      <StackPanel>
+        <TextBlock Text="Protection product" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}"/>
+        <TextBlock x:Name="ProtectionProductText" Margin="0,4,0,0" FontWeight="SemiBold" TextWrapping="Wrap"/>
+        <TextBlock Text="Observed through Windows Security Center. WPP does not configure or compete with installed protection."
+                   Margin="0,3,0,0" FontSize="11" Foreground="{DynamicResource BrushTextSecondary}" TextWrapping="Wrap"/>
+      </StackPanel>
+    </Border>
     <Border Style="{StaticResource ListContainer}">
       <StackPanel>
         <Border Style="{StaticResource ListHeader}">

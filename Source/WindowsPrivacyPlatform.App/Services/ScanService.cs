@@ -67,7 +67,8 @@ public sealed class ScanService
                 new ScheduledTaskCollector(),
                 new PrivacyCollector(),
                 new PolicyCollector(),
-                new FirewallCollector()
+                new FirewallCollector(),
+                new SecurityCenterCollector()
             };
 
             cancellationToken.ThrowIfCancellationRequested();

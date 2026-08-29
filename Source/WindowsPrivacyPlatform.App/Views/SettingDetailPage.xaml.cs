@@ -69,6 +69,7 @@ public partial class SettingDetailPage : UserControl
             if (!detail.IsWritable) AccessBadge.Style = (Style)FindResource("BadgeUnknown");
             OptionsList.ItemsSource = detail.Options;
         }
+        ApplyDetailButton.Visibility = detail.IsWritable ? Visibility.Visible : Visibility.Collapsed;
 
         if (detail.Applicability != ApplicabilityState.Applicable)
         {
@@ -87,7 +88,7 @@ public partial class SettingDetailPage : UserControl
             _windowsVersion, _edition, _hasPending, _pending,
             raw => { _pending = raw; _hasPending = true; RenderBar(); }, null,
             conflict, otherName, _openConflict);
-        ApplyDetailButton.IsEnabled = _hasPending && _elevation.IsAdminAuthorized && !_busy;
+        ApplyDetailButton.IsEnabled = _item.IsWritable && _hasPending && _elevation.IsAdminAuthorized && !_busy;
     }
 
     private async void ApplyDetail_Click(object sender, RoutedEventArgs e)

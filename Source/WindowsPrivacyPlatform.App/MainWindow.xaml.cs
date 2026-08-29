@@ -11,11 +11,12 @@ using WindowsPrivacyPlatform.App.Views;
 using WindowsPrivacyPlatform.Core;
 using WindowsPrivacyPlatform.Logging;
 using WindowsPrivacyPlatform.Models;
+using FluentWindow = Wpf.Ui.Controls.FluentWindow;
 
 namespace WindowsPrivacyPlatform.App;
 
 /// <summary>Application shell for catalog-backed inspection and controlled changes.</summary>
-public partial class MainWindow : Window
+public partial class MainWindow : FluentWindow
 {
     private readonly ScanService _scan = new();
     private readonly IAuditLogger _log;
@@ -31,7 +32,6 @@ public partial class MainWindow : Window
     private readonly Dictionary<string, CategoryFilterState> _categoryFilters = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConflictFilterState _conflictFilter = new();
     private readonly KnowledgeFilterState _knowledgeFilter = new();
-    private readonly ServiceFilterState _serviceFilter = new();
     private readonly Dictionary<string, ConflictGroup> _knownConflicts = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, ConflictGroup> _resolvedConflicts = new(StringComparer.OrdinalIgnoreCase);
     private readonly DispatcherTimer _sessionTimer;
@@ -75,6 +75,7 @@ public partial class MainWindow : Window
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
         CollectNavButtons();
+        SyncSectionForTag(_currentNav);
         if (_sidebarCollapsed)
         {
             SidebarColumn.Width = new GridLength(0);
@@ -282,12 +283,14 @@ public partial class MainWindow : Window
         else if (tag == "inventory")
         {
             SetContent(new SystemInventoryView(_scan, OpenSetting));
-            UpdateBreadcrumbs("System Explorer");
+            UpdateBreadcrumbs("System Explorer", group: HubNavigation.DisplayName(HubSection.Explore));
         }
         else if (tag == "services")
         {
-            SetContent(new ServicesView(_scan, _elevation, RunScanAsync, this, _serviceFilter));
-            UpdateBreadcrumbs("Services");
+            // A saved v2.5.1 route may still name Services. Keep the route safe by
+            // landing on read-only inventory; service verbs are not an Explore action.
+            SetContent(new SystemInventoryView(_scan, OpenSetting));
+            UpdateBreadcrumbs("System Explorer", group: HubNavigation.DisplayName(HubSection.Explore));
         }
         else if (tag.StartsWith("conflicts", StringComparison.OrdinalIgnoreCase))
         {
@@ -390,7 +393,9 @@ public partial class MainWindow : Window
         if (item.Bucket == CatalogBucket.SystemInventory)
         {
             BreadcrumbPanel.Children.Clear();
-            AddBreadcrumbLink("Dashboard", "home"); AddBreadcrumbSep(); AddBreadcrumbLink("System Explorer", "inventory");
+            AddBreadcrumbLink("Dashboard", "home"); AddBreadcrumbSep();
+            AddBreadcrumbText(HubNavigation.DisplayName(HubSection.Explore)); AddBreadcrumbSep();
+            AddBreadcrumbLink("System Explorer", "inventory");
             AddBreadcrumbSep(); AddBreadcrumbText(detail.Title);
             return;
         }
@@ -551,9 +556,16 @@ public partial class MainWindow : Window
 
     private void HighlightForTag(string tag)
     {
+        SyncSectionForTag(tag);
         var highlight = tag;
         if (TryParseCategory(tag, out var domain, out _)) highlight = "domain:" + domain;
-        else if (tag.StartsWith("setting:", StringComparison.OrdinalIgnoreCase)) return;
+        else if (tag.StartsWith("setting:", StringComparison.OrdinalIgnoreCase))
+        {
+            var item = _scan.Catalog.FirstOrDefault(candidate =>
+                candidate.ObjectId.Equals(tag[8..], StringComparison.OrdinalIgnoreCase));
+            if (item is null) return;
+            highlight = item.Bucket == CatalogBucket.SystemInventory ? "inventory" : "domain:" + item.ProductDomain;
+        }
         else if (tag.StartsWith("conflicts:", StringComparison.OrdinalIgnoreCase)) highlight = "conflicts";
         else if (tag.StartsWith("search:", StringComparison.OrdinalIgnoreCase) || tag.StartsWith("posture:", StringComparison.OrdinalIgnoreCase)) highlight = "home";
         var selected = _navButtons.FirstOrDefault(button => string.Equals(button.Tag as string, highlight, StringComparison.OrdinalIgnoreCase));
@@ -590,20 +602,68 @@ public partial class MainWindow : Window
         { SearchBox.Clear(); Keyboard.ClearFocus(); e.Handled = true; }
     }
 
-    private static string DomainGroup(ProductDomain domain) => domain switch
+    private static string DomainGroup(ProductDomain domain) => HubNavigation.DisplayName(HubNavigation.For(domain));
+
+    private void SyncSectionForTag(string tag)
     {
-        ProductDomain.ConsentStore or ProductDomain.AppPrivacy or ProductDomain.Telemetry or ProductDomain.Advertising
-            or ProductDomain.Location or ProductDomain.ActivityHistory or ProductDomain.CloudContent or ProductDomain.Device
-            or ProductDomain.Speech or ProductDomain.Other => "Privacy",
-        ProductDomain.Defender or ProductDomain.Firewall or ProductDomain.Biometrics or ProductDomain.LocalSecurity
-            or ProductDomain.Network or ProductDomain.RemoteAccess or ProductDomain.ExploitProtection => "Security",
-        ProductDomain.BitLocker or ProductDomain.Uac or ProductDomain.WindowsUpdate or ProductDomain.Storage
-            or ProductDomain.FindMyDevice or ProductDomain.WindowsHello or ProductDomain.Accessibility
-            or ProductDomain.FamilySafety => "Windows",
-        ProductDomain.Search or ProductDomain.Widgets or ProductDomain.Copilot or ProductDomain.Recall
-            or ProductDomain.Edge or ProductDomain.OneDrive => "Windows Apps",
-        _ => "Domains"
-    };
+        HubSection? section = null;
+        if (tag.Equals("inventory", StringComparison.OrdinalIgnoreCase) ||
+            tag.Equals("services", StringComparison.OrdinalIgnoreCase))
+            section = HubSection.Explore;
+        else if (TryParseCategory(tag, out var categoryDomain, out _))
+            section = HubNavigation.For(categoryDomain);
+        else if (tag.StartsWith("domain:", StringComparison.OrdinalIgnoreCase) &&
+                 Enum.TryParse<ProductDomain>(tag[7..], out var domain))
+            section = HubNavigation.For(domain);
+        else if (tag.StartsWith("setting:", StringComparison.OrdinalIgnoreCase))
+        {
+            var item = _scan.Catalog.FirstOrDefault(candidate =>
+                candidate.ObjectId.Equals(tag[8..], StringComparison.OrdinalIgnoreCase));
+            if (item is not null)
+                section = HubNavigation.For(item);
+        }
+
+        if (section.HasValue)
+            SetActiveSection(section.Value, navigate: false);
+    }
+
+    private void SetActiveSection(HubSection section, bool navigate)
+    {
+        PrivacyNavPanel.Visibility = section == HubSection.Privacy ? Visibility.Visible : Visibility.Collapsed;
+        SecurityNavPanel.Visibility = section == HubSection.Security ? Visibility.Visible : Visibility.Collapsed;
+        NetworkNavPanel.Visibility = section == HubSection.Network ? Visibility.Visible : Visibility.Collapsed;
+        ExploreNavPanel.Visibility = section == HubSection.Explore ? Visibility.Visible : Visibility.Collapsed;
+
+        var accent = (Brush)FindResource(HubNavigation.AccentBrushKey(section));
+        ActiveSectionTitle.Text = HubNavigation.DisplayName(section);
+        ActiveSectionTitle.Foreground = accent;
+        RailAccentBorder.BorderBrush = accent;
+
+        var buttons = new Dictionary<HubSection, Button>
+        {
+            [HubSection.Privacy] = PrivacySectionButton,
+            [HubSection.Security] = SecuritySectionButton,
+            [HubSection.Network] = NetworkSectionButton,
+            [HubSection.Explore] = ExploreSectionButton
+        };
+        foreach (var pair in buttons)
+        {
+            pair.Value.Style = (Style)FindResource(pair.Key == section ? "SectionToggleSelected" : "SectionToggle");
+            pair.Value.ClearValue(Control.BorderBrushProperty);
+        }
+        buttons[section].BorderBrush = accent;
+
+        if (!navigate)
+            return;
+        GoTo(section switch
+        {
+            HubSection.Privacy => "domain:ConsentStore",
+            HubSection.Security => "domain:Defender",
+            HubSection.Network => "domain:Network",
+            HubSection.Explore => "inventory",
+            _ => "home"
+        });
+    }
 
     private void UpdateBreadcrumbs(string current, string? group = null, string? domainName = null,
         string? domainTag = null, string? categoryName = null, string? categoryTag = null)
@@ -656,6 +716,7 @@ public partial class MainWindow : Window
             }
             if (lines.Length >= 5 && bool.TryParse(lines[4], out var collapsed)) _sidebarCollapsed = collapsed;
             if (lines.Length >= 7 && !string.IsNullOrWhiteSpace(lines[6])) _currentNav = lines[6];
+            if (_currentNav.Equals("services", StringComparison.OrdinalIgnoreCase)) _currentNav = "inventory";
             if (_preferences.RememberWindowPosition && lines.Length >= 6 && Enum.TryParse<WindowState>(lines[5], out var state))
                 WindowState = state == WindowState.Minimized ? WindowState.Normal : state;
             else if (_preferences.StartMaximized) WindowState = WindowState.Maximized;
@@ -687,12 +748,16 @@ public partial class MainWindow : Window
         BackToTopButton.Visibility = ContentScroll.VerticalOffset > 450 ? Visibility.Visible : Visibility.Collapsed;
     private void BackToTopButton_Click(object sender, RoutedEventArgs e) => ContentScroll.ScrollToTop();
     private void ToggleSidebar_Click(object sender, RoutedEventArgs e)
-    { _sidebarCollapsed = !_sidebarCollapsed; SidebarColumn.Width = _sidebarCollapsed ? new GridLength(0) : new GridLength(240); NavPanel.Visibility = _sidebarCollapsed ? Visibility.Collapsed : Visibility.Visible; }
+    { _sidebarCollapsed = !_sidebarCollapsed; SidebarColumn.Width = _sidebarCollapsed ? new GridLength(0) : new GridLength(252); NavPanel.Visibility = _sidebarCollapsed ? Visibility.Collapsed : Visibility.Visible; }
+    private void PrivacySection_Click(object sender, RoutedEventArgs e) => SetActiveSection(HubSection.Privacy, navigate: true);
+    private void SecuritySection_Click(object sender, RoutedEventArgs e) => SetActiveSection(HubSection.Security, navigate: true);
+    private void NetworkSection_Click(object sender, RoutedEventArgs e) => SetActiveSection(HubSection.Network, navigate: true);
+    private void ExploreSection_Click(object sender, RoutedEventArgs e) => SetActiveSection(HubSection.Explore, navigate: true);
     private void Nav_Click(object sender, RoutedEventArgs e) { if (sender is Button { Tag: string tag }) GoTo(tag); }
     private void NavigateFromMenu(string tag) => GoTo(tag);
     private void MenuHome_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("home");
     private void MenuInventory_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("inventory");
-    private void MenuServices_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("services");
+    private void MenuServices_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("inventory");
     private void MenuConflicts_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("conflicts");
     private void MenuKnowledge_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("knowledge");
     private void MenuSettings_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("settings");

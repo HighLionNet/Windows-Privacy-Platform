@@ -235,7 +235,7 @@
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="Padding" Value="0" />
     <Setter Property="Margin" Value="0,0,0,12" />
-    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="CornerRadius" Value="4" />
   </Style>
 
   <Style x:Key="PropertySheetHeader" TargetType="Border">
@@ -258,7 +258,7 @@
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="Padding" Value="12,10" />
     <Setter Property="Margin" Value="0,0,0,12" />
-    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="CornerRadius" Value="4" />
   </Style>
 
   <Style x:Key="CardAccent" TargetType="Border" BasedOn="{StaticResource Card}">
@@ -423,7 +423,7 @@
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="Padding" Value="0" />
     <Setter Property="Margin" Value="0,0,0,12" />
-    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="CornerRadius" Value="4" />
   </Style>
 
   <Style x:Key="SectionTitle" TargetType="TextBlock">
@@ -586,6 +586,24 @@
     <Setter Property="BorderThickness" Value="2" />
   </Style>
 
+  <Style x:Key="SectionToggle" TargetType="Button" BasedOn="{StaticResource ActionNeutral}">
+    <Setter Property="MinHeight" Value="42" />
+    <Setter Property="Padding" Value="13,7" />
+    <Setter Property="Margin" Value="0,0,8,0" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+
+  <Style x:Key="SectionToggleSelected" TargetType="Button" BasedOn="{StaticResource SectionToggle}">
+    <Setter Property="Background" Value="{DynamicResource BrushBgCard}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Effect">
+      <Setter.Value>
+        <DropShadowEffect BlurRadius="12" ShadowDepth="3" Opacity="0.28" Color="#000000" />
+      </Setter.Value>
+    </Setter>
+  </Style>
+
   <Style x:Key="ActionChoice" TargetType="Button" BasedOn="{StaticResource ActionNeutral}">
     <Setter Property="MinHeight" Value="38" />
     <Setter Property="MinWidth" Value="108" />
@@ -624,7 +642,7 @@
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="Button">
-          <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="8"
+          <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="4"
                   BorderBrush="{DynamicResource BrushBorderStrong}" BorderThickness="1"
                   Padding="{TemplateBinding Padding}">
             <Border BorderBrush="{DynamicResource BrushAccent}" BorderThickness="3,0,0,0"
@@ -680,6 +698,13 @@
     <Setter Property="Margin" Value="0,6,0,0" />
     <Setter Property="FontSize" Value="13" />
     <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+
+  <Style x:Key="RailExpander" TargetType="Expander" BasedOn="{StaticResource {x:Type Expander}}">
+    <Setter Property="Foreground" Value="{DynamicResource BrushSidebarText}" />
+    <Setter Property="FontSize" Value="10" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="Margin" Value="10,3,8,3" />
   </Style>
 
 </ResourceDictionary>

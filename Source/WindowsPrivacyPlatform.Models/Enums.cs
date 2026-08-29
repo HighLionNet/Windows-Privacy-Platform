@@ -66,6 +66,15 @@ public enum ProductDomain
     Other
 }
 
+/// <summary>The four exclusive product sections shown by the application shell.</summary>
+public enum HubSection
+{
+    Privacy,
+    Security,
+    Network,
+    Explore
+}
+
 /// <summary>Why a catalog entry is deliberately unavailable to the write pipeline.</summary>
 public enum ExclusionReason
 {

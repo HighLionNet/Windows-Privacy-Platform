@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Media;
 using WindowsPrivacyPlatform.Models;
+using Wpf.Ui.Appearance;
 
 namespace WindowsPrivacyPlatform.App.Services;
 
@@ -11,6 +12,10 @@ public static class ThemeManager
     public static void Apply(AppTheme theme)
     {
         if (Application.Current is null) return;
+        var fluentTheme = SystemParameters.HighContrast
+            ? ApplicationTheme.HighContrast
+            : IsDark(theme) ? ApplicationTheme.Dark : ApplicationTheme.Light;
+        ApplicationThemeManager.Apply(fluentTheme);
         var dictionary = Application.Current.Resources.MergedDictionaries
             .FirstOrDefault(resource => resource.Contains("BgWindow"));
         if (dictionary is null) return;
@@ -44,6 +49,8 @@ public static class ThemeManager
     };
 
     internal static IReadOnlyDictionary<string, string> PaletteForTesting(AppTheme theme) => Palette(theme);
+
+    private static bool IsDark(AppTheme theme) => theme is AppTheme.NavyDark or AppTheme.EmberDark;
 
     private static readonly IReadOnlyDictionary<string, string> BrushKeys = new Dictionary<string, string>
     {

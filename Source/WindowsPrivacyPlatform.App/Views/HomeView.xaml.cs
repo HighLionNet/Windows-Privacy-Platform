@@ -39,6 +39,13 @@ public partial class HomeView : UserControl
         TpmText.Text = $"{Display(overview.TpmPresent)} · {Display(overview.TpmVersion)}";
         BitLockerText.Text = Display(overview.BitLockerProtectionStatus);
         ProtectionText.Text = $"Firewall: {Display(overview.FirewallServiceState)} · Defender: {Display(overview.DefenderServiceState)}";
+        ProtectionProductText.Text = overview.ProtectionProductSummary;
+        ProtectionProductText.Foreground = (Brush)FindResource(overview.ProtectionProductStatus switch
+        {
+            ProtectionProductObservationStatus.Observed => "BrushSuccess",
+            ProtectionProductObservationStatus.AccessDenied or ProtectionProductObservationStatus.Error => "BrushWarning",
+            _ => "BrushTextMuted"
+        });
         LastScanText.Text = $"{overview.LastScanUtc:yyyy-MM-dd HH:mm:ss} UTC";
 
         var highFindings = posture.Findings.Where(finding => finding.Severity == PostureFindingSeverity.High).ToList();

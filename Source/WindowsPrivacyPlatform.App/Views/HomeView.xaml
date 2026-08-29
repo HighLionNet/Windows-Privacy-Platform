@@ -11,7 +11,7 @@
         <Border Style="{StaticResource PropertySheetHeader}"><TextBlock Text="This PC" FontWeight="SemiBold"/></Border>
         <Grid Margin="16,9,16,12">
           <Grid.ColumnDefinitions><ColumnDefinition Width="130"/><ColumnDefinition Width="*"/><ColumnDefinition Width="130"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-          <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+          <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
           <TextBlock Text="Computer" Style="{StaticResource PropLabel}"/><TextBlock x:Name="ComputerText" Grid.Column="1" Style="{StaticResource PropValue}" FontWeight="SemiBold"/>
           <TextBlock Grid.Column="2" Text="Signed-in user" Style="{StaticResource PropLabel}"/><TextBlock x:Name="UserText" Grid.Column="3" Style="{StaticResource PropValue}" FontWeight="SemiBold"/>
           <TextBlock Grid.Row="1" Text="Account" Style="{StaticResource PropLabel}"/><TextBlock x:Name="AccountText" Grid.Row="1" Grid.Column="1" Style="{StaticResource PropValue}"/>
@@ -25,7 +25,8 @@
           <TextBlock Grid.Row="5" Grid.Column="2" Text="TPM" Style="{StaticResource PropLabel}"/><TextBlock x:Name="TpmText" Grid.Row="5" Grid.Column="3" Style="{StaticResource PropValue}"/>
           <TextBlock Grid.Row="6" Text="Encryption" Style="{StaticResource PropLabel}"/><TextBlock x:Name="BitLockerText" Grid.Row="6" Grid.Column="1" Style="{StaticResource PropValue}"/>
           <TextBlock Grid.Row="6" Grid.Column="2" Text="Protection" Style="{StaticResource PropLabel}"/><TextBlock x:Name="ProtectionText" Grid.Row="6" Grid.Column="3" Style="{StaticResource PropValue}"/>
-          <TextBlock Grid.Row="7" Text="Last scan" Style="{StaticResource PropLabel}"/><TextBlock x:Name="LastScanText" Grid.Row="7" Grid.Column="1" Grid.ColumnSpan="3" Style="{StaticResource PropValue}"/>
+          <TextBlock Grid.Row="7" Text="Protection product" Style="{StaticResource PropLabel}"/><TextBlock x:Name="ProtectionProductText" Grid.Row="7" Grid.Column="1" Grid.ColumnSpan="3" Style="{StaticResource PropValue}"/>
+          <TextBlock Grid.Row="8" Text="Last scan" Style="{StaticResource PropLabel}"/><TextBlock x:Name="LastScanText" Grid.Row="8" Grid.Column="1" Grid.ColumnSpan="3" Style="{StaticResource PropValue}"/>
         </Grid>
       </StackPanel>
     </Border>

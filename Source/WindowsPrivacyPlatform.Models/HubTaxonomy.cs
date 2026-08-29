@@ -8,6 +8,14 @@ public static class HubTaxonomy
         if (item.Bucket != CatalogBucket.Settings)
             return;
 
+        // v2.5.1 used Other for the two Clipboard settings. Resolve that legacy
+        // catch-all during catalog finalization so it never creates a fifth rail.
+        if (item.ProductDomain == ProductDomain.Other &&
+            item.ObjectId.Contains("clipboard", StringComparison.OrdinalIgnoreCase))
+        {
+            item.ProductDomain = ProductDomain.Clipboard;
+        }
+
         item.SubCategory = item.ProductDomain switch
         {
             ProductDomain.ConsentStore => PermissionGroup(item.ObjectName),
@@ -40,7 +48,6 @@ public static class HubTaxonomy
             ProductDomain.FamilySafety => "Family Safety",
             ProductDomain.ExploitProtection => "Attack surface reduction",
             ProductDomain.Clipboard => "Clipboard",
-            ProductDomain.Other when item.ObjectId.Contains("clipboard", StringComparison.OrdinalIgnoreCase) => "Clipboard",
             _ => item.SubCategory ?? "Settings"
         };
     }

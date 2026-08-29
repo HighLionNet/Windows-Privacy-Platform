@@ -23,4 +23,8 @@
     <ProjectReference Include="..\WindowsPrivacyPlatform.Scanner\WindowsPrivacyPlatform.Scanner.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="WPF-UI" Version="4.3.0" />
+  </ItemGroup>
+
 </Project>

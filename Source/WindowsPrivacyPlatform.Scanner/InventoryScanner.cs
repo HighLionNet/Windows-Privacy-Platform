@@ -156,6 +156,7 @@ public sealed class InventoryScanner : IInventoryScanner
             "ScheduledTaskCollector" => snapshot.ScheduledTasks?.Count ?? 0,
             "PrivacyCollector" => snapshot.PrivacySettings?.Count ?? 0,
             "PolicyCollector" => snapshot.PolicySettings?.Count ?? 0,
+            "SecurityCenterCollector" => snapshot.Security.ProtectionProducts.Count,
             _ => 0
         };
     }

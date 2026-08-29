@@ -57,8 +57,64 @@ public class SystemInventory
 
 public class SecurityInventory
 {
-    // Defender live state, Credential Guard, etc. — partially populated in v0.8 via service probes.
+    // Read-only local evidence. ProtectionProducts comes from Windows Security Center;
+    // no vendor API is queried and no protection state is changed.
     public string DefenderServiceState { get; set; } = "Unknown";
+    public ProtectionProductObservationStatus ProtectionProductStatus { get; set; } =
+        ProtectionProductObservationStatus.NotObserved;
+    public List<ProtectionProductInfo> ProtectionProducts { get; set; } = new();
+    public string ProtectionProductCollectionNotes { get; set; } = string.Empty;
+}
+
+public enum ProtectionProductObservationStatus
+{
+    NotObserved,
+    Observed,
+    AccessDenied,
+    Error
+}
+
+/// <summary>One read-only product registration reported by Windows Security Center.</summary>
+public class ProtectionProductInfo
+{
+    public string DisplayName { get; set; } = string.Empty;
+    public int? ProductState { get; set; }
+    public bool? IsActive { get; set; }
+    public bool IsMicrosoftDefender { get; set; }
+}
+
+public static class ProtectionProductPresentation
+{
+    public static string Summary(SecurityInventory security)
+    {
+        ArgumentNullException.ThrowIfNull(security);
+
+        if (security.ProtectionProductStatus == ProtectionProductObservationStatus.AccessDenied)
+            return "access denied";
+        if (security.ProtectionProductStatus == ProtectionProductObservationStatus.Error)
+            return "observation error";
+        if (security.ProtectionProductStatus != ProtectionProductObservationStatus.Observed ||
+            security.ProtectionProducts.Count == 0)
+            return "not observed";
+
+        var parts = new List<string>();
+        var defender = security.ProtectionProducts.FirstOrDefault(product => product.IsMicrosoftDefender);
+        if (defender is { IsActive: true })
+            parts.Add("Defender active");
+        else if (defender is not null)
+            parts.Add("Microsoft Defender reported");
+
+        var vendors = security.ProtectionProducts
+            .Where(product => !product.IsMicrosoftDefender)
+            .Select(product => product.DisplayName.Trim())
+            .Where(name => name.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (vendors.Count > 0)
+            parts.Add(string.Join(", ", vendors) + " reported");
+
+        return parts.Count == 0 ? "protection product reported" : string.Join(" · ", parts);
+    }
 }
 
 public class NetworkingInventory
@@ -136,6 +192,9 @@ public class MachineOverview
     public string FirewallServiceState { get; set; } = "Unknown";
     public string FirewallProfilesSummary { get; set; } = "Unknown";
     public string DefenderServiceState { get; set; } = "Unknown";
+    public string ProtectionProductSummary { get; set; } = "not observed";
+    public ProtectionProductObservationStatus ProtectionProductStatus { get; set; } =
+        ProtectionProductObservationStatus.NotObserved;
 
     public DateTime LastScanUtc { get; set; }
     public string CatalogVersion { get; set; } = ManagedObjectCatalog.CatalogVersion;
@@ -183,6 +242,8 @@ public class MachineOverview
             FirewallServiceState = snapshot.Networking.FirewallServiceState,
             FirewallProfilesSummary = fwSummary,
             DefenderServiceState = snapshot.Security.DefenderServiceState,
+            ProtectionProductSummary = ProtectionProductPresentation.Summary(snapshot.Security),
+            ProtectionProductStatus = snapshot.Security.ProtectionProductStatus,
             LastScanUtc = snapshot.CaptureTimestamp == default ? DateTime.UtcNow : snapshot.CaptureTimestamp,
             CatalogVersion = ManagedObjectCatalog.CatalogVersion,
             KnowledgeBaseVersion = ManagedObjectCatalog.CatalogVersion,
