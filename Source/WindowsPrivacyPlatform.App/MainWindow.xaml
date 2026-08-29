@@ -14,15 +14,56 @@
   <Grid>
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
       <RowDefinition Height="2"/>
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="*"/>
       <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
 
-    <Border Grid.Row="0" Background="{DynamicResource BrushHeaderChrome}"
+    <ui:TitleBar Grid.Row="0"
+                 Title="{Binding Title, RelativeSource={RelativeSource AncestorType=Window}}"
+                 ShowClose="True" ShowMaximize="True" ShowMinimize="True"/>
+
+    <Menu Grid.Row="1" Background="{DynamicResource BrushBgMenu}"
+          BorderBrush="{DynamicResource BrushBorderStrong}" BorderThickness="0,0,0,1">
+      <MenuItem Header="_File">
+        <MenuItem Header="_Scan" InputGestureText="F5" Click="MenuScan_Click"/>
+        <Separator/>
+        <MenuItem Header="E_xit" InputGestureText="Alt+F4" Click="MenuExit_Click"/>
+      </MenuItem>
+      <MenuItem Header="_Edit">
+        <MenuItem Header="_Find…" InputGestureText="Ctrl+F" Click="MenuSearch_Click"/>
+        <MenuItem Header="_Copy search text" Click="MenuCopySearch_Click"/>
+      </MenuItem>
+      <MenuItem Header="_View">
+        <MenuItem Header="_Dashboard" Click="MenuHome_Click"/>
+        <MenuItem Header="_Privacy" Click="PrivacySection_Click"/>
+        <MenuItem Header="_Security" Click="SecuritySection_Click"/>
+        <MenuItem Header="_Network" Click="NetworkSection_Click"/>
+        <MenuItem Header="Troubleshoot/_Explore" Click="ExploreSection_Click"/>
+        <Separator/>
+        <MenuItem Header="System E_xplorer" Click="MenuInventory_Click"/>
+        <MenuItem Header="_Conflicts" Click="MenuConflicts_Click"/>
+        <MenuItem Header="_Knowledge Explorer" Click="MenuKnowledge_Click"/>
+        <Separator/>
+        <MenuItem Header="_Back" InputGestureText="Alt+Left" Click="BackButton_Click"/>
+        <MenuItem Header="_Forward" InputGestureText="Alt+Right" Click="ForwardButton_Click"/>
+        <MenuItem Header="Toggle _Navigation Pane" Click="ToggleSidebar_Click"/>
+        <MenuItem Header="_Refresh" InputGestureText="Ctrl+R" Click="MenuScan_Click"/>
+      </MenuItem>
+      <MenuItem Header="_Settings">
+        <MenuItem Header="_App Settings" Click="MenuSettings_Click"/>
+      </MenuItem>
+      <MenuItem Header="_Help">
+        <MenuItem Header="_About" Click="MenuAbout_Click"/>
+      </MenuItem>
+    </Menu>
+
+    <Border Grid.Row="2" Background="{DynamicResource BrushHeaderChrome}"
             BorderBrush="{DynamicResource BrushBorderStrong}" BorderThickness="0,0,0,1"
-            Padding="12,34,12,9">
+            Padding="12,8,12,9">
       <Grid>
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/>
@@ -83,15 +124,15 @@
           <Button x:Name="CancelScanButton" Content="Cancel" Style="{StaticResource ActionNeutral}"
                   Click="CancelScanButton_Click" MinWidth="68" Height="34" Margin="0,0,6,0" Visibility="Collapsed"/>
           <Button x:Name="ScanButton" Style="{StaticResource ActionPrimary}" Click="ScanButton_Click" Height="34" MinWidth="88" ToolTip="Scan (F5)">
-            <StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="ArrowSync24" Width="17" Margin="0,0,6,0"/><TextBlock Text="Scan"/></StackPanel>
+            <StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="ArrowSync24" Width="17" Margin="0,0,6,0"/><TextBlock x:Name="ScanButtonLabel" Text="Scan"/></StackPanel>
           </Button>
         </StackPanel>
       </Grid>
     </Border>
 
-    <ProgressBar x:Name="ScanProgress" Grid.Row="1" IsIndeterminate="True" Height="2" Visibility="Collapsed"/>
+    <ProgressBar x:Name="ScanProgress" Grid.Row="3" IsIndeterminate="True" Height="2" Visibility="Collapsed"/>
 
-    <Border Grid.Row="2" Background="{DynamicResource BrushBgHeader}"
+    <Border Grid.Row="4" Background="{DynamicResource BrushBgHeader}"
             BorderBrush="{DynamicResource BrushBorderStrong}" BorderThickness="0,0,0,1" Padding="14,11">
       <Grid>
         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
@@ -114,7 +155,7 @@
       </Grid>
     </Border>
 
-    <Grid Grid.Row="3">
+    <Grid Grid.Row="5">
       <Grid.ColumnDefinitions><ColumnDefinition x:Name="SidebarColumn" Width="252" MinWidth="0"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
 
       <Border Grid.Column="0" Background="{DynamicResource BrushSidebarChrome}"
@@ -138,7 +179,7 @@
                   <StackPanel Margin="-10,4,-8,2">
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:ConsentStore"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="AppsListDetail24" Width="17" Margin="0,0,8,0"/><TextBlock Text="App permissions"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:AppPrivacy"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="WindowSettings20" Width="17" Margin="0,0,8,0"/><TextBlock Text="App policy controls"/></StackPanel></Button>
-                <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Telemetry"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="DataUsage24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Diagnostics &amp; feedback"/></StackPanel></Button>
+                <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Telemetry"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="DataUsage24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Diagnostics & feedback"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Location"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Location24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Location"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:CloudContent"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="PersonSettings20" Width="17" Margin="0,0,8,0"/><TextBlock Text="Personalization"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Advertising"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Megaphone24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Advertising"/></StackPanel></Button>
@@ -151,14 +192,14 @@
                 <Expander Header="WINDOWS APPS" Style="{StaticResource RailExpander}" IsExpanded="True">
                   <StackPanel Margin="-10,4,-8,2">
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Copilot"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Sparkle24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Copilot"/></StackPanel></Button>
-                <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Recall"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="History24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Recall &amp; Click to Do"/></StackPanel></Button>
+                <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Recall"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="History24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Recall & Click to Do"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Search"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Search24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Search"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Edge"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Globe24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Microsoft Edge"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Widgets"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="WindowApps24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Widgets"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:OneDrive"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Cloud24" Width="17" Margin="0,0,8,0"/><TextBlock Text="OneDrive"/></StackPanel></Button>
                   </StackPanel>
                 </Expander>
-                <Expander Header="DEVICE &amp; ACCOUNT" Style="{StaticResource RailExpander}" IsExpanded="True">
+                <Expander Header="DEVICE & ACCOUNT" Style="{StaticResource RailExpander}" IsExpanded="True">
                   <StackPanel Margin="-10,4,-8,2">
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:FamilySafety"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="People24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Family Safety"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Storage"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Database24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Storage"/></StackPanel></Button>
@@ -180,7 +221,7 @@
               </StackPanel>
 
               <StackPanel x:Name="NetworkNavPanel" Visibility="Collapsed">
-                <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Network"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="WifiLock24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Adapters, LAN &amp; DNS"/></StackPanel></Button>
+                <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Network"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="WifiLock24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Adapters, LAN & DNS"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Firewall"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="GlobeShield24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Firewall"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:RemoteAccess"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Remote20" Width="17" Margin="0,0,8,0"/><TextBlock Text="Remote access"/></StackPanel></Button>
               </StackPanel>
@@ -222,7 +263,7 @@
       </Grid>
     </Grid>
 
-    <Border Grid.Row="4" Background="{DynamicResource BrushBgMenu}" BorderBrush="{DynamicResource BrushBorderStrong}"
+    <Border Grid.Row="6" Background="{DynamicResource BrushBgMenu}" BorderBrush="{DynamicResource BrushBorderStrong}"
             BorderThickness="0,1,0,0" Padding="12,5">
       <Grid>
         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
