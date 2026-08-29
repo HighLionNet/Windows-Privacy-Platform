@@ -3,20 +3,19 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" HorizontalContentAlignment="Stretch">
   <StackPanel>
     <TextBlock Text="Conflicts" Style="{StaticResource SectionTitle}"/>
-    <TextBlock Text="Controls that currently request incompatible Windows outcomes." Style="{StaticResource SectionSubtitle}"/>
     <Border Style="{StaticResource HeaderRule}"/>
-    <Border Style="{StaticResource ListContainer}" Padding="14,12" Margin="0,0,0,10" BorderThickness="4,1,1,1" BorderBrush="{DynamicResource BrushConflict}">
+    <Border Style="{StaticResource FilterBar}" BorderBrush="{DynamicResource BrushConflict}">
       <Grid>
         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <WrapPanel>
-          <TextBlock Text="Search:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,8"/>
-          <TextBox x:Name="SearchBox" MinWidth="240" Height="34" VerticalContentAlignment="Center" Margin="0,0,14,8" TextChanged="FilterChanged"/>
-          <TextBlock Text="Impact:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,8"/>
-          <ComboBox x:Name="ImpactBox" MinWidth="120" Height="34" Margin="0,0,14,8" SelectionChanged="FilterChanged">
+          <TextBlock Text="SEARCH" Style="{StaticResource FilterLabel}" Margin="0,0,8,8"/>
+          <TextBox x:Name="SearchBox" MinWidth="240" Height="34" VerticalContentAlignment="Center" Margin="0,0,14,8" TextChanged="FilterChanged" AutomationProperties.Name="Search conflicts"/>
+          <TextBlock Text="IMPACT" Style="{StaticResource FilterLabel}" Margin="0,0,8,8"/>
+          <ComboBox x:Name="ImpactBox" MinWidth="130" Height="34" Margin="0,0,14,8" SelectionChanged="FilterChanged" AutomationProperties.Name="Filter by impact">
             <ComboBoxItem Content="All" IsSelected="True"/><ComboBoxItem Content="Low"/><ComboBoxItem Content="Medium"/><ComboBoxItem Content="High"/>
           </ComboBox>
-          <TextBlock Text="State:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,8"/>
-          <ComboBox x:Name="StateBox" MinWidth="176" Height="34" Margin="0,0,8,8" SelectionChanged="FilterChanged">
+          <TextBlock Text="STATE" Style="{StaticResource FilterLabel}" Margin="0,0,8,8"/>
+          <ComboBox x:Name="StateBox" MinWidth="210" Height="34" Margin="0,0,8,8" SelectionChanged="FilterChanged" AutomationProperties.Name="Filter by state">
             <ComboBoxItem Content="Open" IsSelected="True"/><ComboBoxItem Content="Resolved this session"/>
           </ComboBox>
         </WrapPanel>

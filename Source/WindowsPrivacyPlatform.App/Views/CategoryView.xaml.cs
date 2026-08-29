@@ -43,6 +43,7 @@ public partial class CategoryView : UserControl
             .OrderBy(item => item.ObjectName, StringComparer.OrdinalIgnoreCase).ToList();
 
         InitializeComponent();
+        ApplyPendingButton.Visibility = _elevation.IsAdminAuthorized ? Visibility.Visible : Visibility.Collapsed;
 
         TitleText.Text = category;
         DescriptionText.Text = CategoryContent.For(domain, category).Description;

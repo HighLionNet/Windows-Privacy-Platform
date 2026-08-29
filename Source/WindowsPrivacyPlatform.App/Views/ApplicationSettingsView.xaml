@@ -4,7 +4,6 @@
              HorizontalContentAlignment="Stretch">
   <StackPanel MaxWidth="1180" HorizontalAlignment="Stretch">
     <TextBlock Text="App Settings" Style="{StaticResource SectionTitle}" />
-    <TextBlock Text="Configure this local console and review its integrity." Style="{StaticResource SectionSubtitle}" />
     <Border Style="{StaticResource HeaderRule}" />
 
     <Border Style="{StaticResource PropertySheet}">
@@ -15,7 +14,7 @@
           <Grid.RowDefinitions><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
           <TextBlock Text="Default dialog highlight" Style="{StaticResource PropLabel}" />
           <ComboBox x:Name="DefaultModeBox" Grid.Column="1" Height="34" MaxWidth="380" HorizontalAlignment="Left" SelectionChanged="PreferenceChanged">
-            <ComboBoxItem Content="Ask every time (Administrator recommended)" Tag="AskEveryTime" />
+            <ComboBoxItem Content="Ask every time" Tag="AskEveryTime" />
             <ComboBoxItem Content="Administrator" Tag="Admin" />
             <ComboBoxItem Content="View-only" Tag="ViewOnly" />
           </ComboBox>
@@ -59,10 +58,8 @@
 
     <Border Style="{StaticResource PropertySheet}">
       <StackPanel>
-        <Border Style="{StaticResource PropertySheetHeader}"><TextBlock Text="Privacy of this app" FontWeight="SemiBold" /></Border>
+        <Border Style="{StaticResource PropertySheetHeader}"><TextBlock Text="Local data" FontWeight="SemiBold" /></Border>
         <StackPanel Margin="12,9,12,11">
-          <TextBlock Text="The app stays local. It does not sign in to cloud services or transmit background telemetry." TextWrapping="Wrap" />
-          <TextBlock Text="Audit and authorization records stay under your local Windows profile and rotate at 32 MiB per log." Margin="0,5,0,10" TextWrapping="Wrap" Foreground="{DynamicResource BrushTextSecondary}" />
           <Button Content="Open local data folder" Style="{StaticResource ActionNeutral}" HorizontalAlignment="Left" Click="OpenDataFolder_Click" />
         </StackPanel>
       </StackPanel>

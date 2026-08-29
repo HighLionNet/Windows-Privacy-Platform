@@ -5,32 +5,30 @@
     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
     <StackPanel>
       <TextBlock Text="Services" Style="{StaticResource SectionTitle}"/>
-      <TextBlock x:Name="SubtitleText" Style="{StaticResource SectionSubtitle}"/>
-      <TextBlock Text="Diagnose every service. Administrator mode can start or stop only verified low-risk optional services."
-                 Margin="0,5,0,0" TextWrapping="Wrap" Foreground="{DynamicResource BrushTextSecondary}"/>
+      <TextBlock x:Name="SubtitleText" Visibility="Collapsed"/>
       <Border Style="{StaticResource HeaderRule}"/>
     </StackPanel>
-    <Border Grid.Row="1" Style="{StaticResource ListContainer}" Padding="14,12" Margin="0,0,0,10" BorderThickness="4,1,1,1" BorderBrush="{DynamicResource BrushAccent}">
+    <Border Grid.Row="1" Style="{StaticResource FilterBar}">
       <StackPanel>
         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-          <TextBlock Text="Search:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,0"/>
-          <TextBox x:Name="SearchBox" Width="420" Height="34" VerticalContentAlignment="Center" TextChanged="FilterChanged"/>
+          <TextBlock Text="SEARCH" Style="{StaticResource FilterLabel}"/>
+          <TextBox x:Name="SearchBox" Width="420" Height="34" VerticalContentAlignment="Center" TextChanged="FilterChanged" AutomationProperties.Name="Search services"/>
         </StackPanel>
         <WrapPanel>
-          <TextBlock Text="State:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,8"/>
-          <ComboBox x:Name="StateBox" Width="120" Height="34" Margin="0,0,14,8" SelectionChanged="FilterChanged">
+          <TextBlock Text="STATE" Style="{StaticResource FilterLabel}" Margin="0,0,8,8"/>
+          <ComboBox x:Name="StateBox" Width="135" Height="34" Margin="0,0,14,8" SelectionChanged="FilterChanged" AutomationProperties.Name="Filter services by state">
             <ComboBoxItem Content="All" IsSelected="True"/><ComboBoxItem Content="Running"/><ComboBoxItem Content="Stopped"/><ComboBoxItem Content="Paused"/>
           </ComboBox>
-          <TextBlock Text="Startup:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,8"/>
-          <ComboBox x:Name="StartupBox" Width="130" Height="34" Margin="0,0,14,8" SelectionChanged="FilterChanged">
+          <TextBlock Text="STARTUP" Style="{StaticResource FilterLabel}" Margin="0,0,8,8"/>
+          <ComboBox x:Name="StartupBox" Width="145" Height="34" Margin="0,0,14,8" SelectionChanged="FilterChanged" AutomationProperties.Name="Filter services by startup">
             <ComboBoxItem Content="All" IsSelected="True"/><ComboBoxItem Content="Automatic"/><ComboBoxItem Content="Manual"/><ComboBoxItem Content="Disabled"/>
           </ComboBox>
-          <TextBlock Text="Publisher:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,8"/>
-          <ComboBox x:Name="PublisherBox" Width="170" Height="34" Margin="0,0,14,8" SelectionChanged="FilterChanged" IsTextSearchEnabled="True">
+          <TextBlock Text="PUBLISHER" Style="{StaticResource FilterLabel}" Margin="0,0,8,8"/>
+          <ComboBox x:Name="PublisherBox" Width="190" Height="34" Margin="0,0,14,8" SelectionChanged="FilterChanged" IsTextSearchEnabled="True" AutomationProperties.Name="Filter services by publisher">
             <ComboBoxItem Content="All" IsSelected="True"/><ComboBoxItem Content="Microsoft"/><ComboBoxItem Content="Non-Microsoft"/><ComboBoxItem Content="Unknown publisher"/>
           </ComboBox>
-          <TextBlock Text="Issue:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,8"/>
-          <ComboBox x:Name="IssueBox" Width="240" Height="34" Margin="0,0,0,8" SelectionChanged="FilterChanged" IsTextSearchEnabled="True">
+          <TextBlock Text="ISSUE" Style="{StaticResource FilterLabel}" Margin="0,0,8,8"/>
+          <ComboBox x:Name="IssueBox" Width="270" Height="34" Margin="0,0,0,8" SelectionChanged="FilterChanged" IsTextSearchEnabled="True" AutomationProperties.Name="Filter services by issue">
             <ComboBoxItem Content="All" IsSelected="True"/><ComboBoxItem Content="No issue observed"/><ComboBoxItem Content="Automatic service is stopped"/>
             <ComboBoxItem Content="Executable missing or inaccessible"/><ComboBoxItem Content="Dependency issue observed"/>
             <ComboBoxItem Content="Configuration issue observed"/><ComboBoxItem Content="Access denied"/><ComboBoxItem Content="Unable to verify"/>

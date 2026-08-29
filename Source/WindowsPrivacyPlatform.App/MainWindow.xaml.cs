@@ -187,10 +187,8 @@ public partial class MainWindow : FluentWindow
     {
         SetContent(new TextBlock
         {
-            Text = "Scan this PC to review local privacy and security evidence.\n\nView-only never changes Windows. Only Administrator mode can make catalog-approved changes, which require confirmation and verified read-back.",
-            FontSize = 14,
-            Foreground = (Brush)FindResource("BrushTextSecondary"),
-            TextWrapping = TextWrapping.Wrap,
+            Text = "Ready",
+            Style = (Style)FindResource("SectionTitle"),
             Margin = new Thickness(4)
         });
         UpdateBreadcrumbs("Ready");
@@ -441,9 +439,7 @@ public partial class MainWindow : FluentWindow
         _modeChangeInProgress = true;
         ModeCombo.SelectedIndex = admin ? 1 : 0;
         _modeChangeInProgress = false;
-        StatusText.Text = admin
-            ? "Administrator mode authorized. Changes remain deny-by-default and require confirmation."
-            : "View-only mode. Scanning is available; Windows settings cannot be changed.";
+        StatusText.Text = admin ? "Administrator mode" : "View-only mode";
         _reportedExpiredSession = false;
     }
 

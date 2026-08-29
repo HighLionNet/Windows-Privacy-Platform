@@ -3,7 +3,6 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <StackPanel>
     <TextBlock Text="About" Style="{StaticResource SectionTitle}" />
-    <TextBlock Text="Build identity and support context" Style="{StaticResource SectionSubtitle}" />
     <Border Style="{StaticResource HeaderRule}" />
 
     <Border Style="{StaticResource PropertySheet}">
@@ -50,24 +49,7 @@
       </StackPanel>
     </Border>
 
-    <Grid>
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="*" />
-        <ColumnDefinition Width="*" />
-      </Grid.ColumnDefinitions>
-      <Border Style="{StaticResource PropertySheet}" Margin="0,0,6,12">
-        <StackPanel>
-          <Border Style="{StaticResource PropertySheetHeader}">
-            <TextBlock Text="Runtime behavior" FontWeight="SemiBold" FontSize="12" />
-          </Border>
-          <StackPanel Margin="12,8,12,10">
-            <TextBlock Text="• The application does not send product telemetry." Style="{StaticResource ValueText}" />
-            <TextBlock Text="• Scans and audit logs remain on the local device." Style="{StaticResource ValueText}" Margin="0,3,0,0" />
-            <TextBlock Text="• Changes require an explicit catalog authorization and verified read-back." Style="{StaticResource ValueText}" Margin="0,3,0,0" />
-          </StackPanel>
-        </StackPanel>
-      </Border>
-      <Border Grid.Column="1" Style="{StaticResource PropertySheet}" Margin="6,0,0,12">
+      <Border Style="{StaticResource PropertySheet}" Margin="0,0,0,12">
         <StackPanel>
           <Border Style="{StaticResource PropertySheetHeader}">
             <TextBlock Text="Keyboard" FontWeight="SemiBold" FontSize="12" />
@@ -76,6 +58,5 @@
                      Text="F5 or Ctrl+R   Scan&#10;Ctrl+F          Search&#10;Alt+Left/Right  Back / forward&#10;Esc             Clear search" />
         </StackPanel>
       </Border>
-    </Grid>
   </StackPanel>
 </UserControl>

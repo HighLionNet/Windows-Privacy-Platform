@@ -31,10 +31,9 @@ public partial class SearchResultsView : UserControl
             SubtitleText.Text = "No matches";
             List.Items.Add(new TextBlock
             {
-                Text = "Try a setting name or text from its identifier and description.",
+                Text = "No results.",
                 Foreground = (Brush)FindResource("BrushTextMuted"),
-                Margin = new Thickness(10, 8, 10, 8),
-                TextWrapping = TextWrapping.Wrap
+                Margin = new Thickness(10, 8, 10, 8)
             });
             return;
         }

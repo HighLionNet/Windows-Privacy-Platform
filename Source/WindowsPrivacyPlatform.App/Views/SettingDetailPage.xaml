@@ -8,7 +8,7 @@
       </Border>
       <StackPanel>
         <TextBlock x:Name="TitleText" Style="{StaticResource SectionTitle}" TextWrapping="Wrap" />
-        <TextBlock x:Name="DomainPathText" Style="{StaticResource SectionSubtitle}" />
+        <TextBlock x:Name="DomainPathText" Visibility="Collapsed" />
       </StackPanel>
     </DockPanel>
     <Border Style="{StaticResource HeaderRule}" />

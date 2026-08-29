@@ -22,18 +22,33 @@
       <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
 
-    <ui:TitleBar Grid.Row="0"
-                 Title="{Binding Title, RelativeSource={RelativeSource AncestorType=Window}}"
-                 ShowClose="True" ShowMaximize="True" ShowMinimize="True"/>
+    <ui:TitleBar Grid.Row="0" Title="" MinHeight="54"
+                 ShowClose="True" ShowMaximize="True" ShowMinimize="True">
+      <ui:TitleBar.Header>
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0">
+          <Image Width="36" Height="36" Source="Assets/WindowsPrivacyPlatform.png" Stretch="Uniform"
+                 Margin="0,0,10,0" RenderOptions.BitmapScalingMode="HighQuality"/>
+          <StackPanel VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock x:Name="ProductNameText" FontSize="17.5" FontWeight="Bold" TextTrimming="CharacterEllipsis"/>
+              <TextBlock x:Name="HeaderVersionText" Margin="9,0,0,0" VerticalAlignment="Center"
+                         Foreground="{DynamicResource BrushAccent}" FontSize="11" FontWeight="Bold"/>
+            </StackPanel>
+            <TextBlock x:Name="ScanTimeLabel" Text="Not scanned" FontSize="10" Foreground="{DynamicResource BrushTextMuted}"/>
+          </StackPanel>
+        </StackPanel>
+      </ui:TitleBar.Header>
+    </ui:TitleBar>
 
-    <Menu Grid.Row="1" Background="{DynamicResource BrushBgMenu}"
-          BorderBrush="{DynamicResource BrushBorderStrong}" BorderThickness="0,0,0,1">
+    <Border Grid.Row="1" Background="{DynamicResource BrushBgMenu}"
+            BorderBrush="{DynamicResource BrushBorderStrong}" BorderThickness="0,0,0,1">
+    <Menu x:Name="TopMenu" HorizontalAlignment="Left" Background="{DynamicResource BrushBgMenu}">
       <MenuItem Header="_File">
         <MenuItem Header="_Scan" InputGestureText="F5" Click="MenuScan_Click"/>
         <Separator/>
         <MenuItem Header="E_xit" InputGestureText="Alt+F4" Click="MenuExit_Click"/>
       </MenuItem>
-      <MenuItem Header="_Edit">
+      <MenuItem Header="_Options">
         <MenuItem Header="_Find…" InputGestureText="Ctrl+F" Click="MenuSearch_Click"/>
         <MenuItem Header="_Copy search text" Click="MenuCopySearch_Click"/>
       </MenuItem>
@@ -60,14 +75,15 @@
         <MenuItem Header="_About" Click="MenuAbout_Click"/>
       </MenuItem>
     </Menu>
+    </Border>
 
     <Border Grid.Row="2" Background="{DynamicResource BrushHeaderChrome}"
             BorderBrush="{DynamicResource BrushBorderStrong}" BorderThickness="0,0,0,1"
             Padding="12,8,12,9">
       <Grid>
         <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/>
-          <ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
 
         <Button Grid.Column="0" Style="{StaticResource ActionNeutral}" Width="36" Height="34" Padding="0"
@@ -75,20 +91,7 @@
           <ui:SymbolIcon Symbol="AppsListDetail24" Width="18"/>
         </Button>
 
-        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,0">
-          <Image Width="32" Height="32" Source="Assets/WindowsPrivacyPlatform.png" Stretch="Uniform"
-                 Margin="0,0,9,0" RenderOptions.BitmapScalingMode="HighQuality"/>
-          <StackPanel VerticalAlignment="Center">
-            <StackPanel Orientation="Horizontal">
-              <TextBlock x:Name="ProductNameText" FontSize="15" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
-              <TextBlock x:Name="HeaderVersionText" Margin="8,0,0,0" VerticalAlignment="Center"
-                         Foreground="{DynamicResource BrushTextMuted}" FontSize="10.5" FontWeight="SemiBold"/>
-            </StackPanel>
-            <TextBlock x:Name="ScanTimeLabel" Text="Not scanned" FontSize="9.5" Foreground="{DynamicResource BrushTextMuted}"/>
-          </StackPanel>
-        </StackPanel>
-
-        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0">
+        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0">
           <Button x:Name="BackButton" Style="{StaticResource ActionNeutral}" Width="34" Height="34" Padding="0"
                   ToolTip="Back (Alt+Left)" Click="BackButton_Click" IsEnabled="False">
             <ui:SymbolIcon Symbol="ArrowLeft24" Width="17"/>
@@ -99,20 +102,24 @@
           </Button>
         </StackPanel>
 
-        <Border Grid.Column="3" Background="{DynamicResource BrushBgCard}" BorderBrush="{DynamicResource BrushBorder}"
-                BorderThickness="1" CornerRadius="4" Height="34" Margin="0,0,12,0" MaxWidth="440" HorizontalAlignment="Stretch">
-          <DockPanel>
-            <ui:SymbolIcon Symbol="Search24" Width="18" Margin="9,0,5,0" Foreground="{DynamicResource BrushTextMuted}"/>
-            <TextBox x:Name="SearchBox" BorderThickness="0" Background="Transparent" VerticalContentAlignment="Center"
-                     KeyDown="SearchBox_KeyDown" ToolTip="Search the local catalog (Ctrl+F)"/>
-          </DockPanel>
+        <Border Grid.Column="2" Background="{DynamicResource BrushBgCard}" BorderBrush="{DynamicResource BrushAccent}"
+                BorderThickness="2" CornerRadius="4" Height="36" Margin="0,0,12,0" MaxWidth="460" HorizontalAlignment="Stretch">
+          <Grid>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <TextBlock Text="SEARCH" Style="{StaticResource FilterLabel}" Margin="10,0,7,0"/>
+            <ui:SymbolIcon Grid.Column="1" Symbol="Search24" Width="18" Margin="0,0,5,0" Foreground="{DynamicResource BrushAccent}"/>
+            <TextBox x:Name="SearchBox" Grid.Column="2" BorderThickness="0" Background="Transparent" VerticalContentAlignment="Center"
+                     Padding="6,4" KeyDown="SearchBox_KeyDown" ToolTip="Search the local catalog (Ctrl+F)"
+                     AutomationProperties.Name="Search catalog"/>
+          </Grid>
         </Border>
 
-        <Border Grid.Column="4" Background="{DynamicResource BrushAccentSoft}" BorderBrush="{DynamicResource BrushAccent}"
-                BorderThickness="1" CornerRadius="4" Padding="8,0" Height="34" Margin="0,0,10,0">
+        <Border Grid.Column="3" Background="{DynamicResource BrushAccentSoft}" BorderBrush="{DynamicResource BrushAccent}"
+                BorderThickness="2" CornerRadius="4" Padding="8,0" Height="36" Margin="0,0,10,0">
           <StackPanel Orientation="Horizontal">
+            <TextBlock Text="MODE" Style="{StaticResource FilterLabel}" Margin="0,0,7,0"/>
             <ui:SymbolIcon Symbol="ShieldKeyhole24" Width="16" Margin="0,0,6,0"/>
-            <ComboBox x:Name="ModeCombo" Width="128" BorderThickness="0" Background="Transparent"
+            <ComboBox x:Name="ModeCombo" Width="150" BorderThickness="0" Background="Transparent"
                       SelectedIndex="0" VerticalContentAlignment="Center"
                       SelectionChanged="ModeCombo_SelectionChanged" DropDownOpened="ModeCombo_DropDownOpened" ToolTip="Session authority">
               <ComboBoxItem Content="View-only" IsSelected="True"/><ComboBoxItem Content="Administrator"/>
@@ -120,7 +127,7 @@
           </StackPanel>
         </Border>
 
-        <StackPanel Grid.Column="5" Orientation="Horizontal">
+        <StackPanel Grid.Column="4" Orientation="Horizontal">
           <Button x:Name="CancelScanButton" Content="Cancel" Style="{StaticResource ActionNeutral}"
                   Click="CancelScanButton_Click" MinWidth="68" Height="34" Margin="0,0,6,0" Visibility="Collapsed"/>
           <Button x:Name="ScanButton" Style="{StaticResource ActionPrimary}" Click="ScanButton_Click" Height="34" MinWidth="88" ToolTip="Scan (F5)">
@@ -229,8 +236,6 @@
               <StackPanel x:Name="ExploreNavPanel" Visibility="Collapsed">
                 <TextBlock Text="READ-ONLY DIAGNOSTICS" Style="{StaticResource SidebarGroupLabel}" Margin="15,4,8,7"/>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="inventory"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Desktop24" Width="17" Margin="0,0,8,0"/><TextBlock Text="System Explorer"/></StackPanel></Button>
-                <TextBlock Text="Inventory and fixed observations only. Service actions are not exposed here."
-                           Margin="15,9,14,0" FontSize="10.5" Foreground="{DynamicResource BrushSidebarMuted}" TextWrapping="Wrap"/>
               </StackPanel>
             </StackPanel>
           </ScrollViewer>
@@ -248,7 +253,7 @@
         </Grid>
       </Border>
 
-      <Grid Grid.Column="1" Background="{DynamicResource BrushBgWindow}">
+      <Grid Grid.Column="1" Background="{DynamicResource BrushBgContent}">
         <ScrollViewer x:Name="ContentScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                       CanContentScroll="False" Padding="22,18,22,22" HorizontalContentAlignment="Stretch"
                       VerticalContentAlignment="Stretch" ScrollChanged="ContentScroll_ScrollChanged">

@@ -30,6 +30,7 @@ public partial class ConflictsView : UserControl
         _refresh = refresh; _owner = owner; _openSetting = openSetting; _state = state;
         _focusGroupId = focusGroupId;
         InitializeComponent();
+        ApplyButton.Visibility = _elevation.IsAdminAuthorized ? Visibility.Visible : Visibility.Collapsed;
         SearchBox.Text = state.Search;
         Select(ImpactBox, state.Impact);
         Select(StateBox, state.State);

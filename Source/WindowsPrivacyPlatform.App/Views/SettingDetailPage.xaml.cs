@@ -69,7 +69,9 @@ public partial class SettingDetailPage : UserControl
             if (!detail.IsWritable) AccessBadge.Style = (Style)FindResource("BadgeUnknown");
             OptionsList.ItemsSource = detail.Options;
         }
-        ApplyDetailButton.Visibility = detail.IsWritable ? Visibility.Visible : Visibility.Collapsed;
+        ApplyDetailButton.Visibility = detail.IsWritable && _elevation.IsAdminAuthorized
+            ? Visibility.Visible
+            : Visibility.Collapsed;
 
         if (detail.Applicability != ApplicabilityState.Applicable)
         {

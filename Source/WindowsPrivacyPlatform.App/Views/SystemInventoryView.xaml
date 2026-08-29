@@ -12,29 +12,26 @@
 
     <StackPanel>
       <TextBlock Text="System Explorer" Style="{StaticResource SectionTitle}" />
-      <TextBlock Text="Read-only Windows components, grouped by purpose." Style="{StaticResource SectionSubtitle}" />
       <Border Style="{StaticResource HeaderRule}" />
     </StackPanel>
 
-    <Border Grid.Row="1" Style="{StaticResource ListContainer}" Padding="14,12" Margin="0,0,0,10" BorderThickness="4,1,1,1" BorderBrush="{DynamicResource BrushAccent}">
+    <Border Grid.Row="1" Style="{StaticResource FilterBar}">
       <Grid>
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/>
           <ColumnDefinition Width="Auto"/><ColumnDefinition Width="190"/>
           <ColumnDefinition Width="Auto"/><ColumnDefinition Width="210"/>
         </Grid.ColumnDefinitions>
-        <TextBlock Text="Search:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,0"/>
-        <TextBox x:Name="FilterBox" Grid.Column="1" Height="34" VerticalContentAlignment="Center"/>
-        <TextBlock Grid.Column="2" Text="Type:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0,6,0"/>
-        <ComboBox x:Name="TypeFilter" Grid.Column="3" Height="34" IsTextSearchEnabled="True"/>
-        <TextBlock Grid.Column="4" Text="Group:" FontWeight="SemiBold" VerticalAlignment="Center" Margin="12,0,6,0"/>
-        <ComboBox x:Name="GroupFilter" Grid.Column="5" Height="34" IsTextSearchEnabled="True"/>
+        <TextBlock Text="SEARCH" Style="{StaticResource FilterLabel}"/>
+        <TextBox x:Name="FilterBox" Grid.Column="1" Height="34" VerticalContentAlignment="Center" AutomationProperties.Name="Search inventory"/>
+        <TextBlock Grid.Column="2" Text="TYPE" Style="{StaticResource FilterLabel}" Margin="12,0,8,0"/>
+        <ComboBox x:Name="TypeFilter" Grid.Column="3" Height="34" IsTextSearchEnabled="True" AutomationProperties.Name="Filter inventory by type"/>
+        <TextBlock Grid.Column="4" Text="GROUP" Style="{StaticResource FilterLabel}" Margin="12,0,8,0"/>
+        <ComboBox x:Name="GroupFilter" Grid.Column="5" Height="34" IsTextSearchEnabled="True" AutomationProperties.Name="Filter inventory by group"/>
       </Grid>
     </Border>
 
     <DockPanel Grid.Row="2" Margin="2,0,2,8" LastChildFill="False">
-      <TextBlock Text="Observation only — changes belong in Windows management tools."
-                 Foreground="{DynamicResource BrushTextMuted}" FontSize="11" />
       <TextBlock x:Name="CountText" DockPanel.Dock="Right" Foreground="{DynamicResource BrushTextSecondary}"
                  FontSize="11" FontWeight="SemiBold" Margin="18,0,0,0" />
     </DockPanel>
