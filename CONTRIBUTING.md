@@ -2,6 +2,8 @@
 
 Windows Privacy Platform treats correctness and bounded authority as product features. Changes should preserve uncertainty, keep discovered data separate from authorization, and avoid claims that are not supported by observed evidence or authoritative Windows documentation.
 
+Standing constraints: [Status/AI_Handoff.md](Status/AI_Handoff.md). Authority model: [Status/Safety_Model.md](Status/Safety_Model.md).
+
 ## Development workflow
 
 ```powershell
@@ -26,7 +28,7 @@ Adding a curated native target requires:
 - One round-trip contract test per allowlist entry.
 - A recovery hint where removal or disabling affects installed functionality.
 
-BitLocker operations, User Account Control master changes, arbitrary firewall rules, and non-curated inventory remain observation-only by design.
+Arbitrary firewall rules and non-curated inventory remain observation-only. Service runtime control, if touched, must stay inside `ServiceMutationPolicy`.
 
 ## Signing release output
 
@@ -34,4 +36,4 @@ BitLocker operations, User Account Control master changes, arbitrary firewall ru
 
 ## Pull requests
 
-Keep changes reviewable, include regression tests for safety-sensitive behavior, update public and engineering documentation when contracts change, and report actual build/test/publish results. Do not add bulk-apply profiles, generic editors, scoring, application telemetry, or silent persistence.
+Keep changes reviewable, include regression tests for safety-sensitive behavior, update Safety_Model / Architecture / AI_Handoff when contracts change, and report actual build/test results with branch and commit. Do not add bulk-apply profiles, generic editors, scoring, application telemetry, or silent persistence.
