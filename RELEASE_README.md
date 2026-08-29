@@ -5,7 +5,7 @@ This archive is a portable, framework-dependent Windows desktop release.
 1. Install the .NET 8 Desktop Runtime for Windows x64 from Microsoft if needed.
 2. Extract every file in this archive to a permanent folder that your user account can write to.
 3. Run `WindowsPrivacyPlatform.exe`; do not run it while it is still inside the zip.
-4. Start in **Inspect** for read-only device analysis. Choose **Modify** only when you intend to prepare a bounded set of changes. Options stay pending until one batch confirmation, and the elevated process exits after that operation.
+4. Start in **View-only** for read-only device analysis. Choose **Admin** only when you intend to prepare a bounded set of changes. Options stay pending until one batch confirmation. Apply keeps the authorized Admin session open; leaving Admin relaunches View-only unelevated.
 5. The first successful launch offers to create Desktop and Start Menu shortcuts. The app records the choice locally and does not ask again.
 
 The release has no background service, driver, cloud account, telemetry, or automatic policy application. Removing the extracted folder uninstalls the program; shortcuts can then be deleted normally.
