@@ -1,6 +1,7 @@
 # Engineering Handoff
 
-**Line:** v2.5.1 @ `b06efc9`
+**Line:** v2.6.1 on `v2.6.1` (base: v2.5.1 @ `b06efc9`)
+**Implementation:** four-section shell and observe-only protection-product inventory @ `f113ea9`
 **Contract branch:** `wpp/docs/four-section-hub`
 **Archive, do not merge:** `codex/2.6.0` @ `1697709`
 
@@ -29,13 +30,13 @@ Implementation brief: [Work/four-section-hub.md](Work/four-section-hub.md).
 - Do not restore 2.6 native write backends.
 - WPF-UI, when added, is pinned **4.3.0**. Main window only. Dialogs stay `Window` this slice.
 
-## Next Codex slice
+## Current release delta
 
-`wpp/feat/four-section-shell` from `v2.5.1` (rebase onto this docs branch first so Status/ is present).
+`v2.6.1` is based on the four-section contract commit `5cb1673`; its product parent remains v2.5.1 @ `b06efc9`.
 
-Scope: shell + section IA + category sort + visual tokens. No new write kinds. No version bump unless the human asks for `2.5.2`.
+Delta: four exclusive sections, WPF-UI 4.3.0 main-window chrome, square inset presentation tokens, and fail-soft Security Center antivirus observation. The v2.5.1 write contract and authorization table are unchanged; Troubleshoot/Explore remains read-only.
 
-Follow [Work/four-section-hub.md](Work/four-section-hub.md). Challenge this plan if it conflicts with v2.5.1 code; do not “interpret generously” into new authority.
+Next: audit `origin/v2.6.1` against [Work/four-section-hub.md](Work/four-section-hub.md) and the v2.5.1 safety invariants.
 
 ## Agent communication
 
@@ -47,7 +48,7 @@ TO: Grok|Codex|Human
 TYPE: plan|implement|test|audit|challenge|escalate|complete
 BRANCH:
 BASE: v2.5.1@b06efc9
-TARGET: v2.5.1
+TARGET: v2.6.1
 COMMIT:
 PUSHED:
 STATUS:
