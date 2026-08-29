@@ -1,23 +1,74 @@
 # Engineering Handoff
 
-## Current contracts
+**Line:** v2.5.1 @ `b06efc9`
+**Contract branch:** `wpp/docs/four-section-hub`
+**Archive, do not merge:** `codex/2.6.0` @ `1697709`
 
-- The WPF application is the sole product; do not restore the removed prototype CLI or duplicate source tree.
-- `Directory.Build.props` is the only literal app-version source. UI identity must continue to use `ProductInfoReader`.
-- Settings and System Explorer are separate data flows. Dynamic inventory must never gain a `WritableTarget`.
-- Every static catalog entry requires a complete plain-language narrative and either a complete target or non-default `ExclusionReason`.
-- Registry and native targets are deny-by-default. Keep one authorization/round-trip theory row per curated allowlist entry.
-- BitLocker, User Account Control, and arbitrary firewall-rule writes are permanent exclusions with native-tool handoff.
-- Preserve unknown/error/access-denied semantics and last-good scan state.
-- Keep the change contract: pre-read, confirm, typed operation, independent read-back, local audit.
-- Preserve `SettingsListTarget`: Overview/search must land in a category list and never auto-open a Settings detail route.
-- Preserve `ManagedObjectCatalog.IsAuthorizedWriteTarget` revalidation and `ElevationService.CanModifyHive`; a complete runtime object alone is never authority.
-- Keep Services read-only and use neutral evidence terminology rather than malware verdicts.
+Contracts: [Safety_Model.md](Safety_Model.md), [Architecture.md](Architecture.md).
+Implementation brief: [Work/four-section-hub.md](Work/four-section-hub.md).
 
-## Release verification
+## Standing constraints
 
-For an implementation check, run restore, Release build, tests without rebuilding, repository hygiene scans, and a GUI smoke test. Distribution packaging and release verification remain separate work when that scope is requested.
+- WPF app only. No CLI, no duplicate tree.
+- `Directory.Build.props` is the only literal version. UI identity uses `ProductInfoReader`.
+- Four sections: Privacy, Security, Network, Troubleshoot/Explore. Persistent: Dashboard, Conflicts, Knowledge, App Settings, About, View-only / Administrator.
+- Settings vs inventory stay separate. Dynamic inventory cannot gain a `WritableTarget`.
+- Writes: curated Settings + existing firewall-profile path + existing optional non-Microsoft service runtime actions only. Discovery never authorizes a write.
+- Change contract: allowlist compare → pre-read → confirm → typed operation → independent value-and-kind read-back → local audit.
+- `ManagedObjectCatalog.IsAuthorizedWriteTarget` and `ElevationService.CanModifyHive` revalidate at apply. A complete runtime object is not authority.
+- Cross-account HKCU refused.
+- `SettingsListTarget` stands.
+- BitLocker / UAC **policy** Settings remain high-impact (warning + fresh credential) then the normal contract. BitLocker *lifecycle* is not implemented.
+- Firewall writes: twelve profile properties. Rules are inventory.
+- Troubleshoot/Explore is read-only this phase (scan, handoff, fixed probes only).
+- Detect AV / EDR / XDR; do not disable, exclude, or compete with them. No malware verdicts. No synthetic score.
+- Distinct unknown / error / access-denied / not-configured / last-good scan.
+- Narrative: documented function, observed state, labeled recommendation — recommendation is never a Microsoft fact.
+- Every static catalog entry: complete narrative and either a complete target or non-default `ExclusionReason`.
+- No bulk profiles, generic editors, telemetry, silent persistence, dynamic authorization.
+- Do not restore 2.6 native write backends.
+- WPF-UI, when added, is pinned **4.3.0**. Main window only. Dialogs stay `Window` this slice.
 
-## Safe future finishing work
+## Next Codex slice
 
-Publisher signing/reputation, accessibility audit, localization, documentation visuals, optional export, and additional verified catalog coverage can be added without changing the authority model. New write surfaces require the full authorization, recovery, and per-target verification standard—not a generic adapter.
+`wpp/feat/four-section-shell` from `v2.5.1` (rebase onto this docs branch first so Status/ is present).
+
+Scope: shell + section IA + category sort + visual tokens. No new write kinds. No version bump unless the human asks for `2.5.2`.
+
+Follow [Work/four-section-hub.md](Work/four-section-hub.md). Challenge this plan if it conflicts with v2.5.1 code; do not “interpret generously” into new authority.
+
+## Agent communication
+
+```text
+WPP-HANDOFF
+TASK:
+FROM: Grok|Codex|Human
+TO: Grok|Codex|Human
+TYPE: plan|implement|test|audit|challenge|escalate|complete
+BRANCH:
+BASE: v2.5.1@b06efc9
+TARGET: v2.5.1
+COMMIT:
+PUSHED:
+STATUS:
+RISK:
+CHANGED:
+-
+VERIFIED:
+- dotnet test .\Source\WindowsPrivacyPlatform.sln -c Release →
+KNOWN:
+-
+INSPECT:
+-
+NEXT:
+-
+BLOCKS-COMPLETE:
+```
+
+## Release check
+
+```powershell
+dotnet restore .\Source\WindowsPrivacyPlatform.sln
+dotnet build .\Source\WindowsPrivacyPlatform.sln -c Release --no-restore
+dotnet test .\Source\WindowsPrivacyPlatform.sln -c Release --no-build
+```

@@ -1,49 +1,99 @@
 # Safety Model
 
-## Authority boundaries
+**Line:** v2.5.1 source (`b06efc9`) plus the four-section hub contract.
+**Phase:** this document authorizes information-architecture and presentation work. It does not authorize new write backends.
 
-View-only mode has no mutation authority. Admin mode is an explicit, password-authorized session choice; elevation satisfies an operating-system privilege requirement but does not create new catalog permissions.
+## Product job
 
-A target is writable only when all of the following are true:
+WPP is a local Windows 10/11 privacy, security, and network **policy console** with a read-only inventory and diagnostics dock. It is not WinUtil, not Malwarebytes, and not an EDR.
 
-1. It is a curated Settings entry, not System Explorer or an internal reference definition.
-2. Its current Windows edition/build and selected value are applicable.
-3. Its exact object ID appears in the appropriate source-controlled authorization table.
-4. Its typed target is complete and the requested value is supported.
-5. The runtime target still exactly matches the compiled catalog target.
-6. The user confirms the bounded pending batch once.
+- Privacy must beat a tuner by listing every effecting path and only mutating researched typed targets.
+- Security must beat a consumer AV *console* at Defender / ASR / BitLocker / UAC / Hello / Update evidence. It must not ship a signature engine, web shield, or ransomware rollback.
+- The app detects installed AV / EDR / XDR and must not fight them.
 
-Discovery paths, observed source paths, search results, external process output, and UI text never authorize a write.
+## Session authority
 
-## Verified change contract
+View-only and Administrator persist across every section. View-only cannot mutate. Administrator is an explicit session choice. Elevation is an OS privilege, not a catalog permission. Leaving Administrator relaunches View-only unelevated.
 
-The registry-policy backend implements this sequence:
+## Four sections
 
-1. Validate up to 32 unique requests and compare every exact target/value to the compiled allowlist.
-2. Pre-read every exact target and abort the batch before confirmation on an ambiguous or failed read.
-3. Display each current and intended state, then ask for one batch confirmation.
-4. Revalidate and execute each typed registry operation.
-5. Read each target again through an independent path.
-6. Report each success only when the typed state matches the request; retain structured partial-failure results.
-7. Write bounded local audit records that do not leave the device, then rescan while the authorized Admin session stays open.
+The product surface is four exclusive sections plus persistent utilities.
 
-Registry verification includes value kind. Firewall-profile verification checks the exact profile values. Non-registry targets are rejected before any operation is attempted.
+| Section | Job | Mutation in this phase |
+|---|---|---|
+| Privacy | Curated privacy policy and Windows-app privacy | Existing curated Settings writes only |
+| Security | Defender, ASR, BitLocker policy, UAC, Hello, Update, local security | Existing curated Settings writes only |
+| Network | Adapters/LAN, DNS, firewall profiles and rule *inventory*, remote access, network protocols | Existing curated Settings writes only (today: firewall **profiles**, network registry policy) |
+| Troubleshoot/Explore | Full live inventory, native handoffs, fixed live probes | None |
 
-## Permanent exclusions
+Persistent across sections: Dashboard, Conflicts, Knowledge Explorer, App Settings, About, scan, search, View-only / Administrator.
 
-- **Destructive storage and identity operations:** disk wipe/format, recovery-key deletion, recursive profile deletion, disabling the signed-in user's only administrator account, and generic command execution are not product controls.
-- **Arbitrary firewall rules:** inventory-only because broad rule mutation is unsafe and semantically complex. The app changes only the twelve fixed enabled/inbound/outbound/notification profile properties and can open Windows Defender Firewall with Advanced Security.
-- **Critical and uncertain services:** permanent critical names, Boot/System starts, shared svchost groups, Microsoft or unknown publishers, and incomplete evidence are diagnosis-only. Only verified non-Microsoft optional services can receive a confirmed runtime start/stop/restart action; startup configuration is never changed.
-- **Tasks, packages, features, and capabilities:** System Explorer only. Enumeration can never expand authority.
+A setting belongs in exactly one section rail. Firewall rules and profiles live in Network. Security may show a posture chip that navigates to Network → Firewall. Do not duplicate the same editable list in two rails.
 
-BitLocker, Device Encryption, and User Account Control are exact typed registry controls. They are catalog-tagged high-impact and require a themed warning plus a fresh Windows credential step-up before the normal verified-change contract.
+## Category completeness
 
-## Evidence integrity
+If a category exists, every path that can control the outcome is **listed** on that page. Listing is not permission to write.
 
-Unknown, not observed, not configured, unsupported, error, and access denied are distinct. Failed or canceled scans do not replace the last good view. Edition/build limitations are shown rather than silently filtered or presented as disabled configuration.
+Each path is exactly one class:
 
-## Process and data handling
+| Class | Meaning |
+|---|---|
+| Writable | Curated Settings entry, applicable, complete typed `WritableTarget`, compiled allowlist, user confirms |
+| Observe | Shown with documented function + observed evidence |
+| NativeHandoff | WPP will not mutate; open a compiled native tool or Settings URI |
+| ExternalApp | Another app owns it (browser DoH, VPN client). Named, not faked |
+| Unknown | Distinct evidence. Never drawn as off or safe |
 
-External collection commands use fixed absolute executables, structured fixed arguments, bounded output, timeouts, and cancellation without a generic runner exposed to the UI. Discovered text is display-only. Local preferences and shortcut state are atomically replaced beneath LocalAppData; logs are sanitized, rotated, and previous-hash chained there. The local-data ACL is limited to the current user, SYSTEM, and Administrators. The application has no telemetry or cloud backend. Local audit records are not claimed to be immutable or cryptographically tamper-proof.
+Presentation is three layers and must stay visually separate:
 
-The v2.5.1 elevation boundary is not a separate authenticated IPC broker. CredUI verifies an administrator password before Admin mode; UAC supplies an elevated token when required. High-impact changes require a fresh Windows credential step-up. The in-process Admin session remains open after Apply, and leaving Admin relaunches View-only through the Windows shell so the elevated token is dropped. A future broker must preserve the same default-deny checks and add authenticated, bounded IPC rather than accepting arbitrary serialized objects.
+1. **Documented function** — Microsoft / API / policy documentation.
+2. **Observed state** — collector + binder + distinct evidence enum.
+3. **WPP recommendation** — labeled as a recommendation, never as a Microsoft fact.
+
+## What may be written (this phase)
+
+Unchanged from v2.5.1 code:
+
+1. Curated Settings entry, not Explorer / Troubleshoot inventory / internal reference.
+2. Current edition/build and selected value applicable.
+3. Exact ObjectId in the source-controlled authorization table.
+4. Complete typed `WritableTarget` and supported raw value.
+5. User confirms the bounded batch once.
+
+Discovery, observation, search text, process output, and UI copy never authorize a write.
+
+Verified sequence: allowlist compare → pre-read exact target (abort on ambiguous/failed read) → one confirmation of current / intended / side effects / recovery → typed operation → independent read-back of value **and** registry kind → success only on match → local audit. Textual match with the wrong `RegistryValueKind` is failure. At most 32 unique changes. Cross-account HKCU is refused. Failed or canceled scans do not replace last-good `ScanService` state.
+
+Firewall writes remain the twelve profile properties (enabled / inbound / outbound / notifications × domain / private / public). Arbitrary firewall rules are inventory in Network and Troubleshoot/Explore.
+
+Service start/stop/restart remains the existing typed `ServiceController` path: verified non-Microsoft optional services only, after Administrator confirmation and `ServiceMutationPolicy`. Startup type is never changed. Critical names, Microsoft or unknown publishers, Boot/System start, shared svchost groups, and incomplete evidence stay diagnosis-only. **Do not surface those verbs in Troubleshoot/Explore in this phase.**
+
+Tasks, packages, features, capabilities, BitLocker *lifecycle* (encrypt/decrypt/protectors), AppX removal, DISM, and firewall-rule create/edit/delete stay unimplemented. `codex/2.6.0` is an archive, not a source to restore.
+
+BitLocker, Device Encryption, and UAC **registry policy** already in Settings stay high-impact: themed warning plus fresh credential step-up, then the normal contract.
+
+## Troubleshoot/Explore
+
+Read-only in this phase. Allowed actions: scan, filter, open a compiled native handoff, run a **fixed** live probe.
+
+Live probes use `SafeProcessRunner` or an in-process Windows API already used by collectors. Fixed executable, fixed arguments, timeout, no shell, no user-built command line.
+
+Allowed probe examples: adapter link, DNS resolve against *observed* effective resolvers, firewall profile effective state, service running check, Reliability Monitor summary, launch `perfmon /report` and keep the report path as evidence.
+
+Forbidden: generic “run this component,” ingesting perfmon HTML as write authority, synthetic health scores, bulk remediation.
+
+## AV / EDR / XDR coexistence
+
+On scan, record what Windows Security Center / `AntivirusProduct` (and equivalent Defender status) already exposes: product name, state, whether Defender is active or passive.
+
+Show that on Dashboard and Security. Do not stop, disable, exclude, unload, or “optimize” another vendor’s product. Do not fight Tamper Protection. Do not present WPP as the real-time engine. If a third-party stack owns protection, WPP observes and hands off to Windows Security.
+
+## Evidence
+
+Unknown, not observed, not configured, unsupported, error, and access denied stay distinct. Unknown is never safe. No synthetic privacy or security score. Dashboard tiles are counts of evidence states and probe findings tagged Privacy / Security / Network / Explore.
+
+## Permanent exclusions (product, not just this phase)
+
+Disk wipe/format, recovery-key deletion, account deletion, generic command/script execution, bulk harden/debloat profiles, telemetry, silent persistence, dynamic authorization (live inventory minting a `WritableTarget`), competing AV engine.
+
+Future write surfaces (DNS adapter writes, firewall-rule CRUD, task enable/disable, BitLocker lifecycle, and so on) need a new Safety_Model revision, researched ObjectIds, recovery, and tests. Human approval first. This file is not that approval.
