@@ -1,6 +1,6 @@
 # Architecture
 
-**Line:** v2.5.1 source plus four-section hub presentation.
+**Line:** v2.6.1. Parent: v2.5.1 @ b06efc9.
 
 ## Product shape
 
@@ -15,6 +15,8 @@ No CLI, background agent, service, driver, web backend, or plugin runtime.
 ## Information architecture
 
 ```text
+Caption: system min / max / close via WPF-UI TitleBar (never hide Close)
+Menu: File, Edit, View, Settings, Help
 Header: identity, back/forward, search, View-only|Administrator, scan
 Context bar: Privacy | Security | Network | Troubleshoot/Explore   + breadcrumbs
 Left rail: section title (section color) + that section's categories only
@@ -89,7 +91,8 @@ Visual tokens:
 - square / 2–4px corners, not pills
 - cards and setting bars are inset boxes; they do not bleed to the window edge
 - Fluent icons in the rail and context bar
-- drop the unused native `File / View / Settings / Tools / Help` menu
+- keep a native `File / Edit / View / Settings / Help` menu; wire existing handlers; do not invent write verbs
+- `ui:TitleBar` on the main FluentWindow with ShowClose/ShowMaximize/ShowMinimize true. Extending content into the title bar without TitleBar is a defect.
 - hide Apply on non-writable objects
 
 Do not merge WPF-UI theme dictionaries and the full legacy `AppStyles.xaml` as two competing systems. Bridge tokens once in `ThemeManager`.
@@ -98,4 +101,4 @@ Copy 2.6 *ideas* (icons, square inset cards). Do not copy 2.6 `MainWindow.xaml` 
 
 ## Identity and version
 
-`Directory.Build.props` remains the only literal version. This contract slice does not bump the product version. Next UI ship is `2.5.2`. Version `2.6.0` is burned on the archive branch.
+`Directory.Build.props` remains the only literal version. Live product version is **2.6.1**. Version `2.6.0` is burned on the archive branch `codex/2.6.0`.

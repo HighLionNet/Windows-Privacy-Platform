@@ -29,47 +29,10 @@ Implementation brief: [Work/four-section-hub.md](Work/four-section-hub.md).
 - No bulk profiles, generic editors, telemetry, silent persistence, dynamic authorization.
 - Do not restore 2.6 native write backends.
 - WPF-UI, when added, is pinned **4.3.0**. Main window only. Dialogs stay `Window` this slice.
+- Main window keeps `ui:TitleBar` min/max/close and a native File / Edit / View / Settings / Help menu. Human 2026-08-29: do not drop them.
 
 ## Current release delta
 
 `v2.6.1` is based on the four-section contract commit `5cb1673`; its product parent remains v2.5.1 @ `b06efc9`.
 
-Delta: four exclusive sections, WPF-UI 4.3.0 main-window chrome, square inset presentation tokens, and fail-soft Security Center antivirus observation. The v2.5.1 write contract and authorization table are unchanged; Troubleshoot/Explore remains read-only.
-
-Next: audit `origin/v2.6.1` against [Work/four-section-hub.md](Work/four-section-hub.md) and the v2.5.1 safety invariants.
-
-## Agent communication
-
-```text
-WPP-HANDOFF
-TASK:
-FROM: Grok|Codex|Human
-TO: Grok|Codex|Human
-TYPE: plan|implement|test|audit|challenge|escalate|complete
-BRANCH:
-BASE: v2.5.1@b06efc9
-TARGET: v2.6.1
-COMMIT:
-PUSHED:
-STATUS:
-RISK:
-CHANGED:
--
-VERIFIED:
-- dotnet test .\Source\WindowsPrivacyPlatform.sln -c Release →
-KNOWN:
--
-INSPECT:
--
-NEXT:
--
-BLOCKS-COMPLETE:
-```
-
-## Release check
-
-```powershell
-dotnet restore .\Source\WindowsPrivacyPlatform.sln
-dotnet build .\Source\WindowsPrivacyPlatform.sln -c Release --no-restore
-dotnet test .\Source\WindowsPrivacyPlatform.sln -c Release --no-build
-```
+Delta: four exclusive sections, WPF-UI 4.3.0 main-window chrome, square inset presentation tokens, fail-soft Security Center antivirus observation, native File/Edit/View/Settings/Help menu, and WPF-UI TitleBar caption buttons (min/max/close). The v2.5.1 write contract and authorization table are unchanged; Troubleshoot/Explore remains read-only.
