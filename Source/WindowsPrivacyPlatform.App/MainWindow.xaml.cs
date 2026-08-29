@@ -506,6 +506,13 @@ public partial class MainWindow : FluentWindow
         else StatusText.Text = _elevation.LastError;
     }
 
+    private void ModeSelectorBorder_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        ModeCombo.Focus();
+        ModeCombo.IsDropDownOpen = true;
+        e.Handled = true;
+    }
+
     private void SessionTimer_Tick(object? sender, EventArgs e)
     {
         if (ModeCombo.SelectedIndex != 1 || _elevation.IsAdminAuthorized || _reportedExpiredSession) return;

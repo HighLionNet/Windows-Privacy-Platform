@@ -310,9 +310,9 @@
   </Style>
 
   <Style TargetType="ComboBox">
-    <Setter Property="Background" Value="{DynamicResource BrushBgCard}" />
+    <Setter Property="Background" Value="{DynamicResource BrushAccentSoft}" />
     <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderStrong}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BrushAccent}" />
     <Setter Property="BorderThickness" Value="2" />
     <Setter Property="MinHeight" Value="34" />
     <Setter Property="Padding" Value="10,5,48,5" />
@@ -352,7 +352,7 @@
             <Popup Grid.ColumnSpan="2" x:Name="PART_Popup" AllowsTransparency="True" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}"
                    PopupAnimation="Fade" Focusable="False">
               <Border MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
-                      MaxHeight="320" Background="{DynamicResource BrushBgCard}" BorderBrush="{DynamicResource BrushBorderStrong}"
+                      MaxHeight="320" Background="{DynamicResource BrushBgHeader}" BorderBrush="{DynamicResource BrushAccent}"
                       BorderThickness="1" CornerRadius="3">
                 <ScrollViewer SnapsToDevicePixels="True"><ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/></ScrollViewer>
               </Border>
@@ -371,7 +371,7 @@
   </Style>
 
   <Style TargetType="ComboBoxItem">
-    <Setter Property="Background" Value="{DynamicResource BrushBgCard}" />
+    <Setter Property="Background" Value="{DynamicResource BrushBgHeader}" />
     <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}" />
     <Setter Property="Padding" Value="8,5" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />

@@ -22,59 +22,59 @@
       <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
 
-    <ui:TitleBar Grid.Row="0" Title="" MinHeight="54"
+    <ui:TitleBar Grid.Row="0" Title="" MinHeight="44"
                  ShowClose="True" ShowMaximize="True" ShowMinimize="True">
       <ui:TitleBar.Header>
-        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0">
-          <Image Width="36" Height="36" Source="Assets/WindowsPrivacyPlatform.png" Stretch="Uniform"
-                 Margin="0,0,10,0" RenderOptions.BitmapScalingMode="HighQuality"/>
-          <StackPanel VerticalAlignment="Center">
-            <StackPanel Orientation="Horizontal">
-              <TextBlock x:Name="ProductNameText" FontSize="17.5" FontWeight="Bold" TextTrimming="CharacterEllipsis"/>
-              <TextBlock x:Name="HeaderVersionText" Margin="9,0,0,0" VerticalAlignment="Center"
-                         Foreground="{DynamicResource BrushAccent}" FontSize="11" FontWeight="Bold"/>
-            </StackPanel>
-            <TextBlock x:Name="ScanTimeLabel" Text="Not scanned" FontSize="10" Foreground="{DynamicResource BrushTextMuted}"/>
-          </StackPanel>
-        </StackPanel>
+        <Menu x:Name="TopMenu" HorizontalAlignment="Left" VerticalAlignment="Center" Background="Transparent">
+          <MenuItem Header="_File">
+            <MenuItem Header="_Scan" InputGestureText="F5" Click="MenuScan_Click"/>
+            <Separator/>
+            <MenuItem Header="E_xit" InputGestureText="Alt+F4" Click="MenuExit_Click"/>
+          </MenuItem>
+          <MenuItem Header="_Options">
+            <MenuItem Header="_Find…" InputGestureText="Ctrl+F" Click="MenuSearch_Click"/>
+            <MenuItem Header="_Copy search text" Click="MenuCopySearch_Click"/>
+          </MenuItem>
+          <MenuItem Header="_View">
+            <MenuItem Header="_Dashboard" Click="MenuHome_Click"/>
+            <MenuItem Header="_Privacy" Click="PrivacySection_Click"/>
+            <MenuItem Header="_Security" Click="SecuritySection_Click"/>
+            <MenuItem Header="_Network" Click="NetworkSection_Click"/>
+            <MenuItem Header="Troubleshoot/_Explore" Click="ExploreSection_Click"/>
+            <Separator/>
+            <MenuItem Header="System E_xplorer" Click="MenuInventory_Click"/>
+            <MenuItem Header="_Conflicts" Click="MenuConflicts_Click"/>
+            <MenuItem Header="_Knowledge Explorer" Click="MenuKnowledge_Click"/>
+            <Separator/>
+            <MenuItem Header="_Back" InputGestureText="Alt+Left" Click="BackButton_Click"/>
+            <MenuItem Header="_Forward" InputGestureText="Alt+Right" Click="ForwardButton_Click"/>
+            <MenuItem Header="Toggle _Navigation Pane" Click="ToggleSidebar_Click"/>
+            <MenuItem Header="_Refresh" InputGestureText="Ctrl+R" Click="MenuScan_Click"/>
+          </MenuItem>
+          <MenuItem Header="_Settings">
+            <MenuItem Header="_App Settings" Click="MenuSettings_Click"/>
+          </MenuItem>
+          <MenuItem Header="_Help">
+            <MenuItem Header="_About" Click="MenuAbout_Click"/>
+          </MenuItem>
+        </Menu>
       </ui:TitleBar.Header>
     </ui:TitleBar>
 
-    <Border Grid.Row="1" Background="{DynamicResource BrushBgMenu}"
-            BorderBrush="{DynamicResource BrushBorderStrong}" BorderThickness="0,0,0,1">
-    <Menu x:Name="TopMenu" HorizontalAlignment="Left" Background="{DynamicResource BrushBgMenu}">
-      <MenuItem Header="_File">
-        <MenuItem Header="_Scan" InputGestureText="F5" Click="MenuScan_Click"/>
-        <Separator/>
-        <MenuItem Header="E_xit" InputGestureText="Alt+F4" Click="MenuExit_Click"/>
-      </MenuItem>
-      <MenuItem Header="_Options">
-        <MenuItem Header="_Find…" InputGestureText="Ctrl+F" Click="MenuSearch_Click"/>
-        <MenuItem Header="_Copy search text" Click="MenuCopySearch_Click"/>
-      </MenuItem>
-      <MenuItem Header="_View">
-        <MenuItem Header="_Dashboard" Click="MenuHome_Click"/>
-        <MenuItem Header="_Privacy" Click="PrivacySection_Click"/>
-        <MenuItem Header="_Security" Click="SecuritySection_Click"/>
-        <MenuItem Header="_Network" Click="NetworkSection_Click"/>
-        <MenuItem Header="Troubleshoot/_Explore" Click="ExploreSection_Click"/>
-        <Separator/>
-        <MenuItem Header="System E_xplorer" Click="MenuInventory_Click"/>
-        <MenuItem Header="_Conflicts" Click="MenuConflicts_Click"/>
-        <MenuItem Header="_Knowledge Explorer" Click="MenuKnowledge_Click"/>
-        <Separator/>
-        <MenuItem Header="_Back" InputGestureText="Alt+Left" Click="BackButton_Click"/>
-        <MenuItem Header="_Forward" InputGestureText="Alt+Right" Click="ForwardButton_Click"/>
-        <MenuItem Header="Toggle _Navigation Pane" Click="ToggleSidebar_Click"/>
-        <MenuItem Header="_Refresh" InputGestureText="Ctrl+R" Click="MenuScan_Click"/>
-      </MenuItem>
-      <MenuItem Header="_Settings">
-        <MenuItem Header="_App Settings" Click="MenuSettings_Click"/>
-      </MenuItem>
-      <MenuItem Header="_Help">
-        <MenuItem Header="_About" Click="MenuAbout_Click"/>
-      </MenuItem>
-    </Menu>
+    <Border Grid.Row="1" MinHeight="82" Background="{DynamicResource BrushHeaderChrome}"
+            BorderBrush="{DynamicResource BrushAccent}" BorderThickness="0,1,0,2" Padding="20,10">
+      <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Left">
+          <Image Width="54" Height="54" Source="Assets/WindowsPrivacyPlatform.png" Stretch="Uniform"
+                 Margin="0,0,14,0" RenderOptions.BitmapScalingMode="HighQuality"/>
+          <StackPanel VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock x:Name="ProductNameText" FontSize="23" FontWeight="Bold" TextTrimming="CharacterEllipsis"/>
+              <TextBlock x:Name="HeaderVersionText" Margin="11,0,0,0" VerticalAlignment="Center"
+                         Foreground="{DynamicResource BrushAccent}" FontSize="12" FontWeight="Bold"/>
+            </StackPanel>
+            <TextBlock x:Name="ScanTimeLabel" Text="Not scanned" FontSize="11" Foreground="{DynamicResource BrushTextMuted}"/>
+          </StackPanel>
+      </StackPanel>
     </Border>
 
     <Border Grid.Row="2" Background="{DynamicResource BrushHeaderChrome}"
@@ -114,13 +114,14 @@
           </Grid>
         </Border>
 
-        <Border Grid.Column="3" Background="{DynamicResource BrushAccentSoft}" BorderBrush="{DynamicResource BrushAccent}"
-                BorderThickness="2" CornerRadius="4" Padding="8,0" Height="36" Margin="0,0,10,0">
-          <StackPanel Orientation="Horizontal">
+        <Border x:Name="ModeSelectorBorder" Grid.Column="3" Background="{DynamicResource BrushAccentSoft}" BorderBrush="{DynamicResource BrushAccent}"
+                BorderThickness="2" CornerRadius="4" Padding="8,0" Height="38" Margin="0,0,10,0"
+                Cursor="Hand" MouseLeftButtonDown="ModeSelectorBorder_MouseLeftButtonDown" ToolTip="Change session mode">
+          <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
             <TextBlock Text="MODE" Style="{StaticResource FilterLabel}" Margin="0,0,7,0"/>
             <ui:SymbolIcon Symbol="ShieldKeyhole24" Width="16" Margin="0,0,6,0"/>
             <ComboBox x:Name="ModeCombo" Width="150" BorderThickness="0" Background="Transparent"
-                      SelectedIndex="0" VerticalContentAlignment="Center"
+                      SelectedIndex="0" VerticalAlignment="Center" VerticalContentAlignment="Center"
                       SelectionChanged="ModeCombo_SelectionChanged" DropDownOpened="ModeCombo_DropDownOpened" ToolTip="Session authority">
               <ComboBoxItem Content="View-only" IsSelected="True"/><ComboBoxItem Content="Administrator"/>
             </ComboBox>
@@ -140,25 +141,31 @@
     <ProgressBar x:Name="ScanProgress" Grid.Row="3" IsIndeterminate="True" Height="2" Visibility="Collapsed"/>
 
     <Border Grid.Row="4" Background="{DynamicResource BrushBgHeader}"
-            BorderBrush="{DynamicResource BrushBorderStrong}" BorderThickness="0,0,0,1" Padding="14,11">
+            BorderBrush="{DynamicResource BrushBorderStrong}" BorderThickness="0,0,0,1" Padding="14,10,14,8">
       <Grid>
-        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-          <Button x:Name="PrivacySectionButton" Style="{StaticResource SectionToggleSelected}" Click="PrivacySection_Click">
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <UniformGrid Grid.Row="0" Columns="4">
+          <Button x:Name="PrivacySectionButton" Style="{StaticResource SectionToggleSelected}" Click="PrivacySection_Click"
+                  Margin="0,0,5,0" HorizontalContentAlignment="Center">
             <StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="AppsListDetail24" Width="18" Margin="0,0,7,0"/><TextBlock Text="Privacy"/></StackPanel>
           </Button>
-          <Button x:Name="SecuritySectionButton" Style="{StaticResource SectionToggle}" Click="SecuritySection_Click">
+          <Button x:Name="SecuritySectionButton" Style="{StaticResource SectionToggle}" Click="SecuritySection_Click"
+                  Margin="2,0,3,0" HorizontalContentAlignment="Center">
             <StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Shield24" Width="18" Margin="0,0,7,0"/><TextBlock Text="Security"/></StackPanel>
           </Button>
-          <Button x:Name="NetworkSectionButton" Style="{StaticResource SectionToggle}" Click="NetworkSection_Click">
+          <Button x:Name="NetworkSectionButton" Style="{StaticResource SectionToggle}" Click="NetworkSection_Click"
+                  Margin="3,0,2,0" HorizontalContentAlignment="Center">
             <StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="WifiLock24" Width="18" Margin="0,0,7,0"/><TextBlock Text="Network"/></StackPanel>
           </Button>
-          <Button x:Name="ExploreSectionButton" Style="{StaticResource SectionToggle}" Click="ExploreSection_Click">
+          <Button x:Name="ExploreSectionButton" Style="{StaticResource SectionToggle}" Click="ExploreSection_Click"
+                  Margin="5,0,0,0" HorizontalContentAlignment="Center">
             <StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Desktop24" Width="18" Margin="0,0,7,0"/><TextBlock Text="Troubleshoot/Explore"/></StackPanel>
           </Button>
-        </StackPanel>
-        <Border Grid.Column="1" Width="1" Height="32" Background="{DynamicResource BrushBorderStrong}" Margin="6,0,14,0"/>
-        <StackPanel Grid.Column="2" x:Name="BreadcrumbPanel" Orientation="Horizontal" VerticalAlignment="Center"/>
+        </UniformGrid>
+        <Border Grid.Row="1" BorderBrush="{DynamicResource BrushBorderRule}" BorderThickness="0,1,0,0"
+                Margin="0,8,0,0" Padding="2,7,2,0">
+          <StackPanel x:Name="BreadcrumbPanel" Orientation="Horizontal" VerticalAlignment="Center"/>
+        </Border>
       </Grid>
     </Border>
 
