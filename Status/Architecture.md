@@ -1,6 +1,6 @@
 # Architecture
 
-**Line:** v2.6.1. Parent: v2.5.1 @ b06efc9.
+**Line:** 2.6.1 on `main` (frozen snapshot `v2.6.1`). Parent: v2.5.1 @ b06efc9.
 
 ## Product shape
 

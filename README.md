@@ -2,43 +2,42 @@
 
 <img src="Source/WindowsPrivacyPlatform.App/Assets/WindowsPrivacyPlatform.png" alt="Windows Privacy Platform shield mark" width="128" height="128">
 
-Windows Privacy Platform is a focused, local privacy and security policy hub for Windows 10 and Windows 11. It makes the settings that affect app access, data sharing, Defender, Firewall, networking, remote access, and Microsoft apps understandable without becoming a generic registry editor or diagnostics suite.
+Windows Privacy Platform is a local privacy, security, and network policy hub for Windows 10 and Windows 11. It shows the settings that actually control app access, diagnostics, Defender, Firewall, DNS, remote access, and Microsoft apps — without becoming a generic registry editor, debloater, or antivirus.
 
-The operating rule is simple: show only relevant, editable policy in Settings; observe the wider operating system in a separate, read-only System Explorer; deny every write that is not explicitly authorized.
+The operating rule is simple: show only curated, editable policy in Settings; observe the rest of the operating system in a separate, read-only Troubleshoot/Explore surface; deny every write that is not explicitly authorized.
 
-## What v2.4.0 delivers
+Current product line: **2.6.1**. Source of truth is [`main`](https://github.com/HighLionNet/Windows-Privacy-Platform). Frozen snapshots live on `vX.Y.Z` branches.
 
-- A concise **Privacy & Security Overview** that identifies high-attention policies, review items, and protections actually observed. It never treats unknown values as safe and does not invent a synthetic score.
-- Focused **Settings** categories containing only editable privacy and security policy.
-- A fast, searchable, purpose-grouped **System Explorer** for read-only tasks, packages, Windows features, capabilities, and firewall rules, plus a compact top-level **Services** evidence view with advanced filters.
-- Category-first navigation: search and Overview findings land on the relevant settings list and highlight the match; detail opens only when explicitly requested.
-- Pending option selection with a clear observed-versus-proposed comparison and one confirmation for a bounded batch.
-- Clear evidence states for configured, not configured, not observed, unsupported, access denied, and unknown results.
-- Direct registry/policy paths, compact descriptions, and plain-language option effects.
-- Edition/build applicability for Windows 10 and Windows 11 rather than pretending every control exists everywhere.
-- Curated, independently verified registry-policy changes, including the twelve bounded firewall-profile controls.
-- No service, scheduled-task, package, optional-feature, BitLocker, UAC, or arbitrary firewall-rule mutation.
-- No application telemetry, cloud account, bulk hardening profile, generic command runner, background agent, or remediation scripts.
+## What 2.6.1 delivers
+
+- Four exclusive sections: **Privacy**, **Security**, **Network**, and **Troubleshoot/Explore**.
+- Persistent Hub destinations: Dashboard, Conflicts, Knowledge Explorer, App Settings, and About.
+- Category-first navigation. Search and Dashboard findings land on a settings list; detail opens only when requested.
+- Distinct evidence states: configured, not configured, not observed, unsupported, access denied, unknown, and error. Unknown is never treated as safe. There is no synthetic score.
+- Curated registry-policy changes with one confirmation, independent value-and-kind read-back, and a local audit.
+- Twelve bounded firewall-profile controls (enabled / inbound / outbound / notifications × domain / private / public). Individual firewall rules stay inventory.
+- Fail-soft observation of Windows Security Center antivirus / EDR products. WPP does not fight, disable, or replace them.
+- No bulk hardening profile, generic command runner, telemetry, cloud account, background agent, or silent persistence.
 
 ## Run a downloaded release
 
 1. Install the [.NET 8 Desktop Runtime for Windows x64](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) if it is not already present.
-2. Download `WindowsPrivacyPlatform-win-x64.zip` from the repository's latest GitHub Release.
+2. Download `WindowsPrivacyPlatform-win-x64.zip` from the repository's latest GitHub Release for **2.6.1** (do not use 2.3.x archives).
 3. Extract the entire archive to a permanent folder. Do not run the executable from inside the zip.
-4. Open `WindowsPrivacyPlatform.exe` and choose **Inspect** or **Modify**. Modify mode requests Windows elevation for machine policy.
+4. Open `WindowsPrivacyPlatform.exe` and choose **View-only** or **Administrator**. Administrator mode requests Windows elevation for machine policy.
 5. Accept the one-time shortcut offer if you want Desktop and Start Menu entries that point to the extracted executable.
 
-The archive includes `START_HERE.md` with the same deployment guidance. There is no installer and the release does not silently persist services, drivers, or background agents.
+The archive includes `START_HERE.md` with the same deployment guidance. There is no installer. Removing the extracted folder uninstalls the app.
 
 ## Safety contract
 
 Every writable object is deny-by-default. Discovery data never grants mutation rights. A change must have a complete typed target in a source-controlled allowlist and follows:
 
 ```text
-pre-read → explicit confirmation → typed operation → independent read-back → local audit
+allowlist compare → pre-read → explicit confirmation → typed operation → independent read-back of value and kind → local audit
 ```
 
-Failure at any stage is reported as failure; a textual match with the wrong registry type is not accepted. The runtime target is compared to the compiled allowlist before every operation. System Explorer and Services are always read-only, and the modification engine rejects every non-registry target. See [Status/Safety_Model.md](Status/Safety_Model.md) and [Status/Review-v2.4.0.md](Status/Review-v2.4.0.md) for the full contract and review.
+Failure at any stage is reported as failure. A textual match with the wrong registry type is not accepted. System Explorer, live inventory, and arbitrary firewall rules cannot acquire a write target. See [Status/Safety_Model.md](Status/Safety_Model.md).
 
 ## Build from source
 
@@ -52,7 +51,7 @@ dotnet test .\Source\WindowsPrivacyPlatform.sln -c Release --no-build
 .\scripts\verify-release.ps1 -ArchivePath .\.artifacts\release\WindowsPrivacyPlatform-win-x64.zip
 ```
 
-The release archive is written beneath `.artifacts\release`. `sync-run.ps1` is a safe fast-forward-only convenience workflow; it refuses to discard a dirty checkout.
+The release archive is written beneath `.artifacts\release`. `sync-run.ps1` is a fast-forward-only convenience workflow; it refuses to discard a dirty checkout.
 
 ## Optional Authenticode signing
 
@@ -71,6 +70,6 @@ GitHub Actions also accepts `WPP_SIGN_CERT_BASE64`, `WPP_SIGN_CERT_PATH`, `WPP_S
 
 Window preferences, the one-time shortcut decision, and local audit logs are stored beneath `%LocalAppData%\WindowsPrivacyPlatform`. The app does not send them anywhere.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), and [Status/Architecture.md](Status/Architecture.md) for engineering and security details.
+See [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), and [Status/Architecture.md](Status/Architecture.md).
 
 Maintained by HighLionNet. [Project repository](https://github.com/HighLionNet/Windows-Privacy-Platform).
