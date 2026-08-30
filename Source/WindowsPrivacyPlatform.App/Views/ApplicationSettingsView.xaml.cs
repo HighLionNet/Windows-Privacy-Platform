@@ -106,8 +106,8 @@ public partial class ApplicationSettingsView : UserControl
         if (!stepUp.TryAuthorizeBinaryVerification(owner)) return;
         var accepted = BinaryIntegrityGuard.AcceptCurrent(_dataRoot, _log);
         IntegrityStatusText.Text = BinaryIntegrityGuard.Status;
-        MessageBox.Show(owner, accepted ? "The current executable hash is now verified." : "The executable hash could not be recorded.",
-            accepted ? "Binary verified" : "Verification failed", MessageBoxButton.OK,
+        MessageBox.Show(owner, accepted ? "The current executable hash was recorded for later comparison." : "The executable hash could not be recorded.",
+            accepted ? "Hash recorded" : "Recording failed", MessageBoxButton.OK,
             accepted ? MessageBoxImage.Information : MessageBoxImage.Warning);
     }
 

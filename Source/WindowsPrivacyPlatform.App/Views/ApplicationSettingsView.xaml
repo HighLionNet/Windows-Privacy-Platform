@@ -78,7 +78,7 @@
           <TextBlock Grid.Row="4" Text="Catalog hash" Style="{StaticResource PropLabel}"/><TextBlock x:Name="CatalogHashText" Grid.Row="4" Grid.Column="1" Style="{StaticResource PropValue}" FontFamily="Cascadia Mono, Consolas"/>
           <TextBlock Grid.Row="5" Text="Startup verification" Style="{StaticResource PropLabel}"/><TextBlock x:Name="IntegrityStatusText" Grid.Row="5" Grid.Column="1" Style="{StaticResource PropValue}"/>
           <TextBlock Grid.Row="6" Text="Binary trust" Style="{StaticResource PropLabel}"/>
-          <Button Grid.Row="6" Grid.Column="1" Content="Verify current binary" Style="{StaticResource ActionNeutral}"
+          <Button Grid.Row="6" Grid.Column="1" Content="Record current hash" Style="{StaticResource ActionNeutral}"
                   HorizontalAlignment="Left" Margin="0,4,0,4" Click="VerifyBinary_Click"/>
         </Grid>
       </StackPanel>

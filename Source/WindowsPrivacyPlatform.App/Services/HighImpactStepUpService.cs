@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
-using System.Text;
+using System.Security.Cryptography;
+using System.Security.Principal;
 using System.Windows;
 using Microsoft.Win32.SafeHandles;
 using WindowsPrivacyPlatform.Logging;
@@ -35,8 +36,8 @@ public sealed class HighImpactStepUpService
     public bool TryAuthorizeBinaryVerification(Window? owner)
     {
         var warning = new HighImpactWarningDialog(
-            "The current executable hash will replace the previously verified hash.",
-            "Only continue if you intentionally installed or rebuilt this version from a source you trust.")
+            "The current executable hash will replace the previously recorded comparison hash.",
+            "This changes only the local integrity status line; it does not trust or authorize an unsigned executable.")
         { Owner = owner };
         if (warning.ShowDialog() != true)
         {
@@ -79,32 +80,52 @@ public sealed class HighImpactStepUpService
 
         try
         {
-            var user = new StringBuilder(256);
-            var domain = new StringBuilder(256);
-            var password = new StringBuilder(256);
-            var userSize = user.Capacity;
-            var domainSize = domain.Capacity;
-            var passwordSize = password.Capacity;
-            if (!CredUnPackAuthenticationBuffer(0, buffer, bufferSize, user, ref userSize,
-                    domain, ref domainSize, password, ref passwordSize))
-                return false;
+            var user = new char[1024];
+            var domain = new char[1024];
+            var password = new char[1024];
+            var userHandle = GCHandle.Alloc(user, GCHandleType.Pinned);
+            var domainHandle = GCHandle.Alloc(domain, GCHandleType.Pinned);
+            var passwordHandle = GCHandle.Alloc(password, GCHandleType.Pinned);
             try
             {
-                if (!LogonUser(user.ToString(), domain.ToString(), password.ToString(), 2, 0, out var token))
+                var userSize = user.Length;
+                var domainSize = domain.Length;
+                var passwordSize = password.Length;
+                if (!CredUnPackAuthenticationBuffer(0, buffer, bufferSize,
+                        userHandle.AddrOfPinnedObject(), ref userSize,
+                        domainHandle.AddrOfPinnedObject(), ref domainSize,
+                        passwordHandle.AddrOfPinnedObject(), ref passwordSize))
                     return false;
-                token.Dispose();
-                return true;
+                if (!LogonUser(userHandle.AddrOfPinnedObject(), domainHandle.AddrOfPinnedObject(),
+                        passwordHandle.AddrOfPinnedObject(), 2, 0, out var token))
+                    return false;
+                using (token)
+                {
+                    return WindowsIdentity.RunImpersonated(token, () =>
+                    {
+                        using var identity = WindowsIdentity.GetCurrent(TokenAccessLevels.Query);
+                        return new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator);
+                    });
+                }
             }
             finally
             {
-                password.Clear();
-                user.Clear();
-                domain.Clear();
+                CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(password.AsSpan()));
+                CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(user.AsSpan()));
+                CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(domain.AsSpan()));
+                passwordHandle.Free();
+                userHandle.Free();
+                domainHandle.Free();
             }
         }
         finally
         {
-            RtlSecureZeroMemory(buffer, bufferSize);
+            if (bufferSize <= int.MaxValue)
+            {
+                var zero = new byte[(int)bufferSize];
+                Marshal.Copy(zero, 0, buffer, zero.Length);
+                CryptographicOperations.ZeroMemory(zero);
+            }
             Marshal.FreeCoTaskMem(buffer);
         }
     }
@@ -131,14 +152,11 @@ public sealed class HighImpactStepUpService
     [DllImport("credui.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool CredUnPackAuthenticationBuffer(uint flags, IntPtr authBuffer,
-        uint authBufferSize, StringBuilder user, ref int userSize, StringBuilder domain,
-        ref int domainSize, StringBuilder password, ref int passwordSize);
+        uint authBufferSize, IntPtr user, ref int userSize, IntPtr domain,
+        ref int domainSize, IntPtr password, ref int passwordSize);
 
     [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool LogonUser(string user, string domain, string password, int logonType,
+    private static extern bool LogonUser(IntPtr user, IntPtr domain, IntPtr password, int logonType,
         int logonProvider, out SafeAccessTokenHandle token);
-
-    [DllImport("kernel32.dll", EntryPoint = "RtlSecureZeroMemory")]
-    private static extern IntPtr RtlSecureZeroMemory(IntPtr destination, uint length);
 }

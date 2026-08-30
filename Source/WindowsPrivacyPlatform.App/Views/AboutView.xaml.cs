@@ -23,6 +23,7 @@ public partial class AboutView : UserControl
         CompanyText.Text = product.Company;
         CopyrightText.Text = product.Copyright;
         PathText.Text = Environment.ProcessPath ?? "Unavailable";
+        HashText.Text = BinaryIntegrityGuard.CurrentHash;
         SigningText.Text = SigningState(Environment.ProcessPath);
         OsText.Text = scan.Overview is null
             ? "Not detected"

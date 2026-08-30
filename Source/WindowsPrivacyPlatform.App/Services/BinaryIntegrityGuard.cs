@@ -1,5 +1,7 @@
 using System.Security.Cryptography;
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Security.Cryptography.X509Certificates;
 using WindowsPrivacyPlatform.Core;
 using WindowsPrivacyPlatform.Logging;
 
@@ -23,24 +25,24 @@ public static class BinaryIntegrityGuard
                 CurrentHash = Convert.ToHexString(SHA256.HashData(stream));
                 var record = Path.Combine(dataRoot, "verified-binary.sha256");
                 var previous = AtomicLocalFile.ReadAllLines(dataRoot, record).FirstOrDefault()?.Trim();
-                if (string.IsNullOrWhiteSpace(previous))
-                {
-                    AtomicLocalFile.WriteText(dataRoot, record, CurrentHash + Environment.NewLine);
-                    HighImpactAllowed = true;
-                    Status = "Current binary recorded at startup";
-                }
-                else
-                {
-                    HighImpactAllowed = CryptographicOperations.FixedTimeEquals(
-                        Convert.FromHexString(previous), Convert.FromHexString(CurrentHash));
-                    Status = HighImpactAllowed ? "Matches last verified startup hash" : "Hash changed — high-impact Apply blocked";
-                }
-                log.Auth("BinaryIntegrity", "result=" + (HighImpactAllowed ? "Verified" : "Mismatch"));
+                var hashMatches = IsHashMatch(previous, CurrentHash);
+                var signature = InspectSignature(executable);
+                HighImpactAllowed = EvaluatePolicy(signature.IsSigned, signature.IsValid, signature.PublisherMatches, hashMatches);
+                Status = signature.IsSigned
+                    ? signature.IsValid && signature.PublisherMatches
+                        ? "Authenticode signature valid · publisher HighLionNet"
+                        : "Signed build failed signature or publisher validation — high-impact Apply blocked"
+                    : string.IsNullOrWhiteSpace(previous)
+                        ? "Unsigned community build · no previous hash recorded"
+                        : hashMatches
+                            ? "Unsigned community build · hash unchanged"
+                            : "Unsigned community build · hash changed (status only)";
+                log.Auth("BinaryIntegrity", $"result={(HighImpactAllowed ? "Allowed" : "Blocked")} signed={signature.IsSigned} signatureValid={signature.IsValid} publisherMatch={signature.PublisherMatches} hashMatch={hashMatches}");
             }
             catch (Exception ex)
             {
                 HighImpactAllowed = false;
-                Status = "Unable to verify — high-impact Apply blocked";
+                Status = "Executable integrity could not be inspected — high-impact Apply blocked";
                 log.Auth("BinaryIntegrity", "result=Error category=" + ex.GetType().Name);
             }
         }
@@ -55,8 +57,11 @@ public static class BinaryIntegrityGuard
                 if (CurrentHash.Length != 64 || !CurrentHash.All(Uri.IsHexDigit)) return false;
                 var record = Path.Combine(dataRoot, "verified-binary.sha256");
                 AtomicLocalFile.WriteText(dataRoot, record, CurrentHash + Environment.NewLine);
-                HighImpactAllowed = true;
-                Status = "Current binary verified by the user";
+                var signature = InspectSignature(Environment.ProcessPath ?? string.Empty);
+                HighImpactAllowed = EvaluatePolicy(signature.IsSigned, signature.IsValid, signature.PublisherMatches, hashMatches: true);
+                Status = signature.IsSigned
+                    ? HighImpactAllowed ? "Authenticode signature valid · publisher HighLionNet" : "Signed build failed signature or publisher validation"
+                    : "Unsigned community build · current hash recorded";
                 log.Auth("BinaryIntegrity", "result=AcceptedCurrentBinary");
                 return true;
             }
@@ -67,4 +72,99 @@ public static class BinaryIntegrityGuard
             }
         }
     }
+
+    public static bool EvaluatePolicy(bool isSigned, bool signatureValid, bool publisherMatches, bool hashMatches) =>
+        isSigned ? signatureValid && publisherMatches : true;
+
+    private static bool IsHashMatch(string? previous, string current)
+    {
+        try
+        {
+            return !string.IsNullOrWhiteSpace(previous) && previous.Length == 64 && current.Length == 64 &&
+                   CryptographicOperations.FixedTimeEquals(Convert.FromHexString(previous), Convert.FromHexString(current));
+        }
+        catch { return false; }
+    }
+
+    private static (bool IsSigned, bool IsValid, bool PublisherMatches) InspectSignature(string executable)
+    {
+        if (string.IsNullOrWhiteSpace(executable) || !File.Exists(executable)) return (false, false, false);
+        try
+        {
+            using var certificate = new X509Certificate2(X509Certificate.CreateFromSignedFile(executable));
+            var publisher = certificate.Subject.Contains("HighLionNet", StringComparison.OrdinalIgnoreCase);
+            try
+            {
+                return (true, VerifyAuthenticode(executable), publisher);
+            }
+            catch
+            {
+                return (true, false, publisher);
+            }
+        }
+        catch (CryptographicException)
+        {
+            return (false, false, false);
+        }
+    }
+
+    private static bool VerifyAuthenticode(string executable)
+    {
+        var file = new WinTrustFileInfo
+        {
+            Size = (uint)Marshal.SizeOf<WinTrustFileInfo>(),
+            FilePath = executable
+        };
+        var filePointer = Marshal.AllocHGlobal(Marshal.SizeOf<WinTrustFileInfo>());
+        try
+        {
+            Marshal.StructureToPtr(file, filePointer, fDeleteOld: false);
+            var data = new WinTrustData
+            {
+                Size = (uint)Marshal.SizeOf<WinTrustData>(),
+                UiChoice = 2, // WTD_UI_NONE
+                RevocationChecks = 0, // WTD_REVOKE_NONE
+                UnionChoice = 1, // WTD_CHOICE_FILE
+                FileInfo = filePointer,
+                ProviderFlags = 0x00001000 // WTD_CACHE_ONLY_URL_RETRIEVAL
+            };
+            var action = new Guid("00AAC56B-CD44-11D0-8CC2-00C04FC295EE"); // WINTRUST_ACTION_GENERIC_VERIFY_V2
+            return WinVerifyTrust(IntPtr.Zero, ref action, ref data) == 0;
+        }
+        finally
+        {
+            Marshal.DestroyStructure<WinTrustFileInfo>(filePointer);
+            Marshal.FreeHGlobal(filePointer);
+        }
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct WinTrustFileInfo
+    {
+        public uint Size;
+        [MarshalAs(UnmanagedType.LPWStr)] public string FilePath;
+        public IntPtr FileHandle;
+        public IntPtr KnownSubject;
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct WinTrustData
+    {
+        public uint Size;
+        public IntPtr PolicyCallbackData;
+        public IntPtr SipClientData;
+        public uint UiChoice;
+        public uint RevocationChecks;
+        public uint UnionChoice;
+        public IntPtr FileInfo;
+        public uint StateAction;
+        public IntPtr StateData;
+        public IntPtr UrlReference;
+        public uint ProviderFlags;
+        public uint UiContext;
+        public IntPtr SignatureSettings;
+    }
+
+    [DllImport("wintrust.dll", ExactSpelling = true, PreserveSig = true)]
+    private static extern int WinVerifyTrust(IntPtr window, ref Guid actionId, ref WinTrustData data);
 }

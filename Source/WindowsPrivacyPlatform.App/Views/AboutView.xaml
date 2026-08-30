@@ -25,6 +25,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
           </Grid.RowDefinitions>
           <TextBlock Text="Name" Style="{StaticResource SheetLabel}" />
           <TextBlock x:Name="NameText" Grid.Column="1" Style="{StaticResource SheetValue}" FontWeight="SemiBold" />
@@ -42,8 +43,10 @@
           <TextBlock x:Name="PathText" Grid.Row="6" Grid.Column="1" Style="{StaticResource SheetValue}" FontFamily="Cascadia Mono, Consolas" />
           <TextBlock Grid.Row="7" Text="Signing state" Style="{StaticResource SheetLabel}" />
           <TextBlock x:Name="SigningText" Grid.Row="7" Grid.Column="1" Style="{StaticResource SheetValue}" />
-          <TextBlock Grid.Row="8" Text="Repository" Style="{StaticResource SheetLabel}" />
-          <Button x:Name="RepositoryButton" Grid.Row="8" Grid.Column="1" HorizontalAlignment="Left"
+          <TextBlock Grid.Row="8" Text="Executable SHA-256" Style="{StaticResource SheetLabel}" />
+          <TextBlock x:Name="HashText" Grid.Row="8" Grid.Column="1" Style="{StaticResource SheetValue}" FontFamily="Cascadia Mono, Consolas" />
+          <TextBlock Grid.Row="9" Text="Repository" Style="{StaticResource SheetLabel}" />
+          <Button x:Name="RepositoryButton" Grid.Row="9" Grid.Column="1" HorizontalAlignment="Left"
                   Style="{StaticResource LinkButton}" Margin="0,4,0,4" Click="RepositoryButton_Click" />
         </Grid>
       </StackPanel>
