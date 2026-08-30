@@ -26,16 +26,19 @@ public sealed class FourSectionHubTests
     }
 
     [Fact]
-    public void Explore_destinations_are_read_only_and_persistent_items_are_not_section_categories()
+    public void Explore_destinations_are_partitioned_and_persistent_items_are_not_section_categories()
     {
         var explore = HubNavigation.CategoriesFor(HubSection.Explore, ManagedObjectCatalog.All);
         Assert.NotEmpty(explore);
         Assert.All(explore, item =>
         {
             Assert.Equal(HubSection.Explore, item.Section);
-            Assert.True(item.IsReadOnlyDestination);
             Assert.False(item.IsPersistent);
         });
+        Assert.Contains(explore, item => item.Tag == "explore:other-services" && !item.IsReadOnlyDestination);
+        Assert.Contains(explore, item => item.Tag == "explore:other-tasks" && !item.IsReadOnlyDestination);
+        Assert.All(explore.Where(item => item.Tag is not ("explore:other-services" or "explore:other-tasks")),
+            item => Assert.True(item.IsReadOnlyDestination));
 
         Assert.All(HubNavigation.PersistentItems, item =>
         {
