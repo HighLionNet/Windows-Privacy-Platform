@@ -4,15 +4,20 @@
 
 Windows Privacy Platform is a local privacy, security, and network policy hub for Windows 10 and Windows 11. It shows the settings that actually control app access, diagnostics, Defender, Firewall, DNS, remote access, and Microsoft apps — without becoming a generic registry editor, debloater, or antivirus.
 
-The operating rule is simple: show only curated, editable policy in Settings; observe the rest of the operating system in a separate, read-only Troubleshoot/Explore surface; deny every write that is not explicitly authorized.
+The operating rule is simple: show only curated, editable registry policy in Settings; keep live inventory in Troubleshoot/Explore; authorize only narrowly typed service-runtime and scheduled-task actions from a fresh scan; deny everything else.
 
-Current product line: **2.6.1**. Source of truth is [`main`](https://github.com/HighLionNet/Windows-Privacy-Platform). Frozen snapshots live on `vX.Y.Z` branches.
+Current product line: **2.6.2**. Source of truth is [`main`](https://github.com/HighLionNet/Windows-Privacy-Platform). Frozen snapshots live on `vX.Y.Z` branches.
 
-## What 2.6.1 delivers
+## What 2.6.2 delivers
 
 - Four exclusive sections: **Privacy**, **Security**, **Network**, and **Troubleshoot/Explore**.
 - Persistent Hub destinations: Dashboard, Conflicts, Knowledge Explorer, App Settings, and About.
 - Category-first navigation. Search and Dashboard findings land on a settings list; detail opens only when requested.
+- A Hub-first rail, compact native caption, full-width search, and standard full-control dropdown hit targets.
+- Featured/All category views and paired ConsentStore/AppPrivacy outcome cards without dropping the complete catalog.
+- Layered DNS evidence for active adapters, resolver source, NRPT, Windows DoH, VPN/tunnel participation, fixed probes against observed resolvers, and explicit browser/app DNS limits.
+- Non-overlapping Explore pages. Sufficiently evidenced optional non-Microsoft services can start/stop/restart; non-Microsoft tasks can enable/disable after a fresh scan, confirmation, read-back, and audit.
+- Edge, WebView2, and default-browser observations plus documented Edge tracking, diagnostic-data, feedback, suggestions, credentials, first-run, sidebar, and shopping policy controls. No browser removal.
 - Distinct evidence states: configured, not configured, not observed, unsupported, access denied, unknown, and error. Unknown is never treated as safe. There is no synthetic score.
 - Curated registry-policy changes with one confirmation, independent value-and-kind read-back, and a local audit.
 - Twelve bounded firewall-profile controls (enabled / inbound / outbound / notifications × domain / private / public). Individual firewall rules stay inventory.
@@ -22,7 +27,7 @@ Current product line: **2.6.1**. Source of truth is [`main`](https://github.com/
 ## Run a downloaded release
 
 1. Install the [.NET 8 Desktop Runtime for Windows x64](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) if it is not already present.
-2. Download `WindowsPrivacyPlatform-win-x64.zip` from the repository's latest GitHub Release for **2.6.1** (do not use 2.3.x archives).
+2. Download `WindowsPrivacyPlatform-win-x64.zip` from the repository's latest GitHub Release for **2.6.2**.
 3. Extract the entire archive to a permanent folder. Do not run the executable from inside the zip.
 4. Open `WindowsPrivacyPlatform.exe` and choose **View-only** or **Administrator**. Administrator mode requests Windows elevation for machine policy.
 5. Accept the one-time shortcut offer if you want Desktop and Start Menu entries that point to the extracted executable.
@@ -37,7 +42,7 @@ Every writable object is deny-by-default. Discovery data never grants mutation r
 allowlist compare → pre-read → explicit confirmation → typed operation → independent read-back of value and kind → local audit
 ```
 
-Failure at any stage is reported as failure. A textual match with the wrong registry type is not accepted. System Explorer, live inventory, and arbitrary firewall rules cannot acquire a write target. See [Status/Safety_Model.md](Status/Safety_Model.md).
+Failure at any stage is reported as failure. A textual match with the wrong registry type is not accepted. Dynamic inventory and arbitrary firewall rules cannot acquire a write target. Explore actions are a separate exact-snapshot service/task contract and never pass through the registry modification engine. See [Status/Safety_Model.md](Status/Safety_Model.md).
 
 ## Build from source
 

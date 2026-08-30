@@ -1,11 +1,11 @@
 # Start here
 
-This archive is a portable, framework-dependent Windows desktop release of Windows Privacy Platform 2.6.1.
+This archive is a portable, framework-dependent Windows desktop release of Windows Privacy Platform 2.6.2.
 
 1. Install the .NET 8 Desktop Runtime for Windows x64 from Microsoft if needed.
 2. Extract every file in this archive to a permanent folder that your user account can write to.
 3. Run `WindowsPrivacyPlatform.exe`; do not run it while it is still inside the zip.
-4. Start in **View-only** for read-only device analysis. Choose **Administrator** only when you intend to prepare a bounded set of changes. Options stay pending until one batch confirmation.
+4. Start in **View-only** for device analysis. Choose **Administrator** only for curated registry Settings or a confirmed, fresh-snapshot service/task action. Registry options stay pending until one batch confirmation.
 5. The first successful launch offers to create Desktop and Start Menu shortcuts. The app records the choice locally and does not ask again.
 
 The release has no background service, driver, cloud account, telemetry, or automatic policy application. Removing the extracted folder uninstalls the program; shortcuts can then be deleted normally.

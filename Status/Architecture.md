@@ -1,104 +1,31 @@
 # Architecture
 
-**Line:** 2.6.1 on `main` (frozen snapshot `v2.6.1`). Parent: v2.5.1 @ b06efc9.
+## Product shell
 
-## Product shape
+The product has four exclusive sections: Privacy, Security, Network, and Troubleshoot/Explore. Hub is persistent navigation, not a fifth section, and appears at the top of the rail: Dashboard, Conflicts, Knowledge Explorer, App Settings, About. A rule separates Hub from the active section title and categories.
 
-.NET 8 WPF desktop app only.
+The main window remains WPF-UI 4.3.0 `FluentWindow` with `ui:TitleBar` and visible minimize, maximize, and close buttons. File, Edit, View, Settings, and Help live in the thin caption row. The identity and context rows are compact, header search consumes its `*` column, and the complete ComboBox hit target opens the dropdown. Dialogs remain standard WPF `Window` instances. Cards are inset with 2–4 px corners; selected section state uses a shadow.
 
-```text
-Models → Core / Logging / KnowledgeBase → Validator / Scanner → App
-```
+Privacy keeps the existing `HubNavigation.PrivacyOrder` in one quiet list. Category pages offer Featured and All. ConsentStore and AppPrivacy pairs use `OutcomeGrouping`, whose IDs come from `OutcomeConflictEngine.ConsentFamilies`; the two evidence layers remain distinct.
 
-No CLI, background agent, service, driver, web backend, or plugin runtime.
+Network categories are DNS & name resolution, Adapters & LAN, Firewall, and Remote access. Troubleshoot/Explore partitions every live object into one page: Windows services, Other services, Windows tasks, Other tasks, System apps, Other apps, Features & capabilities, or Firewall rules. There is no duplicate System Explorer mega-list.
 
-## Information architecture
+## Catalog and settings pipeline
 
-```text
-Caption: system min / max / close via WPF-UI TitleBar (never hide Close)
-Menu: File, Edit, View, Settings, Help
-Header: identity, back/forward, search, View-only|Administrator, scan
-Context bar: Privacy | Security | Network | Troubleshoot/Explore   + breadcrumbs
-Left rail: section title (section color) + that section's categories only
-Content: Dashboard or category list or detail or persist page
-Footer: status, catalog counts, version
-```
+`Directory.Build.props` is the application-version source. `ProductInfoReader` supplies the runtime version to the UI and catalog schema; no parallel source literal is maintained.
 
-Section buttons are exclusive toggles. Selected state is a shadow, not a second control theme. Subcategories exist only in the left rail. The rail header shows the active section title in that section’s color token.
+`ManagedObjectCatalog` is the curated definition source. Finalization applies semantics, explicit authorization, taxonomy, narrative, applicability, and exclusion decisions. `PolicyCollector` reads exact registry sources. `InventoryStateBinder` binds observations. `PolicyChangeService` accepts only complete catalog-backed registry targets, performs pre-read and confirmation, writes the typed value, independently reads value and kind, and audits the result.
 
-Persistent destinations (reachable from every section): Dashboard, Conflicts, Knowledge Explorer, App Settings, About.
+`DynamicInventoryCatalog` converts scan rows to presentation objects with `WritableTarget == null`. It is never an authorization source.
 
-`SettingsListTarget` stands: overview, search, and dashboard findings land on a category list and must not auto-open a detail route.
+## Inventory and DNS pipeline
 
-### Section map (`ProductDomain`)
+`ScanService` composes fail-soft collectors and keeps a separate last-good completed result. Canceled or failed attempts cannot replace the snapshot used by actions.
 
-| Section | ProductDomain values |
-|---|---|
-| Privacy | ConsentStore, AppPrivacy, Telemetry, Location, CloudContent, Advertising, ActivityHistory, Device, Speech, Clipboard, Copilot, Recall, Search, Edge, Widgets, OneDrive, FamilySafety, Storage, Accessibility |
-| Security | Defender, ExploitProtection, BitLocker, Uac, Biometrics, WindowsHello, LocalSecurity, WindowsUpdate, FindMyDevice |
-| Network | Firewall, Network, RemoteAccess |
-| Troubleshoot/Explore | Not a Settings domain. Hosts System Explorer, Services inventory, tasks/packages/features/capabilities, native handoffs, live probes |
+`NetworkingCollector` uses `System.Net.NetworkInformation`, read-only TCP/IP and NRPT registry evidence, `GetBestInterface`, and fully qualified `System32\nslookup.exe` with a fixed query name and observed resolver addresses. It produces `DnsResolutionSnapshot` with distinct evidence states. `BrowserInventoryCollector` observes Edge, WebView2, and the current user's HTTPS default association without turning WebView2 into an uninstall target.
 
-`ProductDomain.Other` is assigned at catalog finalization; it must not remain a fifth rail.
+`InventoryChangeService` owns the second mutation class. It revalidates freshness and exact snapshot identity, delegates bounded service runtime work to `ServiceControlService`, and uses fully qualified `System32\schtasks.exe` only for task query/change/query. `ServiceMutationPolicy` and `TaskMutationPolicy` remain pure source-controlled gates.
 
-Firewall profile Settings stay `CatalogBucket.Settings` under Network. Live firewall *rules*, services, tasks, packages, features, and capabilities stay `CatalogBucket.SystemInventory` and render in Troubleshoot/Explore. A Network → Firewall category page may *summarize* rule counts and link to Explore; it does not become a generic rule editor in this phase.
+## Integrity boundaries
 
-## Catalog and inventory
-
-`ManagedObjectCatalog` owns curated knowledge, narratives, applicability, exclusions, and static write authorizations. `CatalogPolicy` exposes writable relevant registry policy as Settings; unapproved definitions stay internal references.
-
-`DynamicInventoryCatalog` projects live inventory into stable explorer models. Dynamic entries cannot acquire `WritableTarget`.
-
-Category pages in Privacy / Security / Network list related inventory as Observe or NativeHandoff rows (category completeness). That projection does not grant a write target.
-
-## Scan pipeline
-
-```text
-fixed collectors
-  → InventorySnapshot + diagnostics
-  → catalog clone + binders + precedence
-  → dynamic inventory (read-only)
-  → protection-product observation (Security Center / AntivirusProduct)
-  → applicability + validator
-  → last-good ScanService state
-```
-
-Collectors stay fail-soft, cancellation-aware, and preserve unknown / error / access-denied. Process-backed collection uses `SafeProcessRunner` only.
-
-Optional live probes in Troubleshoot/Explore are the same shape: fixed command or existing API, timeout, evidence appended to the snapshot, never a write.
-
-## Mutation pipeline
-
-Unchanged: `PolicyChangeService` for curated registry and firewall-profile targets. Selecting an option is pending UI state only. Apply revalidates `ManagedObjectCatalog.IsAuthorizedWriteTarget` and `ElevationService.CanModifyHive`.
-
-`ServiceControlService` remains the only non-registry mutation path and stays off the Explore rail in this phase.
-
-Do not import `codex/2.6.0` backends (`FirewallRuleChangeService`, `BitLockerLifecycleService`, `FeatureChangeService`, `PackageChangeService`, `ScheduledTaskChangeService`, `DomainAuthorization`, `RollbackBatchStore` as a new product surface).
-
-## Presentation system
-
-Next implementation uses WPF-UI **4.3.0 exact pin** for:
-
-- main `FluentWindow` chrome (Mica / title bar)
-- `NavigationView` or equivalent left rail
-- `SymbolIcon`
-- theme dictionaries bridged through `ThemeManager`
-
-Do not use `FluentWindow` for modal dialogs in this slice. Startup, confirmation, and high-impact dialogs stay `Window` with WPP tokens until a later slice proves a ContentDialog host.
-
-Visual tokens:
-
-- square / 2–4px corners, not pills
-- cards and setting bars are inset boxes; they do not bleed to the window edge
-- Fluent icons in the rail and context bar
-- keep a native `File / Edit / View / Settings / Help` menu; wire existing handlers; do not invent write verbs
-- `ui:TitleBar` on the main FluentWindow with ShowClose/ShowMaximize/ShowMinimize true. Extending content into the title bar without TitleBar is a defect.
-- hide Apply on non-writable objects
-
-Do not merge WPF-UI theme dictionaries and the full legacy `AppStyles.xaml` as two competing systems. Bridge tokens once in `ThemeManager`.
-
-Copy 2.6 *ideas* (icons, square inset cards). Do not copy 2.6 `MainWindow.xaml` wholesale.
-
-## Identity and version
-
-`Directory.Build.props` remains the only literal version. Live product version is **2.6.1**. Version `2.6.0` is burned on the archive branch `codex/2.6.0`.
+`BinaryIntegrityGuard` always reports SHA-256. Unsigned hash drift is status-only. Signed builds must pass Windows Authenticode verification and identify HighLionNet as publisher before high-impact Settings are allowed. `HighImpactStepUpService` validates that the supplied Windows credential token is an administrator and zeroes managed and native credential buffers. `ManagedObjectCatalog.HasValidAuthorizationHash` continues to protect the Settings allowlist independently.

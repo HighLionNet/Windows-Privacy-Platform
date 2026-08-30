@@ -1,33 +1,25 @@
-# Engineering Handoff
+# AI Handoff
 
-**Line:** 2.6.1 on `main` (frozen snapshot `v2.6.1`; parent v2.5.1 @ `b06efc9`)
-**Do not restore:** version 2.6.0 native write backends.
+## Current contract
 
-Contracts: [Safety_Model.md](Safety_Model.md), [Architecture.md](Architecture.md).
+- Four sections only: Privacy, Security, Network, Troubleshoot/Explore. Hub items are persistent and sit above the section rail.
+- `Directory.Build.props` is the version source. The UI and catalog read assembly metadata through `ProductInfoReader`.
+- Settings changes remain registry-only through `PolicyChangeService`: compiled target, supported raw value, pre-read, confirmation, typed write, independent value/kind read-back, audit.
+- Dynamic inventory always has `WritableTarget == null`.
+- Explore actions are separate: `InventoryChangeService` plus `ServiceMutationPolicy` or `TaskMutationPolicy`, fresh exact snapshot row, Administrator authority, one confirmation, live read-back, audit.
+- Service actions are runtime start/stop/restart for sufficiently evidenced optional non-Microsoft services. Never change start type.
+- Task actions are enable/disable for non-Microsoft paths only. Never create/delete/change `/TR`.
+- DNS is layered evidence. Empty and failed evidence remain Unknown/Error. Browser or VPN app DNS is `ExternalApp`, never inferred from Windows DoH.
+- Edge, WebView2, and default-browser presence are observations. WebView2 and Edge uninstall are out of scope.
+- Unsigned executable hash drift is status-only. Signed high-impact execution requires a valid HighLionNet publisher chain. Catalog authorization integrity remains mandatory.
 
-## Standing constraints
+## UI routing
 
-- WPF app only. No CLI, no duplicate tree.
-- `Directory.Build.props` is the only literal version. UI identity uses `ProductInfoReader`.
-- Four sections: Privacy, Security, Network, Troubleshoot/Explore. Persistent: Dashboard, Conflicts, Knowledge, App Settings, About, View-only / Administrator.
-- Settings vs inventory stay separate. Dynamic inventory cannot gain a `WritableTarget`.
-- Writes: curated Settings + existing firewall-profile path only in this phase. Discovery never authorizes a write.
-- Change contract: allowlist compare → pre-read → confirm → typed operation → independent value-and-kind read-back → local audit.
-- `ManagedObjectCatalog.IsAuthorizedWriteTarget` and `ElevationService.CanModifyHive` revalidate at apply. A complete runtime object is not authority.
-- Cross-account HKCU refused.
-- `SettingsListTarget` stands.
-- BitLocker / UAC **policy** Settings remain high-impact (warning + fresh credential) then the normal contract. BitLocker *lifecycle* is not implemented.
-- Firewall writes: twelve profile properties. Rules are inventory.
-- Troubleshoot/Explore is read-only this phase (scan, handoff, fixed probes only). Do not surface service start/stop/restart on that rail.
-- Detect AV / EDR / XDR; do not disable, exclude, or compete with them. No malware verdicts. No synthetic score.
-- Distinct unknown / error / access-denied / not-configured / last-good scan.
-- Narrative: documented function, observed state, labeled recommendation — recommendation is never a Microsoft fact.
-- Every static catalog entry: complete narrative and either a complete target or non-default `ExclusionReason`.
-- No bulk profiles, generic editors, telemetry, silent persistence, dynamic authorization.
-- Do not restore 2.6 native write backends.
-- WPF-UI is pinned **4.3.0**. Main window only. Dialogs stay `Window` this slice.
-- Main window keeps `ui:TitleBar` min/max/close and a native File / Edit / View / Settings / Help menu.
+- Network: `network:dns`, `network:adapters`, `domain:Firewall`, `domain:RemoteAccess`.
+- Explore: `explore:windows-services`, `explore:other-services`, `explore:windows-tasks`, `explore:other-tasks`, `explore:system-apps`, `explore:other-apps`, `explore:features`, `explore:firewall-rules`.
+- Search and Dashboard still use `SettingsListTarget`; they do not auto-open a setting detail.
+- Privacy category pages use Featured/All and outcome families based on `OutcomeConflictEngine.ConsentFamilies`.
 
-## Current release delta
+## Do not regress
 
-Four exclusive sections, WPF-UI 4.3.0 main-window chrome, square inset presentation tokens, fail-soft Security Center antivirus observation, native menu, and TitleBar caption buttons. The v2.5.1 write contract and authorization table are unchanged.
+Do not add a fifth section, scores, bulk apply, user-built commands, AppX/DISM removal, firewall-rule CRUD, adapter DNS writes, service start-type changes, task deletion, BitLocker lifecycle, UAC master, or Edge/WebView2 uninstall. Do not route inventory actions through `PolicyChangeService`. Keep WPF-UI pinned at 4.3.0 and modal dialogs as standard `Window`.
