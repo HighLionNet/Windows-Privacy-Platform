@@ -9,9 +9,11 @@ namespace WindowsPrivacyPlatform.App.Services;
 
 public static class BinaryIntegrityGuard
 {
+    private const int TrustENoSignature = unchecked((int)0x800B0100);
     private static readonly object Sync = new();
     public static bool HighImpactAllowed { get; private set; }
     public static string CurrentHash { get; private set; } = "Unavailable";
+    public static string SignatureStatus { get; private set; } = "Unavailable";
     public static string Status { get; private set; } = "Not checked";
 
     public static void Initialize(string dataRoot, IAuditLogger log)
@@ -27,6 +29,7 @@ public static class BinaryIntegrityGuard
                 var previous = AtomicLocalFile.ReadAllLines(dataRoot, record).FirstOrDefault()?.Trim();
                 var hashMatches = IsHashMatch(previous, CurrentHash);
                 var signature = InspectSignature(executable);
+                SignatureStatus = DescribeSignature(signature);
                 HighImpactAllowed = EvaluatePolicy(signature.IsSigned, signature.IsValid, signature.PublisherMatches, hashMatches);
                 Status = signature.IsSigned
                     ? signature.IsValid && signature.PublisherMatches
@@ -42,6 +45,7 @@ public static class BinaryIntegrityGuard
             catch (Exception ex)
             {
                 HighImpactAllowed = false;
+                SignatureStatus = "Unavailable";
                 Status = "Executable integrity could not be inspected — high-impact Apply blocked";
                 log.Auth("BinaryIntegrity", "result=Error category=" + ex.GetType().Name);
             }
@@ -58,6 +62,7 @@ public static class BinaryIntegrityGuard
                 var record = Path.Combine(dataRoot, "verified-binary.sha256");
                 AtomicLocalFile.WriteText(dataRoot, record, CurrentHash + Environment.NewLine);
                 var signature = InspectSignature(Environment.ProcessPath ?? string.Empty);
+                SignatureStatus = DescribeSignature(signature);
                 HighImpactAllowed = EvaluatePolicy(signature.IsSigned, signature.IsValid, signature.PublisherMatches, hashMatches: true);
                 Status = signature.IsSigned
                     ? HighImpactAllowed ? "Authenticode signature valid · publisher HighLionNet" : "Signed build failed signature or publisher validation"
@@ -88,27 +93,45 @@ public static class BinaryIntegrityGuard
 
     private static (bool IsSigned, bool IsValid, bool PublisherMatches) InspectSignature(string executable)
     {
-        if (string.IsNullOrWhiteSpace(executable) || !File.Exists(executable)) return (false, false, false);
+        if (string.IsNullOrWhiteSpace(executable) || !File.Exists(executable))
+            return (true, false, false);
+
+        int trustResult;
+        try
+        {
+            trustResult = VerifyAuthenticode(executable);
+        }
+        catch
+        {
+            return (true, false, false);
+        }
+
+        // Only Windows' explicit "no signature" result is treated as an unsigned
+        // community build. A malformed, revoked, or otherwise unverifiable signature
+        // is a signed-invalid build and therefore fails closed for high-impact Apply.
+        if (trustResult == TrustENoSignature) return (false, false, false);
+        if (trustResult != 0) return (true, false, false);
+
         try
         {
             using var certificate = new X509Certificate2(X509Certificate.CreateFromSignedFile(executable));
-            var publisher = certificate.Subject.Contains("HighLionNet", StringComparison.OrdinalIgnoreCase);
-            try
-            {
-                return (true, VerifyAuthenticode(executable), publisher);
-            }
-            catch
-            {
-                return (true, false, publisher);
-            }
+            var publisher = certificate.GetNameInfo(X509NameType.SimpleName, forIssuer: false)
+                .Equals("HighLionNet", StringComparison.OrdinalIgnoreCase);
+            return (true, true, publisher);
         }
         catch (CryptographicException)
         {
-            return (false, false, false);
+            return (true, false, false);
         }
     }
 
-    private static bool VerifyAuthenticode(string executable)
+    private static string DescribeSignature((bool IsSigned, bool IsValid, bool PublisherMatches) signature) =>
+        !signature.IsSigned ? "Unsigned community build" :
+        !signature.IsValid ? "Invalid Authenticode signature" :
+        signature.PublisherMatches ? "Valid Authenticode · HighLionNet" :
+        "Valid Authenticode · unexpected publisher";
+
+    private static int VerifyAuthenticode(string executable)
     {
         var file = new WinTrustFileInfo
         {
@@ -129,7 +152,7 @@ public static class BinaryIntegrityGuard
                 ProviderFlags = 0x00001000 // WTD_CACHE_ONLY_URL_RETRIEVAL
             };
             var action = new Guid("00AAC56B-CD44-11D0-8CC2-00C04FC295EE"); // WINTRUST_ACTION_GENERIC_VERIFY_V2
-            return WinVerifyTrust(IntPtr.Zero, ref action, ref data) == 0;
+            return WinVerifyTrust(IntPtr.Zero, ref action, ref data);
         }
         finally
         {

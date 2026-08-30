@@ -23,11 +23,22 @@ public sealed class HostInventorySmokeTests
             new PrivacyCollector(),
             new PolicyCollector(),
             new FirewallCollector(),
-            new SecurityCenterCollector()
+            new SecurityCenterCollector(),
+            new NetworkingCollector(),
+            new BrowserInventoryCollector()
         ];
 
         var result = new InventoryScanner(logger, collectors).Scan();
         Assert.NotNull(result.Snapshot);
+        Assert.NotEqual(default, result.Snapshot.Networking.Dns.CapturedAtUtc);
+        Assert.All(new[] { "Microsoft Edge", "Google Chrome", "Mozilla Firefox", "VPN applications" }, name =>
+            Assert.Contains(result.Snapshot.Networking.Dns.ExternalApps, app =>
+                app.Application == name && app.Source == "ExternalApp" && app.Evidence == EvidenceState.Unknown));
+        Assert.All(new[]
+        {
+            result.Snapshot.Applications.Browsers.Edge,
+            result.Snapshot.Applications.Browsers.WebView2
+        }, browser => Assert.False(string.IsNullOrWhiteSpace(browser.Name)));
 
         var dynamicEntries = DynamicInventoryCatalog.Create(result.Snapshot!, ManagedObjectCatalog.All);
         var repository = new InMemoryKnowledgeBaseRepository();

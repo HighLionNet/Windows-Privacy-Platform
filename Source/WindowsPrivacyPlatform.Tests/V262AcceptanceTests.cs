@@ -86,6 +86,26 @@ public sealed class V262AcceptanceTests
     }
 
     [Fact]
+    public void Inventory_actions_require_a_completed_recent_and_sane_snapshot_timestamp()
+    {
+        var now = new DateTime(2026, 8, 30, 12, 0, 0, DateTimeKind.Utc);
+        var result = new ScanResult
+        {
+            Status = ScanStatus.CompletedWithWarnings,
+            Snapshot = new InventorySnapshot { CaptureTimestamp = now.AddMinutes(-29) }
+        };
+        Assert.True(InventoryChangeService.IsFreshSnapshot(result, now, out _));
+
+        result.Snapshot.CaptureTimestamp = now.AddMinutes(-31);
+        Assert.False(InventoryChangeService.IsFreshSnapshot(result, now, out _));
+        result.Snapshot.CaptureTimestamp = now.AddMinutes(6);
+        Assert.False(InventoryChangeService.IsFreshSnapshot(result, now, out _));
+        result.Status = ScanStatus.Failed;
+        result.Snapshot.CaptureTimestamp = now;
+        Assert.False(InventoryChangeService.IsFreshSnapshot(result, now, out _));
+    }
+
+    [Fact]
     public void Consent_outcome_grouping_uses_the_conflict_pairs_without_duplicate_ids()
     {
         var pair = OutcomeConflictEngine.ConsentFamilies.First();

@@ -30,10 +30,11 @@ public sealed class ScheduledTaskCollector : IInventoryCollector
                 cancellationToken,
                 Encoding.UTF8);
 
-            if (!result.Started || result.TimedOut || result.Canceled)
+            if (!result.Started || result.TimedOut || result.Canceled || result.ExitCode != 0)
             {
-                snapshot.System.ScheduledTaskEvidence = result.TimedOut ? EvidenceState.Error : EvidenceState.NotObserved;
-                snapshot.System.ScheduledTaskCollectionNotes = result.FailureCategory ?? "Task query did not complete.";
+                snapshot.System.ScheduledTaskEvidence = EvidenceState.Error;
+                snapshot.System.ScheduledTaskCollectionNotes = result.FailureCategory ??
+                    $"Task query failed with exit code {result.ExitCode}.";
                 return;
             }
 

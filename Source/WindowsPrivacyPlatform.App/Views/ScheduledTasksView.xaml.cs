@@ -58,11 +58,17 @@ public partial class ScheduledTasksView : UserControl
             !Enum.TryParse<ScheduledTaskAction>(actionText, out var action)) return;
         var task = _visibleSource.FirstOrDefault(item => item.Path.Equals(path, StringComparison.OrdinalIgnoreCase));
         if (task is null) return;
+        if (!_changes.TryReadTaskStateForConfirmation(task, out var liveState, out var readError))
+        {
+            MessageBox.Show(_owner, readError, "Task action refused", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
         var intended = action == ScheduledTaskAction.Enable ? "enabled" : "disabled";
         var confirmed = MessageBox.Show(_owner,
-            $"Task: {task.Path}\nCurrent state: {task.State}\nIntended state: {intended}\n\nSide effect: scheduled background work may begin or stop.\nRecovery: use the opposite action on this same task after a fresh scan.",
+            $"Task: {task.Path}\nCurrent live state: {liveState}\nIntended state: {intended}\n\nSide effect: scheduled background work may begin or stop.\nRecovery: use the opposite action on this same task after a fresh scan.",
             "Confirm scheduled-task action", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes;
-        var success = _changes.TryChangeTask(task, action, confirmed, out var error);
+        if (!confirmed) return;
+        var success = _changes.TryChangeTask(task, action, confirmed: true, out var error);
         MessageBox.Show(_owner, success ? "Windows completed and verified the scheduled-task action." : error,
             success ? "Task updated" : "Task action refused", MessageBoxButton.OK,
             success ? MessageBoxImage.Information : MessageBoxImage.Warning);

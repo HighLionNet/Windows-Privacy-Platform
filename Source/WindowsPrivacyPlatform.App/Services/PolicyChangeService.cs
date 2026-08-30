@@ -71,7 +71,7 @@ public sealed class PolicyChangeService
             if (!BinaryIntegrityGuard.HighImpactAllowed)
             {
                 results.Add(new PolicyChangeOutcome(string.Empty, false,
-                    "The running binary does not match the last verified startup hash. High-impact changes are blocked."));
+                    "The running executable failed Authenticode signature or HighLionNet publisher validation. High-impact changes are blocked."));
                 _log.Change("PolicyChangeService", "result=Denied reason=BinaryIntegrity highImpact=true");
                 return false;
             }

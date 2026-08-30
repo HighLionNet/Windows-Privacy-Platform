@@ -794,6 +794,18 @@ public partial class MainWindow : FluentWindow
         catch { }
     }
 
+    private void Window_Closed(object? sender, EventArgs e)
+    {
+        // FluentWindow owns native chrome; make process shutdown explicit even if its
+        // close path changes the HWND before WPF's OnMainWindowClose bookkeeping runs.
+        if (Application.Current is not { } application || application.Dispatcher.HasShutdownStarted) return;
+        application.Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(() =>
+        {
+            if (!application.Dispatcher.HasShutdownStarted)
+                application.Shutdown();
+        }));
+    }
+
     private void ContentScroll_ScrollChanged(object sender, ScrollChangedEventArgs e) =>
         BackToTopButton.Visibility = ContentScroll.VerticalOffset > 450 ? Visibility.Visible : Visibility.Collapsed;
     private void BackToTopButton_Click(object sender, RoutedEventArgs e) => ContentScroll.ScrollToTop();

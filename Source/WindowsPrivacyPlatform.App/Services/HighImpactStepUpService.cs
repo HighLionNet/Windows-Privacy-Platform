@@ -83,11 +83,14 @@ public sealed class HighImpactStepUpService
             var user = new char[1024];
             var domain = new char[1024];
             var password = new char[1024];
-            var userHandle = GCHandle.Alloc(user, GCHandleType.Pinned);
-            var domainHandle = GCHandle.Alloc(domain, GCHandleType.Pinned);
-            var passwordHandle = GCHandle.Alloc(password, GCHandleType.Pinned);
+            var userHandle = default(GCHandle);
+            var domainHandle = default(GCHandle);
+            var passwordHandle = default(GCHandle);
             try
             {
+                userHandle = GCHandle.Alloc(user, GCHandleType.Pinned);
+                domainHandle = GCHandle.Alloc(domain, GCHandleType.Pinned);
+                passwordHandle = GCHandle.Alloc(password, GCHandleType.Pinned);
                 var userSize = user.Length;
                 var domainSize = domain.Length;
                 var passwordSize = password.Length;
@@ -113,9 +116,9 @@ public sealed class HighImpactStepUpService
                 CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(password.AsSpan()));
                 CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(user.AsSpan()));
                 CryptographicOperations.ZeroMemory(MemoryMarshal.AsBytes(domain.AsSpan()));
-                passwordHandle.Free();
-                userHandle.Free();
-                domainHandle.Free();
+                if (passwordHandle.IsAllocated) passwordHandle.Free();
+                if (userHandle.IsAllocated) userHandle.Free();
+                if (domainHandle.IsAllocated) domainHandle.Free();
             }
         }
         finally

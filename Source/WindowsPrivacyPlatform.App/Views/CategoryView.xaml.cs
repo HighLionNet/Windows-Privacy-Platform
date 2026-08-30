@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Threading;
 using WindowsPrivacyPlatform.App.Services;
 using WindowsPrivacyPlatform.Models;
 
@@ -15,6 +16,7 @@ public partial class CategoryView : UserControl
     private readonly Window? _owner;
     private readonly Action<string> _openSetting;
     private readonly Action<string> _openConflict;
+    private readonly ProductDomain _domain;
     private readonly SettingsQuery? _query;
     private readonly CategoryFilterState _filterState;
     private readonly IReadOnlyList<ManagedObject> _allItems;
@@ -24,6 +26,8 @@ public partial class CategoryView : UserControl
     private readonly string? _highlightObjectId;
     private readonly Action? _completeModifyOperation;
     private readonly bool _outcomeMode;
+    private bool _highlightScrollPending;
+    private FrameworkElement? _highlightedElement;
     private bool _applyInProgress;
 
     public CategoryView(ScanService scan, ProductDomain domain, string category, Action<string> openSetting,
@@ -33,8 +37,10 @@ public partial class CategoryView : UserControl
         CategoryFilterState? filterState = null)
     {
         _elevation = elevation; _changes = changes; _refreshScan = refreshScan; _owner = owner;
+        _domain = domain;
         _openSetting = openSetting; _openConflict = openConflict; _query = scan.Query;
         _highlightObjectId = highlightObjectId; _completeModifyOperation = completeModifyOperation;
+        _highlightScrollPending = !string.IsNullOrWhiteSpace(highlightObjectId);
         _filterState = filterState ?? new CategoryFilterState();
         _windowsVersion = scan.Overview?.WindowsVersion ?? string.Empty;
         _edition = scan.Overview?.WindowsEdition ?? string.Empty;
@@ -68,6 +74,14 @@ public partial class CategoryView : UserControl
         StateBox.SelectedItem = StateBox.Items.OfType<ComboBoxItem>().FirstOrDefault(item =>
             string.Equals(item.Content?.ToString(), _filterState.State, StringComparison.OrdinalIgnoreCase)) ?? StateBox.Items[0];
         if (!_allItems.Any(FeaturedSettings.IsFeatured)) _filterState.Scope = "All";
+        if (!string.IsNullOrWhiteSpace(_highlightObjectId) &&
+            _allItems.Any(item => item.ObjectId.Equals(_highlightObjectId, StringComparison.OrdinalIgnoreCase)))
+        {
+            // A search/dashboard destination must not disappear behind persisted filters.
+            _filterState.Scope = "All";
+            _filterState.State = "All";
+            StateBox.SelectedItem = StateBox.Items[0];
+        }
         ScopeBox.SelectedItem = ScopeBox.Items.OfType<ComboBoxItem>().FirstOrDefault(item =>
             string.Equals(item.Content?.ToString(), _filterState.Scope, StringComparison.OrdinalIgnoreCase)) ?? ScopeBox.Items[0];
         ModeStatusText.Text = _elevation.IsAdminAuthorized
@@ -82,6 +96,7 @@ public partial class CategoryView : UserControl
     private void Render()
     {
         if (SettingsList is null || SummaryPanel is null || FilterBox is null || StateBox is null || ScopeBox is null) return;
+        _highlightedElement = null;
         var filter = FilterBox.Text.Trim();
         if (filter.Length > 200) filter = filter[..200];
         var selectedState = (StateBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "All";
@@ -99,6 +114,20 @@ public partial class CategoryView : UserControl
                 : item.IsApplicableHere && (selectedState == "All" ||
                     EvidenceStateSemantics.Label(EvidenceStateSemantics.Classify(item))
                         .Equals(selectedState, StringComparison.OrdinalIgnoreCase))).ToList();
+
+        if (_outcomeMode && items.Count > 0)
+        {
+            // A layer that matches search/state still needs its counterpart so the card
+            // describes the effective outcome rather than presenting one isolated value.
+            var visibleIds = items.Select(item => item.ObjectId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (var pair in OutcomeConflictEngine.ConsentFamilies)
+                if (visibleIds.Contains(pair.UserId) || visibleIds.Contains(pair.PolicyId))
+                {
+                    visibleIds.Add(pair.UserId);
+                    visibleIds.Add(pair.PolicyId);
+                }
+            items = _allItems.Where(item => visibleIds.Contains(item.ObjectId)).ToList();
+        }
 
         SettingsList.Children.Clear();
         if (_outcomeMode)
@@ -122,6 +151,15 @@ public partial class CategoryView : UserControl
         AddSummary("Stale", summary.Stale, "BadgeWarning"); AddSummary("Errors", summary.Error, "BadgeConflict");
         ApplyPendingButton.Content = $"Apply ({_pending.Count})";
         ApplyPendingButton.IsEnabled = _pending.Count > 0 && _elevation.IsAdminAuthorized && !_applyInProgress;
+        if (_highlightScrollPending && _highlightedElement is not null)
+        {
+            var target = _highlightedElement;
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+            {
+                target.BringIntoView();
+                _highlightScrollPending = false;
+            }));
+        }
     }
 
     private Border BuildOutcomeCard(string family, IReadOnlyList<ManagedObject> items)
@@ -134,8 +172,43 @@ public partial class CategoryView : UserControl
         };
         var panel = new StackPanel();
         panel.Children.Add(new TextBlock { Text = family, FontSize = 14, FontWeight = FontWeights.SemiBold, Margin = new Thickness(2, 0, 0, 7) });
-        foreach (var item in items.OrderBy(item => item.ProductDomain == ProductDomain.ConsentStore ? 0 : 1))
-            panel.Children.Add(BuildSettingBar(item));
+        var primary = items.Where(item => item.ProductDomain == _domain)
+                          .OrderByDescending(CanControlInThisSession)
+                          .FirstOrDefault()
+                      ?? items.OrderByDescending(CanControlInThisSession).First();
+        panel.Children.Add(BuildSettingBar(primary));
+        var secondary = items.Where(item => !item.ObjectId.Equals(primary.ObjectId, StringComparison.OrdinalIgnoreCase)).ToList();
+        if (secondary.Count > 0)
+        {
+            var expander = new Expander
+            {
+                Header = "Details — other policy layer, source, recovery, and guidance",
+                Margin = new Thickness(2, 3, 2, 6),
+                IsExpanded = secondary.Any(IsHighlighted)
+            };
+            AutomationProperties.SetName(expander, $"Details for {family}");
+            var details = new StackPanel { Margin = new Thickness(8, 8, 0, 0) };
+            foreach (var item in secondary)
+            {
+                details.Children.Add(new TextBlock
+                {
+                    Text = $"Layer: {LayerLabel(item)}\nSource: {TechnicalLocationFormatter.DirectPath(item.TechnicalLocation)}\nRecovery: {Recovery(item)}\nRecommendation: {item.Narrative.DecisionGuidance}",
+                    Foreground = (Brush)FindResource("BrushTextSecondary"),
+                    FontSize = 10.5,
+                    TextWrapping = TextWrapping.Wrap,
+                    Margin = new Thickness(2, 0, 2, 7)
+                });
+                details.Children.Add(BuildSettingBar(item));
+            }
+            expander.Content = details;
+            panel.Children.Add(expander);
+        }
+        if (items.Any(IsHighlighted))
+        {
+            card.BorderBrush = (Brush)FindResource("BrushAccent");
+            card.BorderThickness = new Thickness(3);
+            _highlightedElement ??= card;
+        }
         card.Child = panel;
         return card;
     }
@@ -145,11 +218,37 @@ public partial class CategoryView : UserControl
         var conflict = _query?.GetConflictGroup(item.ObjectId);
         var otherId = conflict?.ObjectIds.FirstOrDefault(id => !id.Equals(item.ObjectId, StringComparison.OrdinalIgnoreCase));
         var otherName = string.IsNullOrWhiteSpace(otherId) ? null : _query?.GetById(otherId)?.ObjectName;
-        return new SettingBar(item, _elevation.IsAdminAuthorized, _applyInProgress, _windowsVersion, _edition,
+        var bar = new SettingBar(item, _elevation.IsAdminAuthorized, _applyInProgress, _windowsVersion, _edition,
             _pending.TryGetValue(item.ObjectId, out var pendingRaw), pendingRaw,
             raw => { _pending[item.ObjectId] = raw; Render(); }, () => _openSetting(item.ObjectId),
             conflict, otherName, _openConflict);
+        if (IsHighlighted(item))
+        {
+            bar.BorderBrush = (Brush)FindResource("BrushAccent");
+            bar.BorderThickness = new Thickness(3);
+            _highlightedElement = bar;
+        }
+        return bar;
     }
+
+    private bool IsHighlighted(ManagedObject item) => !string.IsNullOrWhiteSpace(_highlightObjectId) &&
+        item.ObjectId.Equals(_highlightObjectId, StringComparison.OrdinalIgnoreCase);
+
+    private bool CanControlInThisSession(ManagedObject item) =>
+        _elevation.IsAdminAuthorized && item.IsWritable && item.IsApplicableHere;
+
+    private static string LayerLabel(ManagedObject item) => item.ProductDomain switch
+    {
+        ProductDomain.ConsentStore => "Signed-in user choice",
+        ProductDomain.AppPrivacy => "Device policy",
+        _ => NavigationBuilder.HumanizeDomain(item.ProductDomain)
+    };
+
+    private static string Recovery(ManagedObject item) => !string.IsNullOrWhiteSpace(item.WritableTarget?.RecoveryHint)
+        ? item.WritableTarget.RecoveryHint!
+        : item.WritableTarget is { SupportsDeletion: true }
+            ? "Choose Not configured to remove the managed value, then verify the read-back."
+            : "This layer is view-only here; use its documented Windows management surface if recovery is required.";
 
     private bool IsFeaturedForThisView(ManagedObject item)
     {

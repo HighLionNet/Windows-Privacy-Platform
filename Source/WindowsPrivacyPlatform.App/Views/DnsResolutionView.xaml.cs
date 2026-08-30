@@ -44,8 +44,16 @@ public partial class DnsResolutionView : UserControl
             AnswerPanel.Children.Add(Layer("Windows encrypted DNS", dns.WindowsDoh));
             var appSummary = dns.ExternalApps.Count == 0
                 ? "Browser/app DNS was not observed."
-                : string.Join("\n", dns.ExternalApps.Select(app => app.Summary));
-            AnswerPanel.Children.Add(TextCard("4 · Whether a browser may be doing something else", appSummary, "ExternalApp boundary"));
+                : string.Join("\n", dns.ExternalApps.Select(app =>
+                    $"{app.Application} · {EvidenceStateSemantics.Label(app.Evidence)}: {app.Summary}"));
+            var appEvidence = dns.ExternalApps.Select(app => app.Evidence).Distinct().ToList();
+            var appEvidenceLabel = appEvidence.Count switch
+            {
+                0 => "Unknown",
+                1 => EvidenceStateSemantics.Label(appEvidence[0]),
+                _ => "Mixed evidence"
+            };
+            AnswerPanel.Children.Add(TextCard($"4 · Whether a browser may be doing something else · {appEvidenceLabel}", appSummary, "ExternalApp boundary"));
         }
 
         foreach (var adapter in dns.Interfaces.OrderByDescending(item => item.Status == "Up").ThenBy(item => item.Name))
@@ -56,8 +64,11 @@ public partial class DnsResolutionView : UserControl
                 adapter.IPv4Addresses.Count == 0 ? null : "IPv4 " + string.Join(", ", adapter.IPv4Addresses),
                 adapter.IPv6Addresses.Count == 0 ? null : "IPv6 " + string.Join(", ", adapter.IPv6Addresses)
             }.Where(value => value is not null));
-            InterfacePanel.Children.Add(TextCard(adapter.Name + (adapter.IsVpnOrTunnel ? " · VPN/tunnel" : string.Empty),
-                $"{adapter.Type} · {adapter.Status} · index {adapter.InterfaceIndex} · metric {(adapter.InterfaceMetric?.ToString() ?? "Unknown")}\n{addresses}\nDNS ({adapter.AddressSource}): {dnsServers}",
+            var description = string.IsNullOrWhiteSpace(adapter.Description) || adapter.Description.Equals(adapter.Name, StringComparison.OrdinalIgnoreCase)
+                ? string.Empty : adapter.Description + "\n";
+            InterfacePanel.Children.Add(TextCard(adapter.Name + (adapter.IsVpnOrTunnel ? " · VPN/tunnel" : string.Empty) +
+                                                  " · " + EvidenceStateSemantics.Label(adapter.Evidence),
+                $"{description}{adapter.Type} · {adapter.Status} · index {adapter.InterfaceIndex} · metric {(adapter.InterfaceMetric?.ToString() ?? "Unknown")}\n{addresses}\nDNS ({adapter.AddressSource}): {dnsServers}",
                 "System.Net.NetworkInformation + TCP/IP interface registry"));
         }
         if (dns.Interfaces.Count == 0)

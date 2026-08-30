@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Security.Cryptography.X509Certificates;
 using System.Windows;
 using System.Windows.Controls;
 using WindowsPrivacyPlatform.App.Services;
@@ -24,23 +23,12 @@ public partial class AboutView : UserControl
         CopyrightText.Text = product.Copyright;
         PathText.Text = Environment.ProcessPath ?? "Unavailable";
         HashText.Text = BinaryIntegrityGuard.CurrentHash;
-        SigningText.Text = SigningState(Environment.ProcessPath);
+        SigningText.Text = BinaryIntegrityGuard.SignatureStatus;
         OsText.Text = scan.Overview is null
             ? "Not detected"
             : $"{scan.Overview.WindowsEdition} · {scan.Overview.WindowsVersion} · build {scan.Overview.BuildNumber}";
         RepositoryButton.Content = string.IsNullOrWhiteSpace(_repositoryUrl) ? "Repository metadata unavailable" : _repositoryUrl;
         RepositoryButton.IsEnabled = !string.IsNullOrWhiteSpace(_repositoryUrl);
-    }
-
-    private static string SigningState(string? path)
-    {
-        if (string.IsNullOrWhiteSpace(path)) return "Unavailable";
-        try
-        {
-            using var certificate = new X509Certificate2(X509Certificate.CreateFromSignedFile(path));
-            return string.IsNullOrWhiteSpace(certificate.Subject) ? "Signed" : "Signed — " + certificate.Subject;
-        }
-        catch { return "Unsigned community build"; }
     }
 
     private void RepositoryButton_Click(object sender, RoutedEventArgs e)

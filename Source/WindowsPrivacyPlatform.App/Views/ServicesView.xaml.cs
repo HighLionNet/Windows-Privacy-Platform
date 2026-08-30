@@ -45,10 +45,22 @@ public partial class ServicesView : UserControl
             !Enum.TryParse<ServiceControlAction>(actionText, out var action)) return;
         var service = _services.FirstOrDefault(item => item.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
         if (service is null) return;
+        if (!_changes.TryReadServiceStateForConfirmation(service, out var liveState, out var readError))
+        {
+            MessageBox.Show(_owner, readError, "Service action refused", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        var recovery = action switch
+        {
+            ServiceControlAction.Start => "use Stop on this same service after a fresh scan",
+            ServiceControlAction.Stop => "use Start on this same service after a fresh scan",
+            _ => "retry Start or Stop on this same service after a fresh scan"
+        };
         var confirmed = MessageBox.Show(_owner,
-            $"Service: {service.DisplayName}\nCurrent state: {service.State}\nIntended action: {action}\n\nSide effect: Windows may interrupt applications that depend on this optional service.\nRecovery: use Start or Restart on the same service after a fresh scan. Startup type is never changed.",
+            $"Service: {service.DisplayName}\nCurrent live state: {liveState}\nIntended action: {action}\n\nSide effect: Windows may interrupt applications that depend on this optional service.\nRecovery: {recovery}. Startup type is never changed.",
             "Confirm service action", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes;
-        var success = _changes.TryChangeService(service, action, confirmed, out var error);
+        if (!confirmed) return;
+        var success = _changes.TryChangeService(service, action, confirmed: true, out var error);
         MessageBox.Show(_owner, success ? "Windows completed the service action." : error,
             success ? "Service updated" : "Service action refused", MessageBoxButton.OK,
             success ? MessageBoxImage.Information : MessageBoxImage.Warning);

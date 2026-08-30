@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.IO;
 using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
 using System.Windows;
 using System.Windows.Controls;
 using WindowsPrivacyPlatform.App.Services;
@@ -95,7 +94,7 @@ public partial class ApplicationSettingsView : UserControl
         PathText.Text = path;
         CatalogHashText.Text = ManagedObjectCatalog.AuthorizationHash;
         HashText.Text = ComputeHash(path);
-        SigningText.Text = SigningState(path);
+        SigningText.Text = BinaryIntegrityGuard.SignatureStatus;
         IntegrityStatusText.Text = BinaryIntegrityGuard.Status;
     }
 
@@ -131,16 +130,6 @@ public partial class ApplicationSettingsView : UserControl
             return Convert.ToHexString(SHA256.HashData(stream));
         }
         catch { return "Unavailable"; }
-    }
-
-    private static string SigningState(string path)
-    {
-        try
-        {
-            using var certificate = new X509Certificate2(X509Certificate.CreateFromSignedFile(path));
-            return string.IsNullOrWhiteSpace(certificate.Subject) ? "Signed" : "Signed — " + certificate.Subject;
-        }
-        catch { return "Unsigned community build"; }
     }
 
     private static void SelectTag(ComboBox box, string tag) =>

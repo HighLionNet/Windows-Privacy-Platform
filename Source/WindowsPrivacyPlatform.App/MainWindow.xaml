@@ -5,7 +5,7 @@
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         Title="" Height="860" Width="1320" MinHeight="600" MinWidth="1000"
         WindowStartupLocation="CenterScreen" PreviewKeyDown="Window_PreviewKeyDown"
-        Closing="Window_Closing" ExtendsContentIntoTitleBar="True" WindowBackdropType="Mica"
+        Closing="Window_Closing" Closed="Window_Closed" ExtendsContentIntoTitleBar="True" WindowBackdropType="Mica"
         Background="{DynamicResource BrushBgWindow}" Foreground="{DynamicResource BrushTextPrimary}">
   <ui:FluentWindow.Resources>
     <local:SubtractConverter x:Key="ContentWidthConverter" Amount="40" />

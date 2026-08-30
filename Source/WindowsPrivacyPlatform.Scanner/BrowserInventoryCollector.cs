@@ -23,8 +23,12 @@ public sealed class BrowserInventoryCollector : IInventoryCollector
     {
         var path = ReadAppPath("msedge.exe");
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
-            path = ExistingPath(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
-                "Microsoft", "Edge", "Application", "msedge.exe"));
+            path = new[]
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Microsoft", "Edge", "Application", "msedge.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Microsoft", "Edge", "Application", "msedge.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Microsoft", "Edge", "Application", "msedge.exe")
+            }.Select(ExistingPath).FirstOrDefault(candidate => candidate is not null);
         return Product("Microsoft Edge", path, "App Paths / verified installation path");
     }
 
@@ -32,11 +36,13 @@ public sealed class BrowserInventoryCollector : IInventoryCollector
     {
         try
         {
-            var root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
-                "Microsoft", "EdgeWebView", "Application");
-            var path = Directory.Exists(root)
-                ? Directory.EnumerateFiles(root, "msedgewebview2.exe", SearchOption.AllDirectories).FirstOrDefault()
-                : null;
+            var roots = new[]
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Microsoft", "EdgeWebView", "Application"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Microsoft", "EdgeWebView", "Application"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Microsoft", "EdgeWebView", "Application")
+            }.Distinct(StringComparer.OrdinalIgnoreCase);
+            var path = roots.Select(FindVersionedExecutable).FirstOrDefault(candidate => candidate is not null);
             return Product("Microsoft Edge WebView2 Runtime", path, "Verified EdgeWebView installation path (not the browser)");
         }
         catch (UnauthorizedAccessException)
@@ -73,11 +79,12 @@ public sealed class BrowserInventoryCollector : IInventoryCollector
     private static string? ReadAppPath(string executable)
     {
         const string root = @"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\";
+        foreach (var hive in new[] { RegistryHive.CurrentUser, RegistryHive.LocalMachine })
         foreach (var view in new[] { RegistryView.Registry64, RegistryView.Registry32 })
         {
             try
             {
-                using var baseKey = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, view);
+                using var baseKey = RegistryKey.OpenBaseKey(hive, view);
                 using var key = baseKey.OpenSubKey(root + executable);
                 var value = key?.GetValue(null)?.ToString()?.Trim().Trim('"');
                 if (!string.IsNullOrWhiteSpace(value) && File.Exists(value)) return value;
@@ -105,4 +112,15 @@ public sealed class BrowserInventoryCollector : IInventoryCollector
     }
 
     private static string? ExistingPath(string path) => File.Exists(path) ? path : null;
+
+    private static string? FindVersionedExecutable(string root)
+    {
+        if (!Directory.Exists(root)) return null;
+        var direct = ExistingPath(Path.Combine(root, "msedgewebview2.exe"));
+        if (direct is not null) return direct;
+        return Directory.EnumerateDirectories(root)
+            .OrderByDescending(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
+            .Select(directory => ExistingPath(Path.Combine(directory, "msedgewebview2.exe")))
+            .FirstOrDefault(candidate => candidate is not null);
+    }
 }
