@@ -23,6 +23,7 @@ public partial class CategoryView : UserControl
     private readonly string _edition;
     private readonly string? _highlightObjectId;
     private readonly Action? _completeModifyOperation;
+    private readonly bool _outcomeMode;
     private bool _applyInProgress;
 
     public CategoryView(ScanService scan, ProductDomain domain, string category, Action<string> openSetting,
@@ -37,10 +38,23 @@ public partial class CategoryView : UserControl
         _filterState = filterState ?? new CategoryFilterState();
         _windowsVersion = scan.Overview?.WindowsVersion ?? string.Empty;
         _edition = scan.Overview?.WindowsEdition ?? string.Empty;
-        _allItems = scan.SettingsCatalog.Where(item => item.ProductDomain == domain && string.Equals(
+        var categoryItems = scan.SettingsCatalog.Where(item => item.ProductDomain == domain && string.Equals(
                 string.IsNullOrWhiteSpace(item.SubCategory) ? domain.ToString() : item.SubCategory,
                 category, StringComparison.OrdinalIgnoreCase))
             .OrderBy(item => item.ObjectName, StringComparer.OrdinalIgnoreCase).ToList();
+        _outcomeMode = domain is ProductDomain.ConsentStore or ProductDomain.AppPrivacy;
+        if (_outcomeMode)
+        {
+            var ids = categoryItems.Select(item => item.ObjectId).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (var pair in OutcomeConflictEngine.ConsentFamilies.Where(pair => ids.Contains(pair.UserId) || ids.Contains(pair.PolicyId)))
+            {
+                ids.Add(pair.UserId);
+                ids.Add(pair.PolicyId);
+            }
+            _allItems = scan.SettingsCatalog.Where(item => ids.Contains(item.ObjectId))
+                .OrderBy(item => item.ObjectName, StringComparer.OrdinalIgnoreCase).ToList();
+        }
+        else _allItems = categoryItems;
 
         InitializeComponent();
         ApplyPendingButton.Visibility = _elevation.IsAdminAuthorized ? Visibility.Visible : Visibility.Collapsed;
@@ -53,6 +67,9 @@ public partial class CategoryView : UserControl
         _filterState.Search = FilterBox.Text;
         StateBox.SelectedItem = StateBox.Items.OfType<ComboBoxItem>().FirstOrDefault(item =>
             string.Equals(item.Content?.ToString(), _filterState.State, StringComparison.OrdinalIgnoreCase)) ?? StateBox.Items[0];
+        if (!_allItems.Any(FeaturedSettings.IsFeatured)) _filterState.Scope = "All";
+        ScopeBox.SelectedItem = ScopeBox.Items.OfType<ComboBoxItem>().FirstOrDefault(item =>
+            string.Equals(item.Content?.ToString(), _filterState.Scope, StringComparison.OrdinalIgnoreCase)) ?? ScopeBox.Items[0];
         ModeStatusText.Text = _elevation.IsAdminAuthorized
             ? "Administrator mode — Apply writes the confirmed batch."
             : "View-only mode — choices are unavailable.";
@@ -64,40 +81,37 @@ public partial class CategoryView : UserControl
 
     private void Render()
     {
-        if (SettingsList is null || SummaryPanel is null || FilterBox is null || StateBox is null) return;
+        if (SettingsList is null || SummaryPanel is null || FilterBox is null || StateBox is null || ScopeBox is null) return;
         var filter = FilterBox.Text.Trim();
         if (filter.Length > 200) filter = filter[..200];
         var selectedState = (StateBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "All";
+        var selectedScope = (ScopeBox.SelectedItem as ComboBoxItem)?.Content?.ToString() ?? "Featured";
         _filterState.Search = filter;
         _filterState.State = selectedState;
+        _filterState.Scope = selectedScope;
         FilterBox.Background = (Brush)FindResource(filter.Length == 0 ? "BrushBgCard" : "BrushAccentSoft");
         StateBox.Background = (Brush)FindResource(selectedState == "All" ? "BrushBgCard" : "BrushAccentSoft");
+        ScopeBox.Background = (Brush)FindResource(selectedScope == "All" ? "BrushBgCard" : "BrushAccentSoft");
         var items = _allItems.Where(item => filter.Length == 0 || SearchText(item).Contains(filter, StringComparison.OrdinalIgnoreCase))
+            .Where(item => selectedScope == "All" || IsFeaturedForThisView(item))
             .Where(item => selectedState == "Not on this PC"
-                ? item.IsWritable && !item.IsApplicableHere
-                : item.IsWritable && item.IsApplicableHere && (selectedState == "All" ||
+                ? !item.IsApplicableHere
+                : item.IsApplicableHere && (selectedState == "All" ||
                     EvidenceStateSemantics.Label(EvidenceStateSemantics.Classify(item))
                         .Equals(selectedState, StringComparison.OrdinalIgnoreCase))).ToList();
 
         SettingsList.Children.Clear();
-        foreach (var item in items)
+        if (_outcomeMode)
         {
-            var conflict = _query?.GetConflictGroup(item.ObjectId);
-            var otherId = conflict?.ObjectIds.FirstOrDefault(id => !id.Equals(item.ObjectId, StringComparison.OrdinalIgnoreCase));
-            var otherName = string.IsNullOrWhiteSpace(otherId) ? null : _query?.GetById(otherId)?.ObjectName;
-            SettingsList.Children.Add(new SettingBar(
-                item,
-                _elevation.IsAdminAuthorized,
-                _applyInProgress,
-                _windowsVersion,
-                _edition,
-                _pending.TryGetValue(item.ObjectId, out var pendingRaw),
-                pendingRaw,
-                raw => { _pending[item.ObjectId] = raw; Render(); },
-                () => _openSetting(item.ObjectId),
-                conflict,
-                otherName,
-                _openConflict));
+            foreach (var family in OutcomeGrouping.Build(items))
+            {
+                var familyItems = family.ObjectIds.Select(id => items.First(item => item.ObjectId.Equals(id, StringComparison.OrdinalIgnoreCase))).ToList();
+                SettingsList.Children.Add(BuildOutcomeCard(family.Family, familyItems));
+            }
+        }
+        else foreach (var item in items)
+        {
+            SettingsList.Children.Add(BuildSettingBar(item));
         }
         EmptyText.Visibility = items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         SummaryPanel.Children.Clear();
@@ -108,6 +122,45 @@ public partial class CategoryView : UserControl
         AddSummary("Stale", summary.Stale, "BadgeWarning"); AddSummary("Errors", summary.Error, "BadgeConflict");
         ApplyPendingButton.Content = $"Apply ({_pending.Count})";
         ApplyPendingButton.IsEnabled = _pending.Count > 0 && _elevation.IsAdminAuthorized && !_applyInProgress;
+    }
+
+    private Border BuildOutcomeCard(string family, IReadOnlyList<ManagedObject> items)
+    {
+        var card = new Border
+        {
+            Style = (Style)FindResource("Card"),
+            Margin = new Thickness(0, 0, 0, 8),
+            Padding = new Thickness(10, 8, 10, 3)
+        };
+        var panel = new StackPanel();
+        panel.Children.Add(new TextBlock { Text = family, FontSize = 14, FontWeight = FontWeights.SemiBold, Margin = new Thickness(2, 0, 0, 7) });
+        foreach (var item in items.OrderBy(item => item.ProductDomain == ProductDomain.ConsentStore ? 0 : 1))
+            panel.Children.Add(BuildSettingBar(item));
+        card.Child = panel;
+        return card;
+    }
+
+    private SettingBar BuildSettingBar(ManagedObject item)
+    {
+        var conflict = _query?.GetConflictGroup(item.ObjectId);
+        var otherId = conflict?.ObjectIds.FirstOrDefault(id => !id.Equals(item.ObjectId, StringComparison.OrdinalIgnoreCase));
+        var otherName = string.IsNullOrWhiteSpace(otherId) ? null : _query?.GetById(otherId)?.ObjectName;
+        return new SettingBar(item, _elevation.IsAdminAuthorized, _applyInProgress, _windowsVersion, _edition,
+            _pending.TryGetValue(item.ObjectId, out var pendingRaw), pendingRaw,
+            raw => { _pending[item.ObjectId] = raw; Render(); }, () => _openSetting(item.ObjectId),
+            conflict, otherName, _openConflict);
+    }
+
+    private bool IsFeaturedForThisView(ManagedObject item)
+    {
+        if (FeaturedSettings.IsFeatured(item)) return true;
+        if (!_outcomeMode) return false;
+        var pair = OutcomeConflictEngine.ConsentFamilies.FirstOrDefault(candidate =>
+            candidate.UserId.Equals(item.ObjectId, StringComparison.OrdinalIgnoreCase) ||
+            candidate.PolicyId.Equals(item.ObjectId, StringComparison.OrdinalIgnoreCase));
+        if (string.IsNullOrWhiteSpace(pair.UserId)) return false;
+        var counterpart = pair.UserId.Equals(item.ObjectId, StringComparison.OrdinalIgnoreCase) ? pair.PolicyId : pair.UserId;
+        return _allItems.Any(candidate => candidate.ObjectId.Equals(counterpart, StringComparison.OrdinalIgnoreCase) && FeaturedSettings.IsFeatured(candidate));
     }
 
     private async void ApplyPending_Click(object sender, RoutedEventArgs e)

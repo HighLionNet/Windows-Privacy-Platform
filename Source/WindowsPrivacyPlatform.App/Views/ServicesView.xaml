@@ -4,7 +4,7 @@
   <Grid>
     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
     <StackPanel>
-      <TextBlock Text="Services" Style="{StaticResource SectionTitle}"/>
+      <TextBlock x:Name="TitleText" Text="Services" Style="{StaticResource SectionTitle}"/>
       <TextBlock x:Name="SubtitleText" Visibility="Collapsed"/>
       <Border Style="{StaticResource HeaderRule}"/>
     </StackPanel>

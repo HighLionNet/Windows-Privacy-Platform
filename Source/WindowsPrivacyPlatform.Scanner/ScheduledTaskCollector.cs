@@ -31,10 +31,18 @@ public sealed class ScheduledTaskCollector : IInventoryCollector
                 Encoding.UTF8);
 
             if (!result.Started || result.TimedOut || result.Canceled)
+            {
+                snapshot.System.ScheduledTaskEvidence = result.TimedOut ? EvidenceState.Error : EvidenceState.NotObserved;
+                snapshot.System.ScheduledTaskCollectionNotes = result.FailureCategory ?? "Task query did not complete.";
                 return;
+            }
 
             if (string.IsNullOrWhiteSpace(result.StdOut))
+            {
+                snapshot.System.ScheduledTaskEvidence = EvidenceState.Error;
+                snapshot.System.ScheduledTaskCollectionNotes = "Task query returned no rows; absence is not proven.";
                 return;
+            }
 
             foreach (var line in result.StdOut.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
             {
@@ -53,6 +61,10 @@ public sealed class ScheduledTaskCollector : IInventoryCollector
                     });
                 }
             }
+            snapshot.System.ScheduledTaskEvidence = snapshot.ScheduledTasks.Count > 0 ? EvidenceState.Configured : EvidenceState.Error;
+            snapshot.System.ScheduledTaskCollectionNotes = snapshot.ScheduledTasks.Count > 0
+                ? $"Observed {snapshot.ScheduledTasks.Count} task rows."
+                : "Task query output could not be parsed; absence is not proven.";
         }
         catch (OperationCanceledException)
         {
@@ -61,6 +73,8 @@ public sealed class ScheduledTaskCollector : IInventoryCollector
         catch
         {
             // schtasks may be unavailable or restricted; leave list empty (unknown, not proven absence).
+            snapshot.System.ScheduledTaskEvidence = EvidenceState.Error;
+            snapshot.System.ScheduledTaskCollectionNotes = "Scheduled-task observation failed; absence is not proven.";
         }
     }
 

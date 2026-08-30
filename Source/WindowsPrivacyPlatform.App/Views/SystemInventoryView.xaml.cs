@@ -12,11 +12,18 @@ public partial class SystemInventoryView : UserControl
     private readonly Action<string> _openSetting;
     private readonly DispatcherTimer _debounce;
 
-    public SystemInventoryView(ScanService scan, Action<string> openSetting)
+    public SystemInventoryView(ScanService scan, Action<string> openSetting, string page = "features")
     {
         InitializeComponent();
-        _items = scan.InventoryCatalog;
+        _items = scan.InventoryCatalog.Where(item => Includes(page, item)).ToList();
         _openSetting = openSetting;
+        TitleText.Text = page switch
+        {
+            "system-apps" => "System apps",
+            "other-apps" => "Other apps",
+            "firewall-rules" => "Firewall rules",
+            _ => "Features & capabilities"
+        };
         _debounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(140) };
         _debounce.Tick += (_, _) => { _debounce.Stop(); Refresh(); };
 
@@ -31,6 +38,18 @@ public partial class SystemInventoryView : UserControl
         PopulateGroups();
         Refresh();
     }
+
+    private static bool Includes(string page, ManagedObject item) => page switch
+    {
+        "system-apps" => item.FeatureCategory is FeatureCategory.AppxPackage or FeatureCategory.ProvisionedPackage &&
+                         (item.ObjectName.StartsWith("Microsoft.Windows", StringComparison.OrdinalIgnoreCase) ||
+                          item.ObjectName.StartsWith("Windows.", StringComparison.OrdinalIgnoreCase)),
+        "other-apps" => item.FeatureCategory is FeatureCategory.AppxPackage or FeatureCategory.ProvisionedPackage &&
+                        !item.ObjectName.StartsWith("Microsoft.Windows", StringComparison.OrdinalIgnoreCase) &&
+                        !item.ObjectName.StartsWith("Windows.", StringComparison.OrdinalIgnoreCase),
+        "firewall-rules" => item.FeatureCategory == FeatureCategory.FirewallRule,
+        _ => item.FeatureCategory is FeatureCategory.OptionalFeature or FeatureCategory.WindowsCapability
+    };
 
     private void PopulateGroups()
     {

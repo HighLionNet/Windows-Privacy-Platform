@@ -13,6 +13,10 @@
           <WrapPanel>
             <TextBlock Text="SEARCH" Style="{StaticResource FilterLabel}" Margin="0,0,8,8"/>
             <TextBox x:Name="FilterBox" Width="280" Height="34" VerticalContentAlignment="Center" Margin="0,0,14,8" TextChanged="FilterChanged" AutomationProperties.Name="Search settings"/>
+            <TextBlock Text="SHOW" Style="{StaticResource FilterLabel}" Margin="0,0,8,8"/>
+            <ComboBox x:Name="ScopeBox" Width="130" Height="34" Margin="0,0,14,8" SelectionChanged="FilterChanged" AutomationProperties.Name="Show featured or all settings">
+              <ComboBoxItem Content="Featured" IsSelected="True"/><ComboBoxItem Content="All"/>
+            </ComboBox>
             <TextBlock Text="STATE" Style="{StaticResource FilterLabel}" Margin="0,0,8,8"/>
             <ComboBox x:Name="StateBox" Width="190" Height="34" Margin="0,0,8,8" SelectionChanged="FilterChanged" AutomationProperties.Name="Filter by state">
               <ComboBoxItem Content="All" IsSelected="True"/><ComboBoxItem Content="Configured"/><ComboBoxItem Content="Not configured"/>

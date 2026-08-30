@@ -24,8 +24,8 @@ public sealed class SettingBar : Border
         Action<string>? openConflict)
     {
         ArgumentNullException.ThrowIfNull(item);
-        Margin = new Thickness(0, 0, 0, 9);
-        Padding = new Thickness(13, 10, 13, 11);
+        Margin = new Thickness(0, 0, 0, 6);
+        Padding = new Thickness(11, 8, 11, 9);
         Background = Brush("BrushBgCard");
         BorderBrush = Brush("BrushBorderStrong");
         BorderThickness = new Thickness(1);

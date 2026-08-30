@@ -12,18 +12,27 @@ public partial class ServicesView : UserControl
     private readonly ElevationService _elevation;
     private readonly Func<Task> _refresh;
     private readonly Window? _owner;
-    private readonly ServiceControlService _control = new();
+    private readonly InventoryChangeService _changes;
     private readonly ServiceFilterState _filterState;
+    private readonly bool _allowActions;
 
-    public ServicesView(ScanService scan, ElevationService elevation, Func<Task> refresh, Window? owner,
-        ServiceFilterState filterState)
+    public ServicesView(ScanService scan, ElevationService elevation, InventoryChangeService changes,
+        Func<Task> refresh, Window? owner, ServiceFilterState filterState, bool otherServices)
     {
         _elevation = elevation;
+        _changes = changes;
         _refresh = refresh;
         _owner = owner;
         _filterState = filterState;
-        _services = scan.LastScanResult?.Snapshot?.Services?.ToList() ?? [];
+        _allowActions = otherServices;
+        var all = scan.LastScanResult?.Snapshot?.Services?.ToList() ?? [];
+        _services = all.Where(service =>
+        {
+            var allowed = ServiceMutationPolicy.CanMutate(service, out _);
+            return otherServices ? allowed : !allowed;
+        }).ToList();
         InitializeComponent();
+        TitleText.Text = otherServices ? "Other services" : "Windows services";
         SearchBox.Text = filterState.Search;
         Select(StateBox, filterState.State); Select(StartupBox, filterState.Startup);
         Select(PublisherBox, filterState.Publisher); Select(IssueBox, filterState.Issue);
@@ -37,9 +46,9 @@ public partial class ServicesView : UserControl
         var service = _services.FirstOrDefault(item => item.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
         if (service is null) return;
         var confirmed = MessageBox.Show(_owner,
-            $"{action} {service.DisplayName}? Windows may interrupt applications that depend on this optional service.",
+            $"Service: {service.DisplayName}\nCurrent state: {service.State}\nIntended action: {action}\n\nSide effect: Windows may interrupt applications that depend on this optional service.\nRecovery: use Start or Restart on the same service after a fresh scan. Startup type is never changed.",
             "Confirm service action", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes;
-        var success = _control.TryChange(service, action, _elevation.IsAdminAuthorized, confirmed, out var error);
+        var success = _changes.TryChangeService(service, action, confirmed, out var error);
         MessageBox.Show(_owner, success ? "Windows completed the service action." : error,
             success ? "Service updated" : "Service action refused", MessageBoxButton.OK,
             success ? MessageBoxImage.Information : MessageBoxImage.Warning);
@@ -61,7 +70,7 @@ public partial class ServicesView : UserControl
         SearchBox.Background = Active(_filterState.Search.Length > 0);
         StateBox.Background = Active(_filterState.State != "All"); StartupBox.Background = Active(_filterState.Startup != "All");
         PublisherBox.Background = Active(_filterState.Publisher != "All"); IssueBox.Background = Active(_filterState.Issue != "All");
-        ServiceList.ItemsSource = visible.Select(service => new ServiceRow(service, _elevation.IsAdminAuthorized)).ToList();
+        ServiceList.ItemsSource = visible.Select(service => new ServiceRow(service, _allowActions && _elevation.IsAdminAuthorized)).ToList();
         var flagged = visible.Count(service => ServiceInspection.Classify(service) != ServiceEvidenceState.Normal);
         SubtitleText.Text = $"Showing {visible.Count:N0} of {_services.Count:N0} services. {flagged:N0} need review.";
     }

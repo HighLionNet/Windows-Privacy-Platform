@@ -22,6 +22,7 @@ public partial class MainWindow : FluentWindow
     private readonly IAuditLogger _log;
     private readonly ElevationService _elevation;
     private readonly PolicyChangeService _changes;
+    private readonly InventoryChangeService _inventoryChanges;
     private readonly ApplicationPreferencesStore _preferencesStore;
     private readonly ApplicationPreferences _preferences;
     private readonly string _appDataRoot;
@@ -32,6 +33,7 @@ public partial class MainWindow : FluentWindow
     private readonly Dictionary<string, CategoryFilterState> _categoryFilters = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConflictFilterState _conflictFilter = new();
     private readonly KnowledgeFilterState _knowledgeFilter = new();
+    private readonly ServiceFilterState _serviceFilter = new();
     private readonly Dictionary<string, ConflictGroup> _knownConflicts = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, ConflictGroup> _resolvedConflicts = new(StringComparer.OrdinalIgnoreCase);
     private readonly DispatcherTimer _sessionTimer;
@@ -50,6 +52,7 @@ public partial class MainWindow : FluentWindow
         _elevation = new ElevationService(_log);
         _elevation.SetSessionLifetime(_preferences.AdminSessionMinutes);
         _changes = new PolicyChangeService(_elevation, _log);
+        _inventoryChanges = new InventoryChangeService(_scan, _elevation, _log);
 
         _appDataRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "WindowsPrivacyPlatform");
@@ -278,17 +281,45 @@ public partial class MainWindow : FluentWindow
             SetContent(new HomeView(_scan, OpenSettingsList, destination => GoTo("posture:" + destination), () => GoTo("conflicts")));
             UpdateBreadcrumbs("Dashboard");
         }
-        else if (tag == "inventory")
+        else if (tag is "inventory" or "services" or "explore:windows-services")
         {
-            SetContent(new SystemInventoryView(_scan, OpenSetting));
-            UpdateBreadcrumbs("System Explorer", group: HubNavigation.DisplayName(HubSection.Explore));
+            SetContent(new ServicesView(_scan, _elevation, _inventoryChanges, RunScanAsync, this, _serviceFilter, otherServices: false));
+            UpdateBreadcrumbs("Windows services", group: HubNavigation.DisplayName(HubSection.Explore));
         }
-        else if (tag == "services")
+        else if (tag == "explore:other-services")
         {
-            // A saved v2.5.1 route may still name Services. Keep the route safe by
-            // landing on read-only inventory; service verbs are not an Explore action.
-            SetContent(new SystemInventoryView(_scan, OpenSetting));
-            UpdateBreadcrumbs("System Explorer", group: HubNavigation.DisplayName(HubSection.Explore));
+            SetContent(new ServicesView(_scan, _elevation, _inventoryChanges, RunScanAsync, this, _serviceFilter, otherServices: true));
+            UpdateBreadcrumbs("Other services", group: HubNavigation.DisplayName(HubSection.Explore));
+        }
+        else if (tag == "explore:windows-tasks")
+        {
+            SetContent(new ScheduledTasksView(_scan, _inventoryChanges, _elevation, RunScanAsync, this, otherTasks: false));
+            UpdateBreadcrumbs("Windows tasks", group: HubNavigation.DisplayName(HubSection.Explore));
+        }
+        else if (tag == "explore:other-tasks")
+        {
+            SetContent(new ScheduledTasksView(_scan, _inventoryChanges, _elevation, RunScanAsync, this, otherTasks: true));
+            UpdateBreadcrumbs("Other tasks", group: HubNavigation.DisplayName(HubSection.Explore));
+        }
+        else if (tag.StartsWith("explore:", StringComparison.OrdinalIgnoreCase))
+        {
+            var page = tag[8..];
+            SetContent(new SystemInventoryView(_scan, OpenSetting, page));
+            UpdateBreadcrumbs(page switch
+            {
+                "system-apps" => "System apps", "other-apps" => "Other apps",
+                "firewall-rules" => "Firewall rules", _ => "Features & capabilities"
+            }, group: HubNavigation.DisplayName(HubSection.Explore));
+        }
+        else if (tag == "network:dns")
+        {
+            SetContent(new DnsResolutionView(_scan, OpenSettingsList));
+            UpdateBreadcrumbs("DNS & name resolution", group: HubNavigation.DisplayName(HubSection.Network));
+        }
+        else if (tag == "network:adapters")
+        {
+            SetContent(new DnsResolutionView(_scan, OpenSettingsList, adaptersOnly: true));
+            UpdateBreadcrumbs("Adapters & LAN", group: HubNavigation.DisplayName(HubSection.Network));
         }
         else if (tag.StartsWith("conflicts", StringComparison.OrdinalIgnoreCase))
         {
@@ -393,7 +424,7 @@ public partial class MainWindow : FluentWindow
             BreadcrumbPanel.Children.Clear();
             AddBreadcrumbLink("Dashboard", "home"); AddBreadcrumbSep();
             AddBreadcrumbText(HubNavigation.DisplayName(HubSection.Explore)); AddBreadcrumbSep();
-            AddBreadcrumbLink("System Explorer", "inventory");
+            AddBreadcrumbLink("Explore category", InventoryTag(item));
             AddBreadcrumbSep(); AddBreadcrumbText(detail.Title);
             return;
         }
@@ -416,7 +447,8 @@ public partial class MainWindow : FluentWindow
 
     private void ConfigureScrollFor(string tag)
     {
-        var listOwnsScroll = tag is "services" or "inventory" or "knowledge";
+        var listOwnsScroll = tag is "services" or "inventory" or "knowledge" ||
+                             tag.StartsWith("explore:", StringComparison.OrdinalIgnoreCase);
         ContentScroll.VerticalScrollBarVisibility = listOwnsScroll ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Auto;
         BackToTopButton.Visibility = Visibility.Collapsed;
     }
@@ -567,7 +599,7 @@ public partial class MainWindow : FluentWindow
             var item = _scan.Catalog.FirstOrDefault(candidate =>
                 candidate.ObjectId.Equals(tag[8..], StringComparison.OrdinalIgnoreCase));
             if (item is null) return;
-            highlight = item.Bucket == CatalogBucket.SystemInventory ? "inventory" : "domain:" + item.ProductDomain;
+            highlight = item.Bucket == CatalogBucket.SystemInventory ? InventoryTag(item) : "domain:" + item.ProductDomain;
         }
         else if (tag.StartsWith("conflicts:", StringComparison.OrdinalIgnoreCase)) highlight = "conflicts";
         else if (tag.StartsWith("search:", StringComparison.OrdinalIgnoreCase) || tag.StartsWith("posture:", StringComparison.OrdinalIgnoreCase)) highlight = "home";
@@ -607,12 +639,27 @@ public partial class MainWindow : FluentWindow
 
     private static string DomainGroup(ProductDomain domain) => HubNavigation.DisplayName(HubNavigation.For(domain));
 
+    private static string InventoryTag(ManagedObject item) => item.FeatureCategory switch
+    {
+        FeatureCategory.WindowsService => "explore:windows-services",
+        FeatureCategory.ScheduledTask => "explore:windows-tasks",
+        FeatureCategory.AppxPackage or FeatureCategory.ProvisionedPackage =>
+            item.ObjectName.StartsWith("Microsoft.Windows", StringComparison.OrdinalIgnoreCase) ||
+            item.ObjectName.StartsWith("Windows.", StringComparison.OrdinalIgnoreCase)
+                ? "explore:system-apps" : "explore:other-apps",
+        FeatureCategory.FirewallRule => "explore:firewall-rules",
+        _ => "explore:features"
+    };
+
     private void SyncSectionForTag(string tag)
     {
         HubSection? section = null;
         if (tag.Equals("inventory", StringComparison.OrdinalIgnoreCase) ||
-            tag.Equals("services", StringComparison.OrdinalIgnoreCase))
+            tag.Equals("services", StringComparison.OrdinalIgnoreCase) ||
+            tag.StartsWith("explore:", StringComparison.OrdinalIgnoreCase))
             section = HubSection.Explore;
+        else if (tag.StartsWith("network:", StringComparison.OrdinalIgnoreCase))
+            section = HubSection.Network;
         else if (TryParseCategory(tag, out var categoryDomain, out _))
             section = HubNavigation.For(categoryDomain);
         else if (tag.StartsWith("domain:", StringComparison.OrdinalIgnoreCase) &&
@@ -662,8 +709,8 @@ public partial class MainWindow : FluentWindow
         {
             HubSection.Privacy => "domain:ConsentStore",
             HubSection.Security => "domain:Defender",
-            HubSection.Network => "domain:Network",
-            HubSection.Explore => "inventory",
+            HubSection.Network => "network:dns",
+            HubSection.Explore => "explore:windows-services",
             _ => "home"
         });
     }
@@ -719,7 +766,7 @@ public partial class MainWindow : FluentWindow
             }
             if (lines.Length >= 5 && bool.TryParse(lines[4], out var collapsed)) _sidebarCollapsed = collapsed;
             if (lines.Length >= 7 && !string.IsNullOrWhiteSpace(lines[6])) _currentNav = lines[6];
-            if (_currentNav.Equals("services", StringComparison.OrdinalIgnoreCase)) _currentNav = "inventory";
+            if (_currentNav is "services" or "inventory") _currentNav = "explore:windows-services";
             if (_preferences.RememberWindowPosition && lines.Length >= 6 && Enum.TryParse<WindowState>(lines[5], out var state))
                 WindowState = state == WindowState.Minimized ? WindowState.Normal : state;
             else if (_preferences.StartMaximized) WindowState = WindowState.Maximized;
@@ -759,8 +806,8 @@ public partial class MainWindow : FluentWindow
     private void Nav_Click(object sender, RoutedEventArgs e) { if (sender is Button { Tag: string tag }) GoTo(tag); }
     private void NavigateFromMenu(string tag) => GoTo(tag);
     private void MenuHome_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("home");
-    private void MenuInventory_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("inventory");
-    private void MenuServices_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("inventory");
+    private void MenuInventory_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("explore:features");
+    private void MenuServices_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("explore:windows-services");
     private void MenuConflicts_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("conflicts");
     private void MenuKnowledge_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("knowledge");
     private void MenuSettings_Click(object sender, RoutedEventArgs e) => NavigateFromMenu("settings");

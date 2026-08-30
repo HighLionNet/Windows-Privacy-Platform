@@ -31,7 +31,7 @@ public partial class SettingDetailPage : UserControl
         _openConflict = openConflict;
         TitleText.Text = detail.Title;
         DomainPathText.Text = detail.Bucket == CatalogBucket.SystemInventory
-            ? "System Explorer · observed component"
+            ? "Troubleshoot/Explore · observed component"
             : detail.DomainPath;
         ObservedText.Text = detail.CurrentStateDisplay ?? "Unknown";
         EffectiveText.Text = detail.EffectiveValueDisplay ?? "Unknown";

@@ -132,6 +132,7 @@ public class TaskInfo
 {
     public string Path { get; set; } = string.Empty;
     public string State { get; set; } = string.Empty;
+    public bool IsMicrosoft => TaskMutationPolicy.IsMicrosoftPath(Path);
 }
 
 public class PrivacySettingInfo

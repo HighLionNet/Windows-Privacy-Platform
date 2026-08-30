@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Diagnostics;
 using WindowsPrivacyPlatform.App.Services;
 using WindowsPrivacyPlatform.Models;
 
@@ -35,6 +36,15 @@ public partial class DomainView : UserControl
                 ProtectionProductObservationStatus.AccessDenied or ProtectionProductObservationStatus.Error => "BrushWarning",
                 _ => "BrushTextMuted"
             });
+        }
+
+        if (domain == ProductDomain.Edge)
+        {
+            EdgePresencePanel.Visibility = Visibility.Visible;
+            var browsers = scan.LastScanResult?.Snapshot?.Applications.Browsers ?? new BrowserPresenceSnapshot();
+            EdgePresenceText.Text = ProductLine(browsers.Edge);
+            WebViewPresenceText.Text = ProductLine(browsers.WebView2);
+            DefaultBrowserText.Text = "Default browser (observed): " + browsers.DefaultBrowser.Summary;
         }
 
         var items = scan.SettingsCatalog.Where(m => m.ProductDomain == domain).ToList();
@@ -79,6 +89,18 @@ public partial class DomainView : UserControl
                 CategoryContent.For(domain, group.Key),
                 () => openCategory(domain, group.Key)));
         }
+    }
+
+    private static string ProductLine(BrowserProductInfo product) => product.Evidence == EvidenceState.Configured
+        ? $"{product.Name}: {product.Version} · {product.InstallPath}"
+        : $"{product.Name}: {EvidenceStateSemantics.Label(product.Evidence)}";
+
+    private void DefaultApps_Click(object sender, RoutedEventArgs e) => OpenSettings("ms-settings:defaultapps");
+    private void AppsFeatures_Click(object sender, RoutedEventArgs e) => OpenSettings("ms-settings:appsfeatures");
+    private static void OpenSettings(string uri)
+    {
+        try { Process.Start(new ProcessStartInfo(uri) { UseShellExecute = true }); }
+        catch { }
     }
 
     private Button BuildSettingRow(ManagedObject mo, Action open)

@@ -61,7 +61,7 @@
     <Border Style="{StaticResource PropertySheet}">
       <StackPanel>
         <Border Style="{StaticResource PropertySheetHeader}">
-          <TextBlock Text="PRIORITY FINDINGS" FontWeight="Bold" FontSize="11"/>
+          <TextBlock Text="DECISION SETTINGS" FontWeight="Bold" FontSize="11"/>
         </Border>
         <StackPanel x:Name="FindingsList" Margin="0,2,0,2"/>
       </StackPanel>

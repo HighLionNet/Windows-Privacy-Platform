@@ -24,6 +24,7 @@ public sealed class CategoryFilterState
 {
     public string Search { get; set; } = string.Empty;
     public string State { get; set; } = "All";
+    public string Scope { get; set; } = "Featured";
 }
 
 public sealed class ConflictFilterState

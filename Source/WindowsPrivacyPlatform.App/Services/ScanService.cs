@@ -17,8 +17,8 @@ namespace WindowsPrivacyPlatform.App.Services;
 /// </summary>
 public sealed class ScanService
 {
-    public const string CatalogSchemaVersion = ManagedObjectCatalog.CatalogVersion;
-    public const string KnowledgeBaseVersionValue = ManagedObjectCatalog.CatalogVersion;
+    public static string CatalogSchemaVersion => ManagedObjectCatalog.CatalogVersion;
+    public static string KnowledgeBaseVersionValue => ManagedObjectCatalog.CatalogVersion;
 
     public IReadOnlyList<ManagedObject> Catalog { get; private set; } = Array.Empty<ManagedObject>();
     public SettingsQuery? Query { get; private set; }
@@ -39,6 +39,7 @@ public sealed class ScanService
     private MachineOverview? _lastGoodOverview;
     private ObservationSummary? _lastGoodSummary;
     private IReadOnlyList<ManagedObject>? _lastGoodCatalog;
+    private ScanResult? _lastGoodScanResult;
 
     public event Action<string>? StatusChanged;
     public event Action? ScanCompleted;
@@ -67,6 +68,8 @@ public sealed class ScanService
                 new ScheduledTaskCollector(),
                 new PrivacyCollector(),
                 new PolicyCollector(),
+                new NetworkingCollector(),
+                new BrowserInventoryCollector(),
                 new FirewallCollector(),
                 new SecurityCenterCollector()
             };
@@ -198,6 +201,7 @@ public sealed class ScanService
                     _lastGoodOverview = Overview;
                     _lastGoodSummary = Summary;
                     _lastGoodCatalog = catalog;
+                    _lastGoodScanResult = scanResult;
                 }
 
                 var msg = scanResult.Status == ScanStatus.CompletedWithWarnings
@@ -243,6 +247,7 @@ public sealed class ScanService
 
     private void RestoreLastGoodIfNeeded()
     {
+        LastScanResult = _lastGoodScanResult;
         if (_lastGoodOverview is not null)
         {
             Overview = _lastGoodOverview;

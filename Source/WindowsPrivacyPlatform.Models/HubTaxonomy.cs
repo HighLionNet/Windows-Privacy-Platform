@@ -8,7 +8,7 @@ public static class HubTaxonomy
         if (item.Bucket != CatalogBucket.Settings)
             return;
 
-        // v2.5.1 used Other for the two Clipboard settings. Resolve that legacy
+        // A legacy catalog batch used Other for the two Clipboard settings. Resolve that
         // catch-all during catalog finalization so it never creates a fifth rail.
         if (item.ProductDomain == ProductDomain.Other &&
             item.ObjectId.Contains("clipboard", StringComparison.OrdinalIgnoreCase))

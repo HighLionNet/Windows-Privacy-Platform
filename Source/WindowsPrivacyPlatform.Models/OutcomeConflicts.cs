@@ -17,7 +17,7 @@ public sealed record ConflictGroup(
 /// <summary>Pure, named-family outcome comparison. Raw-value inequality alone is never a conflict.</summary>
 public static class OutcomeConflictEngine
 {
-    private static readonly (string UserId, string PolicyId, string Family)[] ConsentPairs =
+    public static IReadOnlyList<(string UserId, string PolicyId, string Family)> ConsentFamilies { get; } =
     [
         ("privacy.consentstore.location", "policy.appprivacy.location", "Location access"),
         ("privacy.consentstore.webcam", "policy.appprivacy.camera", "Camera access"),
@@ -58,7 +58,7 @@ public static class OutcomeConflictEngine
             }
         }
 
-        foreach (var (userId, policyId, family) in ConsentPairs)
+        foreach (var (userId, policyId, family) in ConsentFamilies)
         {
             if (!byId.TryGetValue(userId, out var userItem) || !byId.TryGetValue(policyId, out var policyItem))
                 continue;
@@ -91,7 +91,7 @@ public static class OutcomeConflictEngine
         {
             "privacy.advertisingid.enabled", "policy.advertising.disabledbygpo"
         };
-        foreach (var pair in ConsentPairs)
+        foreach (var pair in ConsentFamilies)
         {
             known.Add(pair.UserId);
             known.Add(pair.PolicyId);

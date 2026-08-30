@@ -95,11 +95,25 @@ public static class HubNavigation
         {
             return
             [
-                new HubNavigationItem(
-                    HubSection.Explore,
-                    "System Explorer",
-                    "inventory",
-                    IsReadOnlyDestination: true)
+                new(HubSection.Explore, "Windows services", "explore:windows-services", IsReadOnlyDestination: true),
+                new(HubSection.Explore, "Other services", "explore:other-services"),
+                new(HubSection.Explore, "Windows tasks", "explore:windows-tasks", IsReadOnlyDestination: true),
+                new(HubSection.Explore, "Other tasks", "explore:other-tasks"),
+                new(HubSection.Explore, "System apps", "explore:system-apps", IsReadOnlyDestination: true),
+                new(HubSection.Explore, "Other apps", "explore:other-apps", IsReadOnlyDestination: true),
+                new(HubSection.Explore, "Features & capabilities", "explore:features", IsReadOnlyDestination: true),
+                new(HubSection.Explore, "Firewall rules", "explore:firewall-rules", IsReadOnlyDestination: true)
+            ];
+        }
+
+        if (section == HubSection.Network)
+        {
+            return
+            [
+                new(HubSection.Network, "DNS & name resolution", "network:dns", ProductDomain.Network),
+                new(HubSection.Network, "Adapters & LAN", "network:adapters", ProductDomain.Network, IsReadOnlyDestination: true),
+                new(HubSection.Network, "Firewall", "domain:Firewall", ProductDomain.Firewall),
+                new(HubSection.Network, "Remote access", "domain:RemoteAccess", ProductDomain.RemoteAccess)
             ];
         }
 

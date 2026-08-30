@@ -11,7 +11,7 @@
     </Grid.RowDefinitions>
 
     <StackPanel>
-      <TextBlock Text="System Explorer" Style="{StaticResource SectionTitle}" />
+      <TextBlock x:Name="TitleText" Text="Explore" Style="{StaticResource SectionTitle}" />
       <Border Style="{StaticResource HeaderRule}" />
     </StackPanel>
 

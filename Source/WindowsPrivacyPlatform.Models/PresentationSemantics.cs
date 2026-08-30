@@ -120,7 +120,7 @@ public static class CategoryContent
             "These settings can change malware prevention and cloud analysis; privacy tradeoffs must not be confused with reducing protection."),
         ProductDomain.Firewall => new(
             $"Review the bounded Windows Firewall controls for the {Friendly(category)}.",
-            "Profile defaults determine how unmatched traffic is handled. Individual firewall rules remain read-only in System Explorer."),
+            "Profile defaults determine how unmatched traffic is handled. Individual firewall rules remain read-only in Explore."),
         ProductDomain.Location => new(
             "Review machine-wide location controls and provider availability.",
             "Location can reveal physical movement and is used independently by apps, Search, and Find My Device."),

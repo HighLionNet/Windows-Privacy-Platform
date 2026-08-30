@@ -31,6 +31,9 @@ public sealed class PolicyChangeService
         _stepUp = new HighImpactStepUpService(_log);
     }
 
+    public static bool IsSupportedTarget(WritableTarget? target) =>
+        target is { IsComplete: true, Kind: WritableTargetKind.Registry };
+
     /// <summary>
     /// Apply a catalog value. rawValue null/empty = delete value (Not configured) when SupportsDeletion.
     /// Returns true only when the system registry read-back matches the intended state including kind.
@@ -190,7 +193,7 @@ public sealed class PolicyChangeService
             return false;
         }
 
-        if (target.Kind != WritableTargetKind.Registry)
+        if (!IsSupportedTarget(target))
         {
             message = "Only verified registry policies can be changed in this release.";
             _log.Change("PolicyChangeService", $"DENIED {mo.ObjectId}: non-registry target {target.Kind}.");

@@ -37,6 +37,7 @@ public class ApplicationInventory
     public List<string> ProvisionedPackages { get; set; } = new();
     public List<string> InstalledCapabilities { get; set; } = new();
     public List<OptionalFeatureInfo> OptionalFeatures { get; set; } = new();
+    public BrowserPresenceSnapshot Browsers { get; set; } = new();
 }
 
 public class PrivacyInventory
@@ -53,6 +54,8 @@ public class SystemInventory
 {
     public List<ServiceInfo> Services { get; set; } = new();
     public List<TaskInfo> ScheduledTasks { get; set; } = new();
+    public EvidenceState ScheduledTaskEvidence { get; set; } = EvidenceState.NotObserved;
+    public string ScheduledTaskCollectionNotes { get; set; } = string.Empty;
 }
 
 public class SecurityInventory
@@ -123,6 +126,86 @@ public class NetworkingInventory
     public List<FirewallRuleInfo> FirewallRules { get; set; } = new();
     public string FirewallServiceState { get; set; } = "Unknown";
     public string FirewallCollectionNotes { get; set; } = string.Empty;
+    public DnsResolutionSnapshot Dns { get; set; } = new();
+}
+
+public sealed class DnsResolutionSnapshot
+{
+    public DateTime CapturedAtUtc { get; set; }
+    public List<DnsInterfaceInfo> Interfaces { get; set; } = new();
+    public List<NrptRuleInfo> NrptRules { get; set; } = new();
+    public DnsLayerObservation Nrpt { get; set; } = new();
+    public DnsLayerObservation WindowsDoh { get; set; } = new();
+    public DnsLayerObservation PreferredPath { get; set; } = new();
+    public DnsLayerObservation VpnDnsPath { get; set; } = new();
+    public List<DnsProbeInfo> ResolverProbes { get; set; } = new();
+    public List<ExternalDnsInfo> ExternalApps { get; set; } = new();
+}
+
+public sealed class DnsInterfaceInfo
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public int InterfaceIndex { get; set; }
+    public int? InterfaceMetric { get; set; }
+    public List<string> IPv4Addresses { get; set; } = new();
+    public List<string> IPv6Addresses { get; set; } = new();
+    public List<string> DnsServers { get; set; } = new();
+    public string AddressSource { get; set; } = "Unknown";
+    public EvidenceState Evidence { get; set; } = EvidenceState.Unknown;
+    public bool IsVpnOrTunnel { get; set; }
+}
+
+public sealed class NrptRuleInfo
+{
+    public string Namespace { get; set; } = string.Empty;
+    public string NameServers { get; set; } = string.Empty;
+    public string DnsSec { get; set; } = "Unknown";
+    public string DirectAccess { get; set; } = "Unknown";
+    public string Source { get; set; } = string.Empty;
+}
+
+public sealed class DnsLayerObservation
+{
+    public EvidenceState Evidence { get; set; } = EvidenceState.Unknown;
+    public string Summary { get; set; } = "Unknown";
+    public string Source { get; set; } = string.Empty;
+}
+
+public sealed class DnsProbeInfo
+{
+    public string Resolver { get; set; } = string.Empty;
+    public string QueryName { get; set; } = string.Empty;
+    public string Answer { get; set; } = string.Empty;
+    public EvidenceState Evidence { get; set; } = EvidenceState.Unknown;
+    public string Source { get; set; } = string.Empty;
+}
+
+public sealed class ExternalDnsInfo
+{
+    public string Application { get; set; } = string.Empty;
+    public string Summary { get; set; } = string.Empty;
+    public EvidenceState Evidence { get; set; } = EvidenceState.Unknown;
+    public string Source { get; set; } = "ExternalApp";
+}
+
+public sealed class BrowserPresenceSnapshot
+{
+    public BrowserProductInfo Edge { get; set; } = new() { Name = "Microsoft Edge" };
+    public BrowserProductInfo WebView2 { get; set; } = new() { Name = "Microsoft Edge WebView2 Runtime" };
+    public DnsLayerObservation DefaultBrowser { get; set; } = new();
+}
+
+public sealed class BrowserProductInfo
+{
+    public string Name { get; set; } = string.Empty;
+    public EvidenceState Evidence { get; set; } = EvidenceState.Unknown;
+    public string Version { get; set; } = string.Empty;
+    public string InstallPath { get; set; } = string.Empty;
+    public string Source { get; set; } = string.Empty;
 }
 
 public class DeviceInventory

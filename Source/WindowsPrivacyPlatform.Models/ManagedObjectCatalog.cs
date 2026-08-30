@@ -8,7 +8,8 @@ namespace WindowsPrivacyPlatform.Models;
 
 public static class ManagedObjectCatalog
 {
-    public const string CatalogVersion = "2.5.1";
+    public static string CatalogVersion { get; } =
+        ProductInfoReader.Read(typeof(ManagedObjectCatalog).Assembly).Version;
     public static IReadOnlyList<ManagedObject> PrivacySettings { get; } = Finalize(CreatePrivacyBatch());
     public static IReadOnlyList<ManagedObject> PolicySettings { get; } = Finalize(MergeCoverage(
         CreatePolicyBatch()
@@ -17,6 +18,7 @@ public static class ManagedObjectCatalog
             .Concat(CatalogV22Expansion.CreateCoverageBatch())
             .Concat(CatalogV25Expansion.CreateCoverageBatch())
             .Concat(CatalogV251Expansion.CreateCoverageBatch())
+            .Concat(CatalogV262Expansion.CreateCoverageBatch())
             .Concat(CatalogV21Expansion.CreateBatch())
             .ToList()));
     public static IReadOnlyList<ManagedObject> FirewallSettings { get; } = Finalize(CreateFirewallBatch());

@@ -48,13 +48,22 @@ public partial class HomeView : UserControl
         });
         LastScanText.Text = $"{overview.LastScanUtc:yyyy-MM-dd HH:mm:ss} UTC";
 
-        var highFindings = posture.Findings.Where(finding => finding.Severity == PostureFindingSeverity.High).ToList();
-        foreach (var finding in highFindings)
+        var decisions = scan.SettingsCatalog.Where(FeaturedSettings.IsFeatured)
+            .Where(item => item.Observation?.Resolution?.HasConflict == true ||
+                           EvidenceStateSemantics.Classify(item) is EvidenceState.Configured or EvidenceState.Unknown or
+                               EvidenceState.NotObserved or EvidenceState.AccessDenied or EvidenceState.Error)
+            .OrderByDescending(item => item.Observation?.Resolution?.HasConflict == true)
+            .ThenBy(item => item.ObjectName, StringComparer.OrdinalIgnoreCase)
+            .Take(14).ToList();
+        foreach (var item in decisions)
         {
-            var row = new Button { Style = (Style)FindResource("ListRowButton"), Tag = finding.ObjectId };
+            var state = item.Observation?.Resolution?.HasConflict == true
+                ? "Conflict · " + (item.Observation.Resolution.ResolutionReason ?? "layers disagree")
+                : EvidenceStateSemantics.Label(EvidenceStateSemantics.Classify(item)) + " · " + NavigationBuilder.DisplayValue(item.CurrentState);
+            var row = new Button { Style = (Style)FindResource("ListRowButton"), Tag = item.ObjectId };
             var panel = new StackPanel();
-            panel.Children.Add(new TextBlock { Text = finding.Title, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
-            panel.Children.Add(new TextBlock { Text = finding.Summary, FontSize = 11, Foreground = (Brush)FindResource("BrushTextSecondary"), TextWrapping = TextWrapping.Wrap });
+            panel.Children.Add(new TextBlock { Text = item.ObjectName, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
+            panel.Children.Add(new TextBlock { Text = state, FontSize = 11, Foreground = (Brush)FindResource("BrushTextSecondary"), TextWrapping = TextWrapping.Wrap });
             row.Content = panel;
             row.Click += (_, _) =>
             {
@@ -64,10 +73,10 @@ public partial class HomeView : UserControl
             FindingsList.Children.Add(row);
         }
 
-        if (highFindings.Count == 0)
+        if (decisions.Count == 0)
             FindingsList.Children.Add(new TextBlock
             {
-                Text = "No high-attention findings.",
+                Text = "No configured, conflicting, or unknown featured decision settings were observed.",
                 Margin = new Thickness(12, 10, 12, 10), TextWrapping = TextWrapping.Wrap,
                 Foreground = (Brush)FindResource("BrushTextSecondary")
             });

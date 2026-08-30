@@ -22,7 +22,7 @@
       <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
 
-    <ui:TitleBar Grid.Row="0" Title="" MinHeight="44"
+    <ui:TitleBar Grid.Row="0" Title="" MinHeight="32"
                  ShowClose="True" ShowMaximize="True" ShowMinimize="True">
       <ui:TitleBar.Header>
         <Menu x:Name="TopMenu" HorizontalAlignment="Left" VerticalAlignment="Center" Background="Transparent">
@@ -31,7 +31,7 @@
             <Separator/>
             <MenuItem Header="E_xit" InputGestureText="Alt+F4" Click="MenuExit_Click"/>
           </MenuItem>
-          <MenuItem Header="_Options">
+          <MenuItem Header="_Edit">
             <MenuItem Header="_Find…" InputGestureText="Ctrl+F" Click="MenuSearch_Click"/>
             <MenuItem Header="_Copy search text" Click="MenuCopySearch_Click"/>
           </MenuItem>
@@ -42,7 +42,7 @@
             <MenuItem Header="_Network" Click="NetworkSection_Click"/>
             <MenuItem Header="Troubleshoot/_Explore" Click="ExploreSection_Click"/>
             <Separator/>
-            <MenuItem Header="System E_xplorer" Click="MenuInventory_Click"/>
+            <MenuItem Header="_Features &amp; capabilities" Click="MenuInventory_Click"/>
             <MenuItem Header="_Conflicts" Click="MenuConflicts_Click"/>
             <MenuItem Header="_Knowledge Explorer" Click="MenuKnowledge_Click"/>
             <Separator/>
@@ -61,14 +61,14 @@
       </ui:TitleBar.Header>
     </ui:TitleBar>
 
-    <Border Grid.Row="1" MinHeight="82" Background="{DynamicResource BrushHeaderChrome}"
-            BorderBrush="{DynamicResource BrushAccent}" BorderThickness="0,1,0,2" Padding="20,10">
+    <Border Grid.Row="1" MinHeight="50" Background="{DynamicResource BrushHeaderChrome}"
+            BorderBrush="{DynamicResource BrushAccent}" BorderThickness="0,1,0,2" Padding="16,5">
       <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Left">
-          <Image Width="54" Height="54" Source="Assets/WindowsPrivacyPlatform.png" Stretch="Uniform"
-                 Margin="0,0,14,0" RenderOptions.BitmapScalingMode="HighQuality"/>
+          <Image Width="34" Height="34" Source="Assets/WindowsPrivacyPlatform.png" Stretch="Uniform"
+                 Margin="0,0,10,0" RenderOptions.BitmapScalingMode="HighQuality"/>
           <StackPanel VerticalAlignment="Center">
             <StackPanel Orientation="Horizontal">
-              <TextBlock x:Name="ProductNameText" FontSize="23" FontWeight="Bold" TextTrimming="CharacterEllipsis"/>
+              <TextBlock x:Name="ProductNameText" FontSize="18" FontWeight="Bold" TextTrimming="CharacterEllipsis"/>
               <TextBlock x:Name="HeaderVersionText" Margin="11,0,0,0" VerticalAlignment="Center"
                          Foreground="{DynamicResource BrushAccent}" FontSize="12" FontWeight="Bold"/>
             </StackPanel>
@@ -79,7 +79,7 @@
 
     <Border Grid.Row="2" Background="{DynamicResource BrushHeaderChrome}"
             BorderBrush="{DynamicResource BrushBorderStrong}" BorderThickness="0,0,0,1"
-            Padding="12,8,12,9">
+            Padding="10,5,10,6">
       <Grid>
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/>
@@ -103,7 +103,7 @@
         </StackPanel>
 
         <Border Grid.Column="2" Background="{DynamicResource BrushBgCard}" BorderBrush="{DynamicResource BrushAccent}"
-                BorderThickness="2" CornerRadius="4" Height="36" Margin="0,0,12,0" MaxWidth="460" HorizontalAlignment="Stretch">
+                BorderThickness="2" CornerRadius="4" Height="36" Margin="0,0,12,0" HorizontalAlignment="Stretch">
           <Grid>
             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
             <TextBlock Text="SEARCH" Style="{StaticResource FilterLabel}" Margin="10,0,7,0"/>
@@ -141,7 +141,7 @@
     <ProgressBar x:Name="ScanProgress" Grid.Row="3" IsIndeterminate="True" Height="2" Visibility="Collapsed"/>
 
     <Border Grid.Row="4" Background="{DynamicResource BrushBgHeader}"
-            BorderBrush="{DynamicResource BrushBorderStrong}" BorderThickness="0,0,0,1" Padding="14,10,14,8">
+            BorderBrush="{DynamicResource BrushBorderStrong}" BorderThickness="0,0,0,1" Padding="12,6,12,5">
       <Grid>
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         <UniformGrid Grid.Row="0" Columns="4">
@@ -175,10 +175,21 @@
       <Border Grid.Column="0" Background="{DynamicResource BrushSidebarChrome}"
               BorderBrush="{DynamicResource BrushBorderStrong}" BorderThickness="0,0,1,0">
         <Grid x:Name="NavPanel">
-          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
 
-          <Border x:Name="RailAccentBorder" Grid.Row="0" BorderBrush="{DynamicResource BrushDomainPrivacy}"
-                  BorderThickness="4,0,0,1" Padding="15,14,10,12" Background="{DynamicResource BrushSidebarHover}">
+          <Border Grid.Row="0" BorderBrush="{DynamicResource BrushBorderRule}" BorderThickness="0,0,0,1" Padding="0,6,0,7">
+            <StackPanel>
+              <TextBlock Text="HUB" Style="{StaticResource SidebarGroupLabel}" Margin="15,3,8,4"/>
+              <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="home"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Home24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Dashboard"/></StackPanel></Button>
+              <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="conflicts"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Warning24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Conflicts"/></StackPanel></Button>
+              <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="knowledge"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="BookInformation24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Knowledge Explorer"/></StackPanel></Button>
+              <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="settings"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Settings24" Width="17" Margin="0,0,8,0"/><TextBlock Text="App Settings"/></StackPanel></Button>
+              <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="about"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Info24" Width="17" Margin="0,0,8,0"/><TextBlock Text="About"/></StackPanel></Button>
+            </StackPanel>
+          </Border>
+
+          <Border x:Name="RailAccentBorder" Grid.Row="1" BorderBrush="{DynamicResource BrushDomainPrivacy}"
+                  BorderThickness="4,0,0,1" Padding="15,9,10,8" Background="{DynamicResource BrushSidebarHover}">
             <StackPanel>
               <TextBlock Text="ACTIVE SECTION" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource BrushSidebarMuted}"/>
               <TextBlock x:Name="ActiveSectionTitle" Text="Privacy" Margin="0,3,0,0" FontSize="17" FontWeight="SemiBold"
@@ -186,11 +197,10 @@
             </StackPanel>
           </Border>
 
-          <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" CanContentScroll="False" x:Name="NavScroll">
+          <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" CanContentScroll="False" x:Name="NavScroll">
             <StackPanel Margin="0,7,0,10">
               <StackPanel x:Name="PrivacyNavPanel">
-                <Expander Header="PRIVACY CONTROLS" Style="{StaticResource RailExpander}" IsExpanded="True">
-                  <StackPanel Margin="-10,4,-8,2">
+                <TextBlock Text="PRIVACY CONTROLS" Style="{StaticResource SidebarGroupLabel}" Margin="15,4,8,5"/>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:ConsentStore"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="AppsListDetail24" Width="17" Margin="0,0,8,0"/><TextBlock Text="App permissions"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:AppPrivacy"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="WindowSettings20" Width="17" Margin="0,0,8,0"/><TextBlock Text="App policy controls"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Telemetry"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="DataUsage24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Diagnostics &amp; feedback"/></StackPanel></Button>
@@ -201,25 +211,19 @@
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Device"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="DeviceEq24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Device privacy"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Speech"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Mic24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Speech"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Clipboard"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Clipboard24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Clipboard"/></StackPanel></Button>
-                  </StackPanel>
-                </Expander>
-                <Expander Header="WINDOWS APPS" Style="{StaticResource RailExpander}" IsExpanded="True">
-                  <StackPanel Margin="-10,4,-8,2">
+                <Border BorderBrush="{DynamicResource BrushBorderRule}" BorderThickness="0,1,0,0" Margin="12,7,12,5"/>
+                <TextBlock Text="WINDOWS APPS" Style="{StaticResource SidebarGroupLabel}" Margin="15,3,8,5"/>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Copilot"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Sparkle24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Copilot"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Recall"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="History24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Recall &amp; Click to Do"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Search"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Search24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Search"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Edge"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Globe24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Microsoft Edge"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Widgets"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="WindowApps24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Widgets"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:OneDrive"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Cloud24" Width="17" Margin="0,0,8,0"/><TextBlock Text="OneDrive"/></StackPanel></Button>
-                  </StackPanel>
-                </Expander>
-                <Expander Header="DEVICE &amp; ACCOUNT" Style="{StaticResource RailExpander}" IsExpanded="True">
-                  <StackPanel Margin="-10,4,-8,2">
+                <Border BorderBrush="{DynamicResource BrushBorderRule}" BorderThickness="0,1,0,0" Margin="12,7,12,5"/>
+                <TextBlock Text="DEVICE &amp; ACCOUNT" Style="{StaticResource SidebarGroupLabel}" Margin="15,3,8,5"/>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:FamilySafety"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="People24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Family Safety"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Storage"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Database24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Storage"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Accessibility"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Accessibility24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Accessibility"/></StackPanel></Button>
-                  </StackPanel>
-                </Expander>
               </StackPanel>
 
               <StackPanel x:Name="SecurityNavPanel" Visibility="Collapsed">
@@ -235,34 +239,31 @@
               </StackPanel>
 
               <StackPanel x:Name="NetworkNavPanel" Visibility="Collapsed">
-                <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Network"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="WifiLock24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Adapters, LAN &amp; DNS"/></StackPanel></Button>
+                <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="network:dns"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Globe24" Width="17" Margin="0,0,8,0"/><TextBlock Text="DNS &amp; name resolution"/></StackPanel></Button>
+                <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="network:adapters"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="WifiLock24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Adapters &amp; LAN"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:Firewall"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="GlobeShield24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Firewall"/></StackPanel></Button>
                 <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="domain:RemoteAccess"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Remote20" Width="17" Margin="0,0,8,0"/><TextBlock Text="Remote access"/></StackPanel></Button>
               </StackPanel>
 
               <StackPanel x:Name="ExploreNavPanel" Visibility="Collapsed">
-                <TextBlock Text="READ-ONLY DIAGNOSTICS" Style="{StaticResource SidebarGroupLabel}" Margin="15,4,8,7"/>
-                <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="inventory"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Desktop24" Width="17" Margin="0,0,8,0"/><TextBlock Text="System Explorer"/></StackPanel></Button>
+                <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="explore:windows-services"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Settings24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Windows services"/></StackPanel></Button>
+                <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="explore:other-services"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Settings24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Other services"/></StackPanel></Button>
+                <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="explore:windows-tasks"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="History24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Windows tasks"/></StackPanel></Button>
+                <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="explore:other-tasks"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="History24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Other tasks"/></StackPanel></Button>
+                <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="explore:system-apps"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="WindowApps24" Width="17" Margin="0,0,8,0"/><TextBlock Text="System apps"/></StackPanel></Button>
+                <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="explore:other-apps"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="WindowApps24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Other apps"/></StackPanel></Button>
+                <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="explore:features"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Settings24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Features &amp; capabilities"/></StackPanel></Button>
+                <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="explore:firewall-rules"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="GlobeShield24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Firewall rules"/></StackPanel></Button>
               </StackPanel>
             </StackPanel>
           </ScrollViewer>
 
-          <Border Grid.Row="2" BorderBrush="{DynamicResource BrushBorderRule}" BorderThickness="0,1,0,0" Padding="0,7,0,9">
-            <StackPanel>
-              <TextBlock Text="PERSISTENT" Style="{StaticResource SidebarGroupLabel}" Margin="15,4,8,5"/>
-              <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="home"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Home24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Dashboard"/></StackPanel></Button>
-              <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="conflicts"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Warning24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Conflicts"/></StackPanel></Button>
-              <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="knowledge"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="BookInformation24" Width="17" Margin="0,0,8,0"/><TextBlock Text="Knowledge Explorer"/></StackPanel></Button>
-              <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="settings"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Settings24" Width="17" Margin="0,0,8,0"/><TextBlock Text="App Settings"/></StackPanel></Button>
-              <Button Style="{StaticResource SidebarButton}" Click="Nav_Click" Tag="about"><StackPanel Orientation="Horizontal"><ui:SymbolIcon Symbol="Info24" Width="17" Margin="0,0,8,0"/><TextBlock Text="About"/></StackPanel></Button>
-            </StackPanel>
-          </Border>
         </Grid>
       </Border>
 
       <Grid Grid.Column="1" Background="{DynamicResource BrushBgContent}">
         <ScrollViewer x:Name="ContentScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
-                      CanContentScroll="False" Padding="22,18,22,22" HorizontalContentAlignment="Stretch"
+                      CanContentScroll="False" Padding="18,14,18,18" HorizontalContentAlignment="Stretch"
                       VerticalContentAlignment="Stretch" ScrollChanged="ContentScroll_ScrollChanged">
           <ContentControl x:Name="ContentHost"
                           Width="{Binding ActualWidth, ElementName=ContentScroll, Converter={StaticResource ContentWidthConverter}}"
